@@ -2815,9 +2815,13 @@
   </dialog>
   <dialog id="channel-search-dialog" class="custom-modal palette-modal" x-data="channelSearchDialog" x-cloak aria-label="Search messages" x-on:cancel.prevent="close()" x-on:click="if ($event.target === $el) close()">
     <section class="palette channel-search-palette">
-      <div class="channel-search-head">
+      <div class="channel-search-head" :class="hasQuery && 'has-results'">
         <span class="channel-search-icon" aria-hidden="true" x-html="lucideIcon('search')"></span>
         <input id="channel-search-input" class="palette-input channel-search-input" x-ref="search" type="text" role="combobox" :aria-label="placeholder()" aria-autocomplete="list" :aria-expanded="String(hasQuery)" aria-controls="channel-search-list" :aria-activedescendant="activeId()" autocomplete="off" spellcheck="false" :placeholder="placeholder()" x-model="query" x-on:input="onInput($event)" x-on:keydown="keydown($event)" />
+        <span class="channel-search-filters" role="group" aria-label="Filter results">
+          <button type="button" class="channel-search-chip" :aria-pressed="String(kind === 'images')" x-on:click="toggleKind('images')">Images</button>
+          <button type="button" class="channel-search-chip" :aria-pressed="String(kind === 'links')" x-on:click="toggleKind('links')">Links</button>
+        </span>
         <button type="button" class="channel-search-clear" x-show="query" aria-label="Clear search" x-on:click="clear()"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('x')"></span></button>
       </div>
       <div id="channel-search-list" class="palette-list" x-ref="list" role="listbox" aria-label="Matching messages" x-show="hasQuery">
@@ -2832,11 +2836,7 @@
         </template>
         <p class="palette-empty" x-show="hasQuery && !searching && !hits.length" role="status">No matches in loaded messages.</p>
       </div>
-      <div class="palette-foot channel-search-foot">
-        <span class="channel-search-filters" role="group" aria-label="Filter results">
-          <button type="button" class="channel-search-chip" :aria-pressed="String(kind === 'images')" x-on:click="toggleKind('images')">Images</button>
-          <button type="button" class="channel-search-chip" :aria-pressed="String(kind === 'links')" x-on:click="toggleKind('links')">Links</button>
-        </span>
+      <div class="palette-foot channel-search-foot" x-show="hasQuery || loadError">
         <span class="channel-search-status" role="status" x-show="hasQuery || loadError" x-text="statusText()"></span>
         <button type="button" class="channel-search-older" x-show="hasQuery && !isNotes && !exhausted" :disabled="loadingOlder" x-on:click="loadOlder()" x-text="loadingOlder ? 'Loading…' : 'Load older'"></button>
       </div>
