@@ -1,0 +1,154 @@
+/* boot:start - the tokens and boot screen the shell paints before anything else loads. assemble-html.ts
+   fails the build if this block goes missing, so keep it whole and in the first file. */
+:root {
+  color-scheme: dark;
+  --bg: #11111b;
+  --bg-glow: radial-gradient(max(50vw, 34rem) 34rem at 50% -10rem, #1e1e2e, var(--bg));
+  --blur-light: blur(3px);
+  --blur-medium: blur(9px);
+  --blur-heavy: blur(18px);
+  /* Dark glass darkens what it blurs so panels sit below the content they cover; light only blurs. */
+  --glass-filter: var(--blur-medium) saturate(1.2) brightness(.75);
+  /* One tint for every floating glass surface: menus, popovers, tooltips, toasts, banners, pickers, sheets. */
+  --glass-tint: color-mix(in srgb, var(--panel) 74%, transparent);
+  /* One tint for the fixed chrome: header, docked rooms rail, members panel and composer. */
+  --glass-chrome: color-mix(in srgb, var(--panel) 60%, transparent);
+  /* Tab bar: one step up from the glass chrome so it reads as its own surface. */
+  /* Phone chrome glass. Heads blur only: any saturate or brightness tints the page glow behind them into a band. The tab bar floats, so it keeps a little saturation. */
+  --head-glass: var(--blur-medium);
+  /* Floating glass for the phone tab bar and composer: see-through gray, a lit rim, a soft drop. */
+  --nav-glass: var(--blur-medium) saturate(1.6);
+  --nav-surface: rgb(49 50 68 / .28);
+  --nav-edge: inset 0 1px 0 rgb(255 255 255 / .07), inset 0 0 0 1px rgb(255 255 255 / .04), 0 .5rem 1.5rem -.6rem rgb(0 0 0 / .45);
+  --nav-active: rgb(255 255 255 / .06);
+  --nav-ink: color-mix(in srgb, var(--text) 60%, transparent);
+  --nav-ink-active: #fff;
+  --nav-icon: brightness(0) invert(1) opacity(.6);
+  --nav-icon-active: brightness(0) invert(1);
+  --panel: #181825;
+  /* The fixed header's height, in one place: the chat, the members panel, the pull chip and the banner
+     sticky offset all have to clear it, and while they each wrote it out the phone banners ended up
+     hidden behind the header. */
+  --header-h: calc(3.625rem + env(safe-area-inset-top, 0px));
+  /* Left edge taken by the instance rail; the desktop layout adds it to every 15rem sidebar offset. */
+  --rail-w: 0px;
+  --rail-half: 0px;
+  --boot-mark: 7rem;
+  --z-boot-screen: 102;
+  --panel-hi: #313244;
+  --text: #cdd6f4;
+  --muted: #7f849c;
+  --line: var(--panel-hi); /* same tone as panel-hi today; change here to separate borders from surfaces */
+  --brand: #a6e3a1;
+  --accent: var(--brand);
+  --mine: #94e2d5;
+  --danger: #f38ba8;
+  --brand-fill: #a6e3a1;
+  --on-brand: #11111b;
+  --mention-fill: color-mix(in srgb, var(--brand) 16%, transparent);
+  --mention-ink: var(--brand);
+  --shadow: #0008;
+  --shadow-sm: 0 .3rem .9rem #0006;
+  --shadow-md: 0 .5rem 1.5rem #0009;
+  --shadow-lg: 0 1.5rem 5rem #000b;
+  --active-fill: color-mix(in srgb, var(--brand) 13%, transparent);
+  --active-ring: transparent;
+  --mention-me-fill: color-mix(in srgb, var(--mine) 22%, transparent);
+  --avatar-fill: var(--panel-hi);
+  --secondary-fill: var(--panel-hi);
+  --secondary-fill-hover: color-mix(in srgb, var(--panel-hi) 85%, var(--text));
+  --disabled-opacity: .5;
+  --warning: #f9e2af;
+  --attention: #fab387;
+  --space-1: .25rem;
+  --space-2: .5rem;
+  --space-3: .75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --radius-xs: .25rem;
+  --radius-sm: .4rem;
+  --radius-md: .55rem;
+  --radius-lg: .75rem;
+  --radius-xl: 1rem;
+  --radius-pill: 999px;
+  --radius-round: 50%;
+  /* Six type steps. Off-scale on purpose: glyphs under .65rem sized to their fixed container (avatar
+     initials, badge digits, agent marks), the 1.75rem and 2rem display sizes, em sizes that follow their
+     parent, and px sizes. */
+  --text-2xs: .6875rem;
+  --text-xs: .75rem;
+  --text-sm: .875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "Cascadia Code", "SFMono-Regular", Menlo, monospace;
+  --ease-standard: cubic-bezier(.2,.7,.2,1);
+  --dur-boot-exit: .15s;
+  --dur-reaction: .38s;
+  /* Five motion steps. Loops (spinners, pulses, the focus flash), stagger delays and the .06s press snap
+     stay literal. */
+  --dur-micro: .1s;
+  --dur-fast: .15s;
+  --dur-base: .2s;
+  --dur-entrance: .3s;
+  --dur-reveal: .5s;
+}
+@media (max-width: 500px) { :root { --boot-mark: 5rem; } }
+
+@view-transition { navigation: auto; }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+[x-cloak] { display: none !important; }
+html { background: var(--bg); }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body {
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--bg-glow);
+  color: var(--text);
+  font: var(--text-base)/1.45 var(--ui);
+}
+/* Lives outside Alpine (x-ignore) and pinned to the compositor: boot classes sit on <html>, so the
+   spinner keeps its layer while Alpine walks the body and the shell paints beneath it. */
+.boot-screen {
+  position: fixed;
+  z-index: var(--z-boot-screen);
+  /* The small viewport rather than inset: 0. The layout viewport grows and shrinks with the iOS URL bar,
+     and the two documents commit at different moments in that dance, which moves a centred mark. svh is
+     stable across it, so the mark lands in the same place in both documents. */
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100svh;
+  display: grid;
+  place-items: center;
+  contain: strict;
+  will-change: opacity;
+  background: var(--bg-glow);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity var(--dur-reveal) ease-in-out, visibility 0s linear var(--dur-reveal);
+}
+/* The mark never moves, resizes or fades while the app starts. The iOS launch screen and the shell's
+   Opening view draw the same mark at the same size on the same background, so a handover between
+   the three is invisible. Only the whole screen leaves, once the shell is ready. */
+.boot-screen img { width: var(--boot-mark); height: var(--boot-mark); }
+/* Pull-to-refresh on the way out: the boot screen fades in over the faded list, and the reload continues it. */
+html.leaving .boot-screen { opacity: 1; visibility: visible; transition-delay: 0s; }
+.auth-card .login-logo {
+  filter: none;
+  display: block;
+  margin-inline: auto;
+  will-change: transform;
+}
+html.booting .auth-card .login-logo { opacity: 0; transform: perspective(900px) rotateY(180deg) scale(.96); }
+html.booting body > :not(.boot-screen):not(.auth-modal) { visibility: hidden; }
+html.booting .boot-screen { opacity: 1; visibility: visible; transition-delay: 0s; }
+/* boot:end */

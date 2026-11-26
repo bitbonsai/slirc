@@ -1,0 +1,198 @@
+/* Threads nest one step under their channel; only the active channel shows them, four at most. */
+.nested-thread > .room { padding-left: 1.85rem; }
+.nested-thread .room-mark { width: 1.1rem; height: 1.1rem; }
+.nested-thread .room-mark .menu-icon { width: .85rem; height: .85rem; }
+.thread-more { color: var(--muted); }
+.mobile-row.nested { padding-left: 2.6rem; min-height: 2.5rem; }
+.mobile-row.nested .room-mark { width: 1.4rem; height: 1.4rem; }
+.mobile-row.nested strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mobile-section-toggle svg { margin-left: auto; }
+
+
+.agent-connected .pair-actions { gap: .6rem; margin-top: .75rem; }
+
+/* New conversation dialog, groups under DMs, and the sent-invitations page. */
+.section-head { display: flex; align-items: center; margin: 16px 0 7px; }
+.section-head .section-title { flex: 1; min-width: 0; margin: 0; }
+.mobile-section-head { display: flex; align-items: center; justify-content: space-between; margin: 1.05rem .65rem .35rem; }
+.mobile-section-head .mobile-section-label { margin: 0; }
+.plus-button { flex: 0 0 auto; display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; cursor: pointer; transition: background-color var(--dur-fast) ease; }
+.plus-button img { width: 1rem; height: 1rem; opacity: .55; }
+.plus-button:hover { background: color-mix(in srgb, var(--text) 10%, transparent); }
+.plus-button:hover img { opacity: 1; }
+.plus-button:active { transform: scale(.92); }
+.plus-button:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.mobile-screen-head .plus-button { margin-left: auto; margin-right: .35rem; }
+
+.rail-link { display: flex; align-items: center; gap: .4rem; width: 100%; margin-bottom: .3rem; padding: .4rem .55rem; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--muted); font: 650 var(--text-xs)/1 var(--ui); text-align: left; cursor: pointer; transition: color var(--dur-fast) ease; }
+.rail-link:hover, .rail-link:focus-visible { color: var(--text); }
+/* Ghost shortcut: an active route reads from text colour, never a filled panel. */
+.rail-link.active { color: var(--text); }
+.rail-link:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.rail-link .menu-icon { width: .9rem; height: .9rem; }
+/* One shared ghost row owns the hover/focus background; the invite action flexes, the X sits in flow. */
+.rail-shortcut { display: flex; align-items: center; gap: .1rem; margin-bottom: .3rem; padding-right: .1rem; border-radius: var(--radius-md); background: color-mix(in srgb, var(--panel) 55%, transparent); backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter); transition: background-color var(--dur-fast) ease; }
+/* The shortcut floats over the scrolling list; the tint keeps Chromium's blur readable. */
+.rail-shortcut:hover, .rail-shortcut:focus-within { background: color-mix(in srgb, var(--panel-hi) 70%, transparent); }
+.rail-shortcut .rail-link { flex: 1; min-width: 0; margin-bottom: 0; }
+.rail-dismiss { flex: 0 0 auto; display: grid; place-items: center; width: 1.6rem; height: 1.6rem; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--muted); cursor: pointer; opacity: 0; pointer-events: none; transition: opacity var(--dur-micro) ease, color var(--dur-fast) ease; }
+.rail-shortcut:hover .rail-dismiss, .rail-shortcut:focus-within .rail-dismiss { opacity: 1; pointer-events: auto; }
+.rail-dismiss:hover, .rail-dismiss:focus-visible { color: var(--text); }
+.rail-dismiss:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.rail-dismiss .menu-icon { width: .75rem; height: .75rem; }
+/* Touch has no hover, so the X stays discoverable and tappable. */
+@media (pointer: coarse) {
+  .rail-shortcut .rail-dismiss { opacity: 1; pointer-events: auto; width: 2.75rem; height: 2.75rem; }
+}
+
+.new-conversation-card { box-sizing: border-box; width: min(30rem, 100%); overflow: hidden; text-align: left; transition: height var(--dur-base) ease; }
+.new-conversation-content, .new-conversation-form { display: grid; gap: .55rem; }
+.new-conversation-success { display: grid; gap: .75rem; }
+.new-conversation-success p { margin: 0; }
+@media (prefers-reduced-motion: reduce) { .new-conversation-card { transition: none; } }
+.new-conversation-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.new-conversation-title-row { display: flex; align-items: center; gap: .4rem; min-width: 0; }
+.new-conversation-head h2 { margin: 0; font: 700 var(--text-lg)/1.3 var(--ui); }
+.dialog-close { display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--muted); cursor: pointer; }
+.dialog-close:hover, .dialog-close:focus-visible { background: var(--panel-hi); color: var(--text); }
+.dialog-close svg { width: 1.1rem; height: 1.1rem; }
+.new-conversation-field { display: grid; }
+.new-conversation-field input { min-height: 2.5rem; padding: .4rem .6rem; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg); color: var(--text); font: var(--text-sm)/1.3 var(--ui); }
+.new-conversation-field input:focus { border-color: var(--brand); outline: none; }
+.new-conversation-results { display: grid; gap: .1rem; max-height: 14rem; overflow-y: auto; margin: 0 -.5rem; padding: 0 .25rem; overscroll-behavior: contain; }
+.new-conversation-person { display: flex; align-items: center; gap: .6rem; width: 100%; padding: .4rem .5rem; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+.new-conversation-person:hover, .new-conversation-person.active, .new-conversation-person:focus-visible { background: color-mix(in srgb, var(--text) 8%, transparent); }
+.new-conversation-person:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.new-conversation-person-main { display: flex; flex-direction: column; min-width: 0; }
+.new-conversation-person-main strong { font: 650 var(--text-sm)/1.2 var(--ui); }
+.new-conversation-person-main small { color: var(--muted); font: var(--text-xs)/1.2 var(--mono); }
+.new-conversation-hint { margin: .1rem .25rem; color: var(--muted); font: var(--text-xs)/1.4 var(--ui); }
+.new-conversation-email { display: grid; gap: .75rem; margin-top: .35rem; }
+.new-conversation-email .field-hint { margin: 0; }
+.new-conversation-email-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-top: .5rem; }
+.new-conversation-email-actions .btn-primary { margin-left: auto; }
+/* Invite many: a ledger of addresses with one status each, a bar that counts them, and a meter while sending. */
+.bulk-invite-card { box-sizing: border-box; width: min(36rem, 100%); max-height: calc(100dvh - 2rem); display: flex; flex-direction: column; text-align: left; }
+.bulk-invite-body { display: grid; gap: var(--space-3); min-height: 0; }
+.bulk-invite-card .new-conversation-head { margin-bottom: var(--space-4); }
+.bulk-invite-card .new-conversation-head h2 { margin: 0; }
+.bulk-invite-body .pair-actions { margin-top: var(--space-1); }
+.bulk-invite-field { display: grid; gap: var(--space-1); font-size: var(--text-sm); color: var(--muted); }
+.bulk-invite-field select { min-height: 2.5rem; padding: .55rem 2.4rem .55rem .7rem; border: 1px solid var(--line); border-radius: var(--radius-md); outline: none; background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239399b2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right .85rem center / 1rem; color: var(--text); font: var(--text-sm)/1.35 var(--ui); appearance: none; -webkit-appearance: none; cursor: pointer; }
+.bulk-invite-field select:focus { border-color: var(--brand); }
+.bulk-invite-hint { margin: 0; }
+/* Disabled reads as unavailable, not as a dimmer go button. */
+.bulk-invite-body .btn-primary:disabled { background: transparent; box-shadow: inset 0 0 0 1px var(--line); color: var(--muted); opacity: 1; }
+.bulk-invite-drop { border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg); transition: border-color var(--dur-fast) var(--ease-standard), background-color var(--dur-fast) var(--ease-standard); }
+.bulk-invite-drop:focus-within { border-color: var(--brand); }
+.bulk-invite-drop.dragging { border-style: dashed; border-color: var(--brand); background: color-mix(in srgb, var(--brand) 8%, var(--bg)); }
+.bulk-invite-drop textarea { display: block; box-sizing: border-box; width: 100%; min-height: 9rem; padding: .6rem .7rem; border: 0; outline: none; background: transparent; color: var(--text); font: var(--text-sm)/1.55 var(--mono); resize: vertical; }
+.bulk-invite-drop-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-1) var(--space-2) var(--space-1) .7rem; border-top: 1px solid var(--line); font-size: var(--text-xs); color: var(--muted); }
+.bulk-invite-count { font-variant-numeric: tabular-nums; }
+.bulk-invite-file { position: relative; display: inline-flex; align-items: center; gap: var(--space-1); min-height: 2rem; font-size: var(--text-xs); }
+.bulk-invite-file:focus-within { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: var(--radius-sm); }
+.bulk-invite-file .menu-icon svg { width: .9rem; height: .9rem; }
+.bulk-invite-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.bulk-invite-entry { margin: .35rem 0 0; }
+.bulk-invite-entry .link-button { padding: 0; font-size: inherit; }
+.bulk-invite-body { --tone-go: var(--brand); --tone-add: var(--mine); --tone-held: var(--warning); --tone-bad: var(--danger); --tone-quiet: var(--muted); }
+.bulk-invite-bar { display: flex; gap: 2px; height: .5rem; border-radius: var(--radius-pill); overflow: hidden; background: var(--panel-hi); }
+.bulk-invite-bar > span { min-width: 4px; transition: flex-grow var(--dur-entrance) var(--ease-standard); }
+.bulk-invite-bar .tone-go, .bulk-invite-legend .tone-go::before { background: var(--tone-go); }
+.bulk-invite-bar .tone-add, .bulk-invite-legend .tone-add::before { background: var(--tone-add); }
+.bulk-invite-bar .tone-held, .bulk-invite-legend .tone-held::before { background: var(--tone-held); }
+.bulk-invite-bar .tone-bad, .bulk-invite-legend .tone-bad::before { background: var(--tone-bad); }
+.bulk-invite-bar .tone-quiet, .bulk-invite-legend .tone-quiet::before { background: color-mix(in srgb, var(--tone-quiet) 55%, transparent); }
+.bulk-invite-legend { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); margin: 0; padding: 0; list-style: none; font: var(--text-xs)/1.4 var(--ui); color: var(--muted); }
+.bulk-invite-legend li { display: inline-flex; align-items: center; gap: .35rem; }
+.bulk-invite-legend li::before { content: ""; width: .5rem; height: .5rem; border-radius: var(--radius-round); }
+.bulk-invite-legend strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.bulk-invite-progress { display: grid; gap: var(--space-1); font-size: var(--text-xs); color: var(--muted); }
+.bulk-invite-progress .join-link-meter { margin: 0; height: 4px; }
+.bulk-invite-progress .join-link-meter > span { transition: width var(--dur-entrance) var(--ease-standard); }
+.bulk-invite-note { margin: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--text); font-size: var(--text-xs); line-height: 1.45; }
+.bulk-invite-table { max-height: min(22rem, 45dvh); overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius-md); overscroll-behavior: contain; }
+.bulk-invite-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-3); align-items: center; padding: .45rem .7rem; border-left: 3px solid transparent; }
+.bulk-invite-row + .bulk-invite-row { border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+.bulk-invite-who { display: grid; min-width: 0; }
+.bulk-invite-who strong, .bulk-invite-who small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bulk-invite-who strong { font: 500 var(--text-sm)/1.35 var(--mono); }
+.bulk-invite-who small { color: var(--muted); font: var(--text-xs)/1.35 var(--mono); }
+.bulk-invite-status { display: grid; justify-items: end; font: 600 var(--text-xs)/1.3 var(--ui); color: var(--muted); white-space: nowrap; }
+.bulk-invite-status small { max-width: 14rem; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
+.bulk-invite-row.tone-go { border-left-color: var(--tone-go); } .bulk-invite-row.tone-go .bulk-invite-status { color: var(--tone-go); }
+.bulk-invite-row.tone-add { border-left-color: var(--tone-add); } .bulk-invite-row.tone-add .bulk-invite-status { color: var(--tone-add); }
+.bulk-invite-row.tone-held { border-left-color: var(--tone-held); } .bulk-invite-row.tone-held .bulk-invite-status { color: var(--tone-held); }
+.bulk-invite-row.tone-bad { border-left-color: var(--tone-bad); } .bulk-invite-row.tone-bad .bulk-invite-status { color: var(--tone-bad); }
+.bulk-invite-row.tone-quiet .bulk-invite-who strong { color: var(--muted); }
+@media (max-width: 40rem) {
+  .bulk-invite-offer .phone-offer-intro { flex-wrap: wrap; }
+  .bulk-invite-offer .phone-offer-intro .btn-primary { flex: 1 1 100%; min-height: 2.75rem; }
+  .bulk-invite-dialog { padding: 0; }
+  .bulk-invite-card { width: 100%; max-height: none; min-height: 100dvh; border-radius: 0; padding: calc(var(--space-4) + env(safe-area-inset-top)) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom)); }
+  .bulk-invite-table { max-height: none; flex: 1; }
+  .bulk-invite-row { grid-template-columns: 1fr; gap: .1rem; }
+  .bulk-invite-status { justify-items: start; }
+  .bulk-invite-body .pair-actions .btn-primary { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .bulk-invite-bar > span, .bulk-invite-progress .join-link-meter > span, .bulk-invite-drop { transition: none; } }
+.new-conversation-outcomes { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; }
+.new-conversation-outcomes li { display: flex; flex-wrap: wrap; gap: .4rem; align-items: baseline; padding: .35rem .5rem; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--brand) 10%, transparent); font: var(--text-xs)/1.3 var(--ui); }
+.new-conversation-outcomes li.warn { background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.new-conversation-outcomes small { flex-basis: 100%; color: var(--muted); }
+
+.invitations-heading { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
+.invitations-heading h3 { margin: 0; font: 700 var(--text-lg)/1.3 var(--ui); }
+.invitation-quota { margin: 0; color: var(--muted); font: var(--text-sm)/1.3 var(--ui); text-align: right; }
+.invitation-quota strong { color: var(--brand); font-variant-numeric: tabular-nums; }
+.invitation-explainer { margin: .4rem 0 .9rem; }
+.invitation-empty { margin: .75rem 0 0; padding: .875rem 1rem; border: 1px solid var(--line); border-radius: var(--radius-md); background: color-mix(in srgb, var(--panel) 60%, transparent); color: var(--muted); font: var(--text-base)/1.45 var(--ui); }
+.invitation-empty a { color: var(--mine); }
+/* Invitations vertical rhythm. Deliberate groups (heading / copy / feedback / actions), scoped
+   here so the shared .field-hint negative margin and other profile pages stay untouched. */
+.invitations-page .invitations-heading { margin: 0 0 .8rem; }
+.invitations-page .field-hint { margin: .4rem 0 0; font-size: var(--text-base); }
+.invitations-page .invitation-explainer { margin: 0 0 1.6rem; }
+.invitations-page .invitation-empty { margin-top: 1.6rem; }
+.invitations-page .profile-error { margin: 1rem 0 0; font-size: var(--text-base); }
+.invitations-page .admission-requests { margin-top: 2.4rem; }
+/* Compact informative notice: subtle panel for empty state, light danger tint for a load failure
+   with its Retry inside. Placed after the scoped .profile-error rules so the inner copy loses
+   their leading margin. No stripe, no divider. */
+.invitation-notice-error { margin: 1rem 0 0; padding: .875rem 1rem; border: 1px solid color-mix(in srgb, var(--danger) 40%, var(--line)); border-radius: var(--radius-md); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.invitation-notice-error .profile-error { margin: 0; }
+.invitation-notice-error .btn-secondary { margin-top: .75rem; background: transparent; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 40%, var(--line)); color: var(--danger); }
+.invitation-list { display: grid; gap: .5rem; margin: 0; padding: 0; list-style: none; }
+.invitation-row { display: grid; gap: .4rem; padding: .6rem .65rem; border: 1px solid var(--line); border-radius: var(--radius-md); background: color-mix(in srgb, var(--panel) 60%, transparent); }
+.invitation-main { display: flex; align-items: center; gap: .6rem; }
+.invitation-main .room-mark { flex: 0 0 auto; }
+.invitation-copy { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.invitation-copy strong { font: 650 var(--text-base)/1.3 var(--ui); overflow-wrap: anywhere; }
+.invitation-copy small { color: var(--muted); font: var(--text-xs)/1.3 var(--ui); }
+.invitation-status { flex: 0 0 auto; padding: .2rem .5rem; border-radius: var(--radius-pill); font: 700 var(--text-xs)/1 var(--ui); text-transform: uppercase; letter-spacing: .05em; background: var(--panel-hi); color: var(--muted); }
+.invitation-status.status-pending, .invitation-status.status-sending, .invitation-status.status-accepted { background: color-mix(in srgb, var(--brand) 18%, transparent); color: var(--brand); }
+.invitation-status.status-expired, .invitation-status.status-cancelled { background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--muted); }
+.invitation-status.status-failed, .invitation-status.status-uncertain { background: color-mix(in srgb, var(--danger) 16%, transparent); color: var(--danger); }
+.invitation-actions { display: grid; gap: .35rem; }
+.invitation-actions-row { display: flex; gap: .5rem; }
+.invitation-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; color: var(--danger); font: 650 var(--text-sm)/1.2 var(--ui); }
+@media (prefers-reduced-motion: reduce) { .plus-button, .rail-link, .rail-shortcut, .rail-dismiss { transition: none; } }
+
+/* Invitation landing/acceptance. Reuses the shared auth-card and join-* typography. */
+.invitation-card { display: grid; gap: .75rem; text-align: left; }
+.invitation-body { display: grid; gap: .9rem; }
+.invitation-body h2 { margin: 0; font: 700 var(--text-lg)/1.3 var(--ui); }
+.invitation-body form { display: grid; gap: .85rem; }
+.invitation-body .join-accept { width: 100%; margin-top: .25rem; }
+.invitation-dismiss { justify-self: start; }
+
+/* Admission. Reuses the invitation card, join-* typography and invitation rows; only the action
+   row needs a narrow stacked layout so both destinations stay full-width on a phone. */
+.admission-card { display: grid; gap: .75rem; text-align: left; }
+.admission-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.admission-actions button { min-height: 2.75rem; }
+.admission-card .btn-primary { min-height: 2.75rem; width: 100%; }
+.admission-card .link-button { min-height: 2.75rem; padding-inline: .5rem; }
+@media (max-width: 30rem) { .admission-actions { display: grid; } .admission-actions button { width: 100%; } }
+.admission-dismiss { justify-self: start; }
+

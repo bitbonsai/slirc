@@ -1,0 +1,265 @@
+/* IRCv3 +reply thread bar and docked side panel. */
+.reply-broadcast-note {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  margin: 0 0 .2rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--mine);
+  font: 600 var(--text-xs)/1.3 var(--ui);
+  cursor: pointer;
+}
+.reply-broadcast-note:hover { text-decoration: underline; }
+.reply-thread-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  margin-top: .35rem;
+  padding: .28rem .55rem .28rem .35rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-hi) 45%, transparent);
+  color: var(--text);
+  font: var(--text-xs)/1.2 var(--ui);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) ease;
+}
+.reply-thread-bar:hover, .reply-thread-bar.selected {
+  background: var(--active-fill);
+}
+.reply-thread-avatars { display: inline-flex; align-items: center; }
+.reply-thread-av {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-left: -.25rem;
+  overflow: hidden;
+  border: 1.5px solid var(--bg);
+  border-radius: 50%;
+  background: var(--avatar-fill);
+  color: var(--text);
+  font: 700 10px/1 var(--ui);
+}
+.reply-thread-av:first-child { margin-left: 0; }
+.reply-thread-av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.reply-thread-count { font-weight: 700; color: var(--brand); }
+.reply-thread-last { color: var(--muted); }
+
+.reply-thread-panel {
+  position: fixed;
+  z-index: var(--z-side-panel);
+  top: var(--header-h);
+  right: 0;
+  bottom: 0;
+  width: 24rem;
+  display: flex;
+  flex-direction: column;
+  translate: 100% 0;
+  opacity: 0;
+  pointer-events: none;
+  background: var(--glass-chrome);
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
+  transition: translate var(--dur-entrance) var(--ease-standard), opacity var(--dur-base) ease;
+}
+.reply-thread-panel.open {
+  translate: 0 0;
+  opacity: 1;
+  pointer-events: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reply-thread-panel, .chat, .composer, .composer.tall, .archived-channel { transition: none; }
+}
+@media (min-width: 900px) {
+  .chat, .archived-channel {
+    transition: right var(--dur-entrance) var(--ease-standard);
+  }
+  .composer, .composer.tall {
+    transition: background-color var(--dur-fast) ease, right var(--dur-entrance) var(--ease-standard);
+  }
+  body.rooms-docked.reply-thread-docked .chat,
+  body.rooms-docked.reply-thread-docked .composer,
+  body.rooms-docked.reply-thread-docked .composer.tall,
+  body.rooms-docked.reply-thread-docked .archived-channel {
+    right: calc(24rem + 1rem);
+  }
+  body.reply-thread-docked:not(.rooms-docked) .chat,
+  body.reply-thread-docked:not(.rooms-docked) .composer,
+  body.reply-thread-docked:not(.rooms-docked) .composer.tall,
+  body.reply-thread-docked:not(.rooms-docked) .archived-channel {
+    left: calc(var(--rail-w) + 1rem);
+    right: calc(24rem + 1rem);
+    width: auto;
+    margin-inline: 0;
+    translate: none;
+  }
+}
+@media (max-width: 899px) {
+  .reply-thread-panel {
+    inset: 0;
+    width: 100%;
+    z-index: calc(var(--z-floating-panel) + 2);
+    background: var(--bg);
+    padding-bottom: max(var(--kb, 0px), env(safe-area-inset-bottom, 0px));
+  }
+}
+.reply-thread-head {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .75rem 16px .4rem .9rem;
+  flex-shrink: 0;
+}
+.reply-thread-title { display: grid; gap: .1rem; min-width: 0; flex: 1; }
+.reply-thread-title strong { font: 700 var(--text-sm)/1.2 var(--ui); }
+.reply-thread-title small { color: var(--muted); font: var(--text-xs)/1.2 var(--ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reply-thread-close, .reply-thread-back { padding: 0 .2rem; color: var(--muted); }
+/* Same 2.25rem box and right edge as the header's members toggle above it, so the two icons line up. */
+.reply-thread-close { flex: 0 0 2.25rem; width: 2.25rem; height: 2.25rem; display: grid; place-items: center; padding: 0; border-radius: var(--radius-md); }
+.reply-thread-more svg { width: 1.1rem; height: 1.1rem; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.reply-thread-close:hover, .reply-thread-close:focus-visible { background: var(--panel-hi); }
+.reply-thread-close:hover, .reply-thread-close:focus-visible, .reply-thread-back:hover, .reply-thread-back:focus-visible { color: var(--text); }
+.reply-thread-stream {
+  flex: 1;
+  overflow-y: auto;
+  padding: .65rem .9rem;
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+}
+.reply-thread-root {
+  padding-bottom: .25rem;
+}
+.reply-thread-divider {
+  color: var(--muted);
+  font: 600 var(--text-xs)/1 var(--ui);
+}
+.reply-thread-empty { margin: 0; color: var(--muted); font: var(--text-sm)/1.4 var(--ui); }
+/* Phone thread: the shared phone header (blur, back chevron on the left, title pill on the right) floats
+   over the stream, and the parent message heads the stream above a ruled reply count. */
+@media (max-width: 899px) {
+  .reply-thread-head { position: absolute; z-index: 1; inset: 0 0 auto; min-height: var(--header-h); gap: .5rem; padding: env(safe-area-inset-top, 0px) 12px 0; background: transparent; backdrop-filter: var(--blur-medium); -webkit-backdrop-filter: var(--blur-medium); translate: 0 var(--vv-top, 0px); }
+  .reply-thread-head .reply-thread-back { flex: 0 0 2.75rem; width: 2.75rem; height: 2.75rem; padding: 0; color: var(--text); }
+  .reply-thread-back svg { width: 1.5rem; height: 1.5rem; }
+  .reply-thread-title { display: flex; flex: 0 1 auto; align-items: center; gap: .45rem; min-height: 2.75rem; margin-left: auto; padding: .3rem .75rem; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--panel-hi) 55%, transparent); }
+  .reply-thread-title strong { flex: 0 0 auto; font: 650 var(--text-base)/1.15 var(--ui); }
+  .reply-thread-title small { font: 500 var(--text-base)/1.15 var(--ui); }
+  .reply-thread-title small::before { content: "· "; }
+  .reply-thread-lock { width: 2.1rem; height: 2.1rem; margin-left: -.4rem; background: color-mix(in srgb, var(--panel-hi) 55%, transparent); color: var(--text); }
+  .reply-thread-stream { padding-top: calc(var(--header-h) + .75rem); }
+  .reply-thread-root { padding-bottom: 0; }
+  .reply-thread-divider { display: flex; align-items: center; gap: .6rem; }
+  .reply-thread-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+}
+.reply-row {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  gap: 0 .6rem;
+  align-items: start;
+}
+.reply-row.pending { opacity: .65; }
+.reply-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-top: .1rem;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--avatar-fill);
+  color: var(--text);
+  font: 700 var(--text-xs)/1 var(--ui);
+}
+.reply-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* An agent glyph, bot icon or the app logo shows bare at the transcript's 2.25rem, as .message-avatar does. */
+.reply-row:has(> .reply-avatar img[src^="data:image/svg+xml"]), .reply-row:has(> .reply-avatar img[src^="/icons/agents/"]), .reply-row:has(> .reply-avatar img[src^="/icons/slirc.svg"]) { grid-template-columns: 2.25rem minmax(0, 1fr); }
+.reply-avatar:has(img[src^="data:image/svg+xml"]), .reply-avatar:has(img[src^="/icons/agents/"]), .reply-avatar:has(img[src^="/icons/slirc.svg"]) { width: 2.25rem; height: 2.25rem; background: transparent; border-radius: 0; }
+.reply-avatar:has(img[src^="data:image/svg+xml"]) > span, .reply-avatar:has(img[src^="/icons/agents/"]) > span, .reply-avatar:has(img[src^="/icons/slirc.svg"]) > span { display: none; }
+.reply-main { min-width: 0; }
+.reply-meta { display: flex; align-items: baseline; gap: .4rem; flex-wrap: wrap; margin-bottom: .15rem; }
+.reply-meta strong { font: 700 var(--text-sm)/1.2 var(--ui); }
+.reply-meta time { color: var(--muted); font: var(--text-xs)/1.2 var(--ui); }
+.reply-broadcast-pill {
+  padding: .1rem .35rem;
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--mine) 15%, transparent);
+  color: var(--mine);
+  font: 600 var(--text-2xs)/1.2 var(--ui);
+}
+.reply-body {
+  font: var(--text-sm)/1.5 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.reply-thread-composer {
+  padding: .35rem .9rem max(1rem, env(safe-area-inset-bottom));
+  display: grid;
+  gap: .45rem;
+  flex-shrink: 0;
+}
+.reply-composer-box {
+  display: flex;
+  align-items: center;
+  gap: .375rem;
+  padding: .35rem .45rem .35rem .9rem;
+  border: 1px solid color-mix(in srgb, var(--line) 85%, transparent);
+  border-radius: var(--radius-pill);
+  background: var(--glass-chrome);
+  box-shadow: var(--shadow-md);
+}
+.reply-composer-box textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 1.5rem;
+  max-height: 7rem;
+  padding: .15rem 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: var(--text-base)/1.45 var(--mono);
+  resize: none;
+  outline: none;
+}
+.reply-send-btn {
+  width: 2.15rem;
+  height: 2.15rem;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-round);
+  background: var(--brand-fill);
+  color: var(--on-brand);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.reply-send-btn:disabled { opacity: .2; cursor: default; }
+.reply-send-btn svg { width: 1.15rem; height: 1.15rem; fill: none; stroke: currentColor; stroke-width: 2.2; }
+.reply-also-check {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding-left: .45rem;
+  color: var(--muted);
+  font: var(--text-xs)/1.2 var(--ui);
+  cursor: pointer;
+}
+/* Desktop composers use an 18px rounded-rect frame; 12px buttons sit concentric with the ~6px padding. */
+@media (not (pointer: coarse)) {
+  .composer, .composer.tall, .reply-composer-box { border-radius: 18px; }
+  .composer .composer-plus, .composer .composer-send, .reply-send-btn { border-radius: var(--radius-lg); }
+}
+/* Desktop thread docked beside the channel: two composers on screen, so only one looks ready to send.
+   The focused one is active; with neither focused, the thread composer is. The other keeps its draft
+   and works, but its send button and border go gray until it takes focus. Phones never dock the thread. */
+body.reply-thread-docked .reply-composer-box,
+body.reply-thread-docked .composer:focus-within { border-color: color-mix(in srgb, var(--brand) 55%, transparent); }
+body.reply-thread-docked:has(#composer:focus-within) .reply-composer-box { border-color: color-mix(in srgb, var(--line) 85%, transparent); }
+body.reply-thread-docked .composer:not(:focus-within) .composer-send:not(:disabled),
+body.reply-thread-docked:has(#composer:focus-within) .reply-send-btn:not(:disabled) { background: var(--secondary-fill); color: var(--muted); }
+
+
