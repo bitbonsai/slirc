@@ -3,6 +3,7 @@
 import "fake-indexeddb/auto";
 import { afterEach, expect, test } from "bun:test";
 import { conversationId, type Message } from "../client/model.ts";
+import { installBrowserShims } from "./support/browser-shims.ts";
 
 const { ClientDatabase } = await import("../client/db.ts");
 const { EPOCH, badgeText, createUnreadProjection, newestServerTime, shouldMarkRead } = await import("../client/store.ts");
@@ -100,27 +101,7 @@ test("mark read needs a focused visible tab, the conversation on screen, synced,
 });
 
 function shims(origin: string): void {
-  const location = new URL(`${origin}/`);
-  const storage = new Map<string, string>();
-  const media = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
-  const history = { state: null, replaceState() {}, pushState() {} };
-  Object.assign(globalThis, {
-    location, history, matchMedia: media,
-    window: Object.assign(new EventTarget(), { location, history, matchMedia: media, innerWidth: 1280, innerHeight: 900 }),
-    document: Object.assign(new EventTarget(), {
-      title: "Slirc", cookie: "", visibilityState: "visible", hasFocus: () => true,
-      documentElement: { classList: { add() {}, toggle() {} }, style: { setProperty() {} } },
-      body: { classList: { toggle() {} } }, querySelector: () => null, querySelectorAll: () => [],
-    }),
-    localStorage: { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) },
-    requestAnimationFrame: (callback: FrameRequestCallback) => setTimeout(() => callback(0), 0), cancelAnimationFrame: clearTimeout,
-    ResizeObserver: class { observe() {} disconnect() {} },
-    IntersectionObserver: class { observe() {} disconnect() {} },
-    EventSource: class { addEventListener() {} close() {} },
-    WebSocket: class { static OPEN = 1; readyState = 0; close() {} send() {} },
-  });
-  Object.assign(window, { requestAnimationFrame, cancelAnimationFrame, localStorage });
-  Object.defineProperty(globalThis, "navigator", { configurable: true, value: { onLine: true, userAgent: "unread-runtime-test" } });
+  installBrowserShims({ origin, userAgent: "unread-runtime-test" });
 }
 
 test("muted channels, DMs and their threads show no count, dot or title count", async () => {

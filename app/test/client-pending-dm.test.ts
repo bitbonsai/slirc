@@ -7,6 +7,7 @@ import { afterEach, expect, test } from "bun:test";
 import { conversationId } from "../client/model.ts";
 import { queuedTextFor } from "../client/drafts.ts";
 import type { OutboxLockManager } from "../client/outbox.ts";
+import { installBrowserShims } from "./support/browser-shims.ts";
 
 const { ClientDatabase } = await import("../client/db.ts");
 const { createOutbox } = await import("../client/outbox.ts");
@@ -23,11 +24,6 @@ function openDatabase(accountId: string, origin: string): ClientDatabase {
 }
 
 function shims(origin: string, path = "/", sent: string[] = []): void {
-  const location = new URL(`${origin}${path}`);
-  const storage = new Map<string, string>();
-  const classes = new Set<string>();
-  const media = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
-  const history = { state: null, replaceState() {}, pushState() {} };
   class Socket {
     static OPEN = 1;
     static CLOSED = 3;
@@ -35,23 +31,7 @@ function shims(origin: string, path = "/", sent: string[] = []): void {
     close() {}
     send(line: string) { sent.push(line); }
   }
-  Object.assign(globalThis, {
-    location, history, matchMedia: media,
-    window: Object.assign(new EventTarget(), { location, history, matchMedia: media, innerWidth: 1280, innerHeight: 900 }),
-    document: Object.assign(new EventTarget(), {
-      cookie: "", visibilityState: "visible", hasFocus: () => true,
-      documentElement: { classList: { add: (name: string) => classes.add(name), toggle: (name: string, on: boolean) => on ? classes.add(name) : classes.delete(name) }, style: { setProperty() {} } },
-      body: { classList: { toggle() {} } }, querySelector: () => null, querySelectorAll: () => [],
-    }),
-    localStorage: { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) },
-    requestAnimationFrame: (callback: FrameRequestCallback) => setTimeout(() => callback(0), 0), cancelAnimationFrame: clearTimeout,
-    ResizeObserver: class { observe() {} disconnect() {} },
-    IntersectionObserver: class { observe() {} disconnect() {} },
-    EventSource: class { addEventListener() {} close() {} },
-    WebSocket: Socket,
-  });
-  Object.assign(window, { requestAnimationFrame, cancelAnimationFrame, localStorage });
-  Object.defineProperty(globalThis, "navigator", { configurable: true, value: { onLine: true, userAgent: "pending-dm-test" } });
+  installBrowserShims({ origin, path, userAgent: "pending-dm-test", WebSocket: Socket });
 }
 
 function authBody(accountId: string, direct: boolean, contacts = ["clara"]) {

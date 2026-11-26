@@ -3,33 +3,14 @@
 // reload. Browser APIs are shims and the server is a fetch stub.
 import "fake-indexeddb/auto";
 import { expect, test } from "bun:test";
+import { installBrowserShims } from "./support/browser-shims.ts";
 
 const PEOPLE_DM = { nick: "ada", channel: "#dm-ada-eve" };
 const AGENT_DM = { nick: "pi-a143", channel: "#dm-eve-pi-a143" };
 const NEW_DM = { nick: "sa-9f2c", channel: "#dm-eve-sa-9f2c" };
 
 function shims(origin: string, listeners: Map<string, (event: { data: string }) => void>): void {
-  const location = new URL(`${origin}/`);
-  const storage = new Map<string, string>();
-  const media = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
-  const history = { state: null, replaceState() {}, pushState() {} };
-  Object.assign(globalThis, {
-    location, history, matchMedia: media,
-    window: Object.assign(new EventTarget(), { location, history, matchMedia: media, innerWidth: 1280, innerHeight: 900 }),
-    document: Object.assign(new EventTarget(), {
-      cookie: "", visibilityState: "visible", hasFocus: () => true,
-      documentElement: { classList: { add() {}, toggle() {} }, style: { setProperty() {} } },
-      body: { classList: { toggle() {} } }, querySelector: () => null, querySelectorAll: () => [],
-    }),
-    localStorage: { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) },
-    requestAnimationFrame: (callback: FrameRequestCallback) => setTimeout(() => callback(0), 0), cancelAnimationFrame: clearTimeout,
-    ResizeObserver: class { observe() {} disconnect() {} },
-    IntersectionObserver: class { observe() {} disconnect() {} },
-    EventSource: class { addEventListener(name: string, listener: (event: { data: string }) => void) { listeners.set(name, listener); } close() {} },
-    WebSocket: class { static OPEN = 1; readyState = 0; close() {} send() {} },
-  });
-  Object.assign(window, { requestAnimationFrame, cancelAnimationFrame, localStorage });
-  Object.defineProperty(globalThis, "navigator", { configurable: true, value: { onLine: true, userAgent: "agents-runtime-test" } });
+  installBrowserShims({ origin, userAgent: "agents-runtime-test", EventSource: class { addEventListener(name: string, listener: (event: { data: string }) => void) { listeners.set(name, listener); } close() {} } });
 }
 
 function authBody(paired: boolean) {

@@ -2,30 +2,10 @@
 // where the composer takes its place. Browser APIs are shims; nothing connects.
 import "fake-indexeddb/auto";
 import { expect, test } from "bun:test";
+import { installBrowserShims } from "./support/browser-shims.ts";
 
 function shims(origin: string): void {
-  const location = new URL(`${origin}/`);
-  const storage = new Map<string, string>();
-  const media = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
-  const history = { state: null, replaceState() {}, pushState() {} };
-  Object.assign(globalThis, {
-    location, history, matchMedia: media,
-    window: Object.assign(new EventTarget(), { location, history, matchMedia: media, innerWidth: 390, innerHeight: 844 }),
-    document: Object.assign(new EventTarget(), {
-      title: "Slirc", cookie: "", visibilityState: "visible", hasFocus: () => true,
-      documentElement: { classList: { add() {}, toggle() {} }, style: { setProperty() {} } },
-      body: { classList: { toggle() {} } }, querySelector: () => null, querySelectorAll: () => [],
-    }),
-    localStorage: { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) },
-    requestAnimationFrame: (callback: FrameRequestCallback) => setTimeout(() => callback(0), 0), cancelAnimationFrame: clearTimeout,
-    ResizeObserver: class { observe() {} disconnect() {} },
-    IntersectionObserver: class { observe() {} disconnect() {} },
-    EventSource: class { addEventListener() {} close() {} },
-    WebSocket: class { static OPEN = 1; readyState = 0; close() {} send() {} },
-    fetch: (async () => Response.json({})) as unknown as typeof fetch,
-  });
-  Object.assign(window, { requestAnimationFrame, cancelAnimationFrame, localStorage });
-  Object.defineProperty(globalThis, "navigator", { configurable: true, value: { onLine: true, userAgent: "tabbar-runtime-test" } });
+  installBrowserShims({ origin, width: 390, height: 844, userAgent: "tabbar-runtime-test", fetch: async () => Response.json({}) });
 }
 
 test("phoneTabBar is on for tab roots and More pages, off in a conversation", async () => {

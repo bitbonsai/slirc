@@ -3,30 +3,10 @@
 // agrees with the event makes no request.
 import "fake-indexeddb/auto";
 import { expect, test } from "bun:test";
+import { installBrowserShims } from "./support/browser-shims.ts";
 
 function shims(origin: string): void {
-  const location = new URL(`${origin}/`);
-  const storage = new Map<string, string>();
-  const classes = new Set<string>();
-  const media = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
-  const history = { state: null, replaceState() {}, pushState() {} };
-  Object.assign(globalThis, {
-    location, history, matchMedia: media,
-    window: Object.assign(new EventTarget(), { location, history, matchMedia: media, innerWidth: 1280, innerHeight: 900 }),
-    document: Object.assign(new EventTarget(), {
-      cookie: "", visibilityState: "visible", hasFocus: () => true,
-      documentElement: { classList: { add: (name: string) => classes.add(name), toggle: (name: string, on: boolean) => on ? classes.add(name) : classes.delete(name) }, style: { setProperty() {} } },
-      body: { classList: { toggle() {} } }, querySelector: () => null, querySelectorAll: () => [],
-    }),
-    localStorage: { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) },
-    requestAnimationFrame: (callback: FrameRequestCallback) => setTimeout(() => callback(0), 0), cancelAnimationFrame: clearTimeout,
-    ResizeObserver: class { observe() {} disconnect() {} },
-    IntersectionObserver: class { observe() {} disconnect() {} },
-    EventSource: class { addEventListener() {} close() {} },
-    WebSocket: class { static OPEN = 1; readyState = 0; close() {} send() {} },
-  });
-  Object.assign(window, { requestAnimationFrame, cancelAnimationFrame, localStorage });
-  Object.defineProperty(globalThis, "navigator", { configurable: true, value: { onLine: true, userAgent: "direct-runtime-test" } });
+  installBrowserShims({ origin, userAgent: "channel-events-test" });
 }
 
 function authBody(channels: string[]) {

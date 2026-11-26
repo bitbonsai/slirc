@@ -3,32 +3,13 @@
 // the open room turning ready changes one of them. Browser APIs are shims. One file per process.
 import "fake-indexeddb/auto";
 import { afterEach, expect, test } from "bun:test";
+import { installBrowserShims } from "./support/browser-shims.ts";
 
 const sockets: any[] = [];
 let reads: Array<[object, PropertyKey]> | null = null;
 
 function installShims(): void {
-  const location = new URL("https://reactions-ready.test/");
-  const storage = new Map<string, string>();
-  const media = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
-  const history = { state: null, replaceState() {}, pushState() {} };
-  Object.assign(globalThis, {
-    location, history, matchMedia: media,
-    window: Object.assign(new EventTarget(), { location, history, matchMedia: media, innerWidth: 1280, innerHeight: 900 }),
-    document: Object.assign(new EventTarget(), {
-      cookie: "", visibilityState: "visible", hasFocus: () => true,
-      documentElement: { classList: { add() {}, toggle() {} }, style: { setProperty() {} } },
-      body: { classList: { toggle() {}, add() {}, remove() {} } }, querySelector: () => null, querySelectorAll: () => [],
-    }),
-    localStorage: { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) },
-    requestAnimationFrame: (callback: FrameRequestCallback) => setTimeout(() => callback(0), 0), cancelAnimationFrame: clearTimeout,
-    ResizeObserver: class { observe() {} disconnect() {} },
-    IntersectionObserver: class { observe() {} disconnect() {} },
-    EventSource: class { addEventListener() {} close() {} },
-    WebSocket: class { static OPEN = 1; readyState = 1; onopen: (() => void) | null = null; onmessage: ((event: unknown) => void) | null = null; onclose: (() => void) | null = null; onerror: (() => void) | null = null; constructor() { sockets.push(this); } close() {} send() {} },
-  });
-  Object.assign(window, { requestAnimationFrame, cancelAnimationFrame, localStorage });
-  Object.defineProperty(globalThis, "navigator", { configurable: true, value: { onLine: true, userAgent: "runtime-test" } });
+  installBrowserShims({ url: "https://reactions-ready.test/", WebSocket: class { static OPEN = 1; readyState = 1; onopen: (() => void) | null = null; onmessage: ((event: unknown) => void) | null = null; onclose: (() => void) | null = null; onerror: (() => void) | null = null; constructor() { sockets.push(this); } close() {} send() {} } });
 }
 
 const originalFetch = globalThis.fetch;
