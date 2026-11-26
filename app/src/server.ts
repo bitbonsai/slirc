@@ -13,7 +13,6 @@ import { createPeek, peekable, type PeekMessage } from "./peek.ts";
 import { openRoom } from "./welcome.ts";
 import { joinLinksHomeOnce, linksChannelsFor, linksHome } from "./links-collect.ts";
 import { linksEnabled } from "./links.ts";
-import { OPEN_LINKS_PER_ADMIN, createJoinLink, joinLinkById, joinLinkByToken, joinLinkIdForInvite, joinLinkState, joinLinkToken, listJoinLinks, markInviteFromLink, openJoinLinks, pendingLinkInvite, refundSend, reserveSend, revokeJoinLink } from "./join-links.ts";
 import { db, vapidKeys } from "./db.ts";
 import { assertDirectReadiness } from "./direct-readiness.ts";
 import { normalizeProfileBadge } from "../shared/profile-badges.ts";
@@ -26,11 +25,11 @@ import { setUserTimeZone, validTimeZone } from "./reminders.ts";
 import { addCertificate, listCertificates, normalizeCertificateFingerprint, removeCertificate } from "./irc-certificates.ts";
 import { pollById, pollView } from "./polls.ts";
 import { asciiFold, channelInfo, defaultChannel, closeDirectConversation, directConversation, directConversations, discoverableHuman, isMember, isOpenChannel, isValidNext, memberChannels, normalized, openChannels, reopenDirectConversation, sharedContacts, visibleChannels } from "./rooms.ts";
-import { canonicalMailbox, acceptEmailInvite, createEmailInvite, emailInviteByToken, normalizeEmail, recordEmailInviteDelivery } from "./email-invites.ts";
-import { accountByEmail, accountByNick, allAccounts, rotateIrcPassword, cleanDisplayName, displayNameError, ergo, ircChannelExists, isRemovedEmail, markVerified, provisionAccount, validEmail } from "./accounts.ts";
+import { canonicalMailbox, emailInviteByToken } from "./email-invites.ts";
+import { accountByEmail, accountByNick, allAccounts, rotateIrcPassword, cleanDisplayName, displayNameError, ergo, ircChannelExists, markVerified, provisionAccount, validEmail } from "./accounts.ts";
 import { helperSay, reminderOutcome, scheduleReminder } from "./helper-bot.ts";
 import { opAdmins } from "./admin-ops.ts";
-import { createChannel, grantChannelAccess } from "./grants.ts";
+import { createChannel } from "./grants.ts";
 import { sweepExpired } from "./pairing.ts";
 import { instanceHost, offeredHarnesses } from "./agent-connect.ts";
 import { type Binding } from "./agent-session.ts";
@@ -40,7 +39,7 @@ import { observeReplyLine } from "./reply-threads.ts";
 import { closeSessionSockets, handleRelayUpgrade, relayWebsocketHandlers } from "./relay.ts";
 import { directImageEmbed, parseOg } from "./og.ts";
 import { fetchPublic, ResponseTooLarge } from "./safe-fetch.ts";
-import { configuredAppOrigin, createLimiter, isAllowedClientOrigin, peerKey, trustedProxies } from "./request-security.ts";
+import { configuredAppOrigin, createLimiter, isAllowedClientOrigin, peerKey } from "./request-security.ts";
 import { addNote, deleteNote, editNote, listNotes, noteBody } from "./notes.ts";
 import { postNote } from "./update-notes.ts";
 import { bindProject, channelCandidates, formatGithubEvent, parseRepo, projectBinding, projectBindings, repoLabel, verifyGithubSignature } from "./github-projects.ts";
@@ -53,7 +52,7 @@ import { agentSessionCapabilities } from "./http/agent-support.ts";
 import { pairing } from "./routes/pairing.ts";
 import { agents } from "./routes/agents.ts";
 import { links } from "./routes/links.ts";
-import { resend, codeHash, sendMagicLink, sendInvitationVerification, inviterName, sendEmailInvite, mailLimit } from "./http/mail.ts";
+import { codeHash, sendMagicLink, mailLimit } from "./http/mail.ts";
 import { avatarDir, knownAccount, avatarVersion, cacheGravatar, profileJson, accountDetails } from "./http/profiles.ts";
 import { serializeIrcDeviceChange, IRC_RESET_CLIENTS, IRC_RESET_BOTS, ircResetNotice, clearIrcResetNotice } from "./http/irc-devices.ts";
 import { admin } from "./routes/admin.ts";
@@ -64,6 +63,7 @@ import { uploads } from "./routes/uploads.ts";
 import { sendOnboarding } from "./http/onboarding.ts";
 import { invitations } from "./routes/invitations.ts";
 import { buildClient, buildVideoEncode, versionShell, assetCacheControl } from "./http/assets.ts";
+import { joinlinks } from "./routes/join-links.ts";
 export { clientVersion, buildClient, assetVersion, versionShell } from "./http/assets.ts";
 export { untrustedMediaHeaders } from "./http/media.ts";
 export { agentSessionCapabilities, AGENT_POLL_MAX_WAIT_S, AGENT_SSE_KEEPALIVE_MS } from "./http/agent-support.ts";
@@ -1161,15 +1161,6 @@ app.post("/api/welcome/jobs/:id/release", async (c) => {
   return c.json({ ok: true });
 });
 
-// The invite guest route stays anti-enumerating, but can no longer provision or admit accounts.
-// Existing members still receive a sign-in link; unknown addresses get the same response.
-async function enterAsGuest(c: any, next: string) {
-  const { email } = await c.req.json().catch(() => ({}));
-  const known = typeof email === "string" ? accountByEmail(email) : null;
-  const devLink = known ? await sendMagicLink(known, next, c.req.header("Host")) : undefined;
-  return c.json({ pending: true, devLink }, 202);
-}
-
 // Signed-out preview of #open-chat on the public playground (peek.ts). Any other channel, and
 // every channel on a private workspace, is not found, signed in or not.
 const peekLimit = createLimiter({ limit: 120, windowMs: 10 * 60_000 });
@@ -1569,181 +1560,7 @@ app.post("/api/webhooks/github/:owner/:repo", async (c) => {
   }
 });
 
-// --- Open join links ------------------------------------------------------------------------------
-// An admin makes a link for one channel and posts it where they like. A visitor gives an email
-// address and gets one mail: an ordinary invitation for a new address, or a sign-in link for an
-// address that already has an account. The answer is the same either way.
-const joinLinkPeerLimit = createLimiter({ limit: 20 });
-const joinLinkAddressLimit = createLimiter({ limit: 3 });
-const joinLinkPerLinkLimit = createLimiter({ limit: 60 });
-const joinLinkCsrf = (c: any) => sameOriginJson(c, "X-Slirc-Join");
-
-// The link still works only while its maker is a verified admin who belongs to its channel.
-function joinLinkOwner(link: NonNullable<ReturnType<typeof joinLinkById>>) {
-  const owner = accountByNick(link.createdBy);
-  const info = channelInfo(link.channel);
-  if (!owner || owner.id !== link.createdByAccount || owner.kind !== "human" || !owner.verifiedAt || owner.role !== "admin") return null;
-  if (!info || info.archived || info.isGroup || /^#(dm-|t-)/.test(info.channel) || !isMember(owner.nick, info.channel)) return null;
-  return { owner, info };
-}
-
-// The page a link opens. GET changes nothing, so a chat preview fetching it costs no place and no mail.
-// A signed-in member of the link's channel goes straight to the channel, whatever the link's state.
-app.get("/j/:token", async (c) => {
-  const link = joinLinkByToken(c.req.param("token"));
-  c.header("Cache-Control", "no-store");
-  c.header("Referrer-Policy", "no-referrer");
-  const nick = link ? currentUser(c) : undefined;
-  if (link && nick && isMember(nick, link.channel)) return c.redirect(`/#${link.channel.replace(/^#/, "")}`, 302);
-  const state = link && joinLinkOwner(link) ? joinLinkState(link) : "closed";
-  let html = await Bun.file("./public/join-link.html").text();
-  html = html.replace(/<section data-state="(open|full|spent|closed)"[\s\S]*?<\/section>/g, (block, which: string) => which === state ? block : "");
-  html = html.replace(/\{\{host\}\}/g, escapeHtml(instanceHost()));
-  return c.html(await versionShell(html));
-});
-
-app.post("/api/join-links/:token/request", async (c) => {
-  c.header("Cache-Control", "no-store");
-  if (!joinLinkCsrf(c)) return c.json({ error: "invalid request" }, 403);
-  const link = joinLinkByToken(c.req.param("token"));
-  const valid = link ? joinLinkOwner(link) : null;
-  const state = link && valid ? joinLinkState(link) : "closed";
-  if (!link || !valid || state === "closed") return c.json({ error: "This join link is closed." }, 410);
-  if (state === "full") return c.json({ error: "This join link is full." }, 409);
-  if (state === "spent") return c.json({ error: "This link has sent all the email it can. Ask whoever shared it for a new one." }, 409);
-  const { email: rawEmail } = await c.req.json().catch(() => ({}));
-  if (typeof rawEmail !== "string" || !validEmail(rawEmail)) return c.json({ error: "Enter a valid email address." }, 400);
-  const email = normalizeEmail(rawEmail);
-  // Without trusted proxies every visitor shares the proxy's address, so a per-IP bucket would let
-  // one person lock the link for everyone. Then only the per-address and per-link limits apply.
-  const perIp = trustedProxies().size > 0 ? joinLinkPeerLimit.check(peerKey(c)) : true;
-  if (!perIp || !joinLinkAddressLimit.check(email) || !joinLinkPerLinkLimit.check(link.id)) return c.json({ error: "Too many requests. Try again later." }, 429);
-  const sent = (devLink?: string) => c.json(devLinks && devLink ? { sent: true, devLink } : { sent: true }, 202);
-  // One mail per person: a pending invitation from this link already reached this address.
-  if (pendingLinkInvite(link.id, email)) return sent();
-  const existing = accountByEmail(email);
-  if ((existing && existing.kind !== "human") || isRemovedEmail(email)) return sent();
-  if (!devLinks && (!resend || !process.env.RESEND_FROM)) return c.json({ error: "Email delivery is unavailable." }, 503);
-  if (!reserveSend(link.id)) return c.json({ error: "This link has sent all the email it can. Ask whoever shared it for a new one." }, 409);
-  const destination = { type: valid.info.isGroup ? "group" as const : "channel" as const, channel: valid.info.channel };
-  const invite = createEmailInvite({ inviter: valid.owner.nick, inviterAccountId: valid.owner.id, email, destination });
-  markInviteFromLink(invite.id, link.id);
-  // An existing account signs in instead of making a second one, and takes no place.
-  if (existing?.verifiedAt) {
-    const result = await sendInvitationVerification(existing, invite.token, c.req.header("Host"));
-    // "limited": a sign-in mail went out a moment ago. Keep it pending so it is not sent again.
-    recordEmailInviteDelivery(invite.token, result.status === "sent" ? "sent" : result.status === "limited" ? "uncertain" : "failed");
-    if (result.status === "failed") { refundSend(link.id); return c.json({ error: "Could not send the email. Try again." }, 500); }
-    return sent("devLink" in result ? result.devLink : undefined);
-  }
-  const outcome = await sendEmailInvite({ to: email, inviter: inviterName(valid.owner.nick), inviterEmail: valid.owner.email, destination, token: invite.token, id: invite.id, host: c.req.header("Host") });
-  recordEmailInviteDelivery(invite.token, outcome);
-  if (outcome === "failed") { refundSend(link.id); return c.json({ error: "Could not send the email. Try again." }, 500); }
-  return sent(`${appOrigin(c.req.header("Host"))}/join/${invite.token}`);
-});
-
-function joinLinkView(link: NonNullable<ReturnType<typeof joinLinkById>>) {
-  return { id: link.id, channel: link.channel, joins: link.joins, maxJoins: link.maxJoins, expiresAt: link.expiresAt, revoked: !!link.revokedAt, state: joinLinkState(link) };
-}
-
-app.get("/api/join-links", (c) => {
-  c.header("Cache-Control", "no-store");
-  const account = verifiedHuman(c);
-  if (!account) return c.json({ error: "verified account required" }, currentUser(c) ? 403 : 401);
-  if (account.role !== "admin") return c.json({ links: [] });
-  // Only the admin who made a link reads its URL back, and only here. Older links have none.
-  const origin = appOrigin(c.req.header("Host"));
-  return c.json({ links: listJoinLinks(account.id).map((link) => {
-    const token = joinLinkToken(link.id, account.id);
-    return { ...joinLinkView(link), url: token ? `${origin}/j/${token}` : null };
-  }) });
-});
-
-app.post("/api/join-links", async (c) => {
-  c.header("Cache-Control", "no-store");
-  const account = verifiedHuman(c);
-  if (!account) return c.json({ error: "verified account required" }, currentUser(c) ? 403 : 401);
-  if (!joinLinkCsrf(c)) return c.json({ error: "invalid request" }, 403);
-  if (account.role !== "admin") return c.json({ error: "Only admins can make join links." }, 403);
-  const { channel: rawChannel, maxJoins, days } = await c.req.json().catch(() => ({}));
-  if (typeof rawChannel !== "string") return c.json({ error: "Pick a channel." }, 400);
-  const channel = normalized(`#${rawChannel.replace(/^#+/, "")}`);
-  const info = channelInfo(channel);
-  if (!info || info.archived || info.isGroup || /^#(dm-|t-)/.test(channel) || !isMember(account.nick, channel)) return c.json({ error: "Pick a channel you belong to." }, 403);
-  if (openJoinLinks(account.id) >= OPEN_LINKS_PER_ADMIN) return c.json({ error: `You have ${OPEN_LINKS_PER_ADMIN} open join links. Revoke one first.` }, 409);
-  const { link, token } = createJoinLink({ owner: account.nick, ownerAccountId: account.id, channel: info.channel,
-    maxJoins: typeof maxJoins === "number" ? maxJoins : undefined, days: typeof days === "number" ? days : undefined });
-  return c.json({ ...joinLinkView(link), url: `${appOrigin(c.req.header("Host"))}/j/${token}` }, 201);
-});
-
-app.delete("/api/join-links/:id", (c) => {
-  c.header("Cache-Control", "no-store");
-  const account = verifiedHuman(c);
-  if (!account) return c.json({ error: "verified account required" }, currentUser(c) ? 403 : 401);
-  if (!joinLinkCsrf(c)) return c.json({ error: "invalid request" }, 403);
-  if (!revokeJoinLink(c.req.param("id"), account.id)) return c.json({ error: "join link not found" }, 404);
-  return c.body(null, 204);
-});
-
-app.get("/api/join/:token", (c) => {
-  const token = c.req.param("token");
-  const emailInvite = emailInviteByToken(token, Date.now(), true);
-  if (emailInvite) return c.json({ destination: { type: emailInvite.destination, channel: emailInvite.channel }, requiresVerifiedEmail: true });
-  // A non-email token can only be a legacy reusable channel link, which no longer grants access.
-  return c.json({ error: "This invite link is no longer available. Ask for a personal email invitation." }, 410);
-});
-
-app.post("/api/join/:token/guest", (c) => {
-  const token = c.req.param("token");
-  if (!emailInviteByToken(token)) return c.json({ error: "This invite link is no longer available. Ask for a personal email invitation." }, 410);
-  return enterAsGuest(c, `/join/${token}`);
-});
-
-app.post("/api/join/:token", async (c) => {
-  const nick = currentUser(c);
-  if (!nick) return c.json({ error: "not signed in" }, 401);
-  const recipient = accountByNick(nick);
-  if (recipient?.kind !== "human" || !recipient.verifiedAt) return c.json({ error: "verified sign-in required" }, 403);
-  const token = c.req.param("token");
-  const emailInvite = emailInviteByToken(token, Date.now(), true);
-  if (emailInvite) {
-    const recipient = accountByNick(nick);
-    if (!recipient?.verifiedAt || recipient.kind !== "human" || normalizeEmail(recipient.email) !== emailInvite.email ||
-        (emailInvite.recipientAccountId && recipient.id !== emailInvite.recipientAccountId)) return c.json({ error: "sign in with the verified invited email" }, 403);
-    const inviterIdentity = emailInvite.inviterAccountId && db.query("SELECT nick FROM accounts WHERE account_id = ?").get(emailInvite.inviterAccountId) as { nick: string } | null;
-    const inviter = inviterIdentity && accountByNick(inviterIdentity.nick);
-    if (!inviter || inviter.kind !== "human" || !inviter.verifiedAt || inviter.id !== emailInvite.inviterAccountId) return c.json({ error: "inviter is unavailable" }, 409);
-    if (emailInvite.destination !== "dm") {
-      const info = emailInvite.channel && channelInfo(emailInvite.channel);
-      if (!info || info.archived || (emailInvite.destination === "group" && !info.isGroup) || !isMember(inviter.nick, info.channel)) return c.json({ error: "inviter no longer has access to destination" }, 409);
-    }
-    const linkId = joinLinkIdForInvite(token);
-    if (linkId && joinLinkState(joinLinkById(linkId)) === "closed") return c.json({ error: "This join link is closed." }, 410);
-    // Claim before any asynchronous grant so cancellation cannot race a membership/DM grant.
-    if (!acceptEmailInvite(token, nick, recipient.id, recipient.email)) return c.json({ error: "invitation expired or unavailable" }, 409);
-    try {
-      let destination: Record<string, unknown>;
-      if (emailInvite.destination === "dm") {
-        const direct = await openDirectConversation(inviter.nick, recipient.nick);
-        destination = { type: "direct", channel: direct.channel, nick: inviter.nick };
-      } else {
-        const info = emailInvite.channel && channelInfo(emailInvite.channel);
-        if (!info || info.archived || (emailInvite.destination === "group" && !info.isGroup) || !isMember(inviter.nick, info.channel)) return c.json({ error: "inviter no longer has access to destination" }, 409);
-        if (!isMember(recipient.nick, info.channel)) {
-          if (info.visibility !== "workspace") await grantChannelAccess(info.channel, recipient.nick);
-          db.query("INSERT INTO channel_members (channel, nick) VALUES (?, ?) ON CONFLICT DO NOTHING").run(info.channel, recipient.nick);
-          channelsChanged(info.channel, [recipient.nick], true);
-        }
-        destination = { type: emailInvite.destination, channel: info.channel };
-      }
-      return c.json({ ...destination, accepted: true });
-    } catch (error) {
-      return appError(c, error, "could not accept invitation");
-    }
-  }
-  // Reusable copied room links are disabled, so only bounded email invitations can be accepted.
-  return c.json({ error: "This invite link is no longer available. Ask for a personal email invitation." }, 410);
-});
+app.route("/", joinlinks);
 
 // The docs site is served by Caddy from app/public on its own host; see caddy/slirc.caddy.
 // Client shell: the one index.html document is served directly at every canonical route, with
