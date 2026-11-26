@@ -129,7 +129,7 @@ export function createTranscript({ core, nextTick, authorized, stopped, linkOpen
     if (focusTimer) { clearTimeout(focusTimer); focusTimer = null; }
     for (const timer of focusHighlightTimers) clearTimeout(timer);
     focusHighlightTimers.clear();
-    for (const row of document.querySelectorAll<HTMLElement>(".msg.focus-flash")) row.classList.remove("focus-flash");
+    for (const row of document.querySelectorAll<HTMLElement>("[data-message-id].focus-flash")) row.classList.remove("focus-flash");
   }
 
   // Jump to one message after the rows for its conversation have rendered. Retries are cancelled by
@@ -142,7 +142,7 @@ export function createTranscript({ core, nextTick, authorized, stopped, linkOpen
     const attempt = (): void => {
       focusTimer = null;
       if (focusServerId !== serverId || stopped()) return;
-      const message = core.messages.find((item: Message) => item.serverId === serverId);
+      const message = core.messages.find((item: Message) => item.serverId === serverId || item.id === serverId);
       const row = message ? document.querySelector<HTMLElement>(`.msg[data-message-id="${CSS.escape(message.id)}"]`) : null;
       if (!row) {
         if (attempts++ < 20) focusTimer = setTimeout(attempt, 50);

@@ -96,6 +96,10 @@ Some workspaces keep every shared link in a searchable library. It is off unless
 
 `/link https://example.com/article` saves a link to `#links`. `/links` opens the library, and `/links` followed by words searches it. Both commands show only where the helper runs.
 
+## Searching a conversation
+
+Press <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>F</kbd>, or use the magnifying glass in the header, to search the open channel, DM or Notes. Type words to find messages that contain all of them, or add `from:@name` to limit results to one person. Use the **Images** and **Links** buttons to list only messages with pictures or links, alone or together with words. Pick a result to jump to that message; replies open their thread. Search covers the messages this device has loaded. Choose **Load older messages** to fetch more history.
+
 ## Commands
 
 `/help` inside the app lists everything. The useful ones:
