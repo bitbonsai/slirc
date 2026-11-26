@@ -27,11 +27,10 @@ import { sweepExpired } from "./pairing.ts";
 import { instanceHost, offeredHarnesses } from "./agent-connect.ts";
 import { type Binding } from "./agent-session.ts";
 import { ownerAgentRequestStates, syncAgentPresence, connectAgentTransport, resetAgentSessionState } from "./agent-session-transport.ts";
-import { channelsChanged, publish, subscribe } from "./live.ts";
+import { channelsChanged, subscribe } from "./live.ts";
 import { observeReplyLine } from "./reply-threads.ts";
 import { closeSessionSockets, handleRelayUpgrade, relayWebsocketHandlers } from "./relay.ts";
 import { configuredAppOrigin, createLimiter, isAllowedClientOrigin, peerKey } from "./request-security.ts";
-import { addNote, deleteNote, editNote, listNotes, noteBody } from "./notes.ts";
 import { postNote } from "./update-notes.ts";
 import { bindProject, channelCandidates, formatGithubEvent, parseRepo, projectBinding, projectBindings, repoLabel, verifyGithubSignature } from "./github-projects.ts";
 import { testflightUrl } from "./testflight.ts";
@@ -60,6 +59,7 @@ import { embeds } from "./routes/embeds.ts";
 import { PLAYER_HOSTS } from "./routes/embeds.ts";
 import { peekRoutes } from "./routes/peek.ts";
 import { profile } from "./routes/profile.ts";
+import { notes } from "./routes/notes.ts";
 export { clientVersion, buildClient, assetVersion, versionShell } from "./http/assets.ts";
 export { untrustedMediaHeaders } from "./http/media.ts";
 export { agentSessionCapabilities, AGENT_POLL_MAX_WAIT_S, AGENT_SSE_KEEPALIVE_MS } from "./http/agent-support.ts";
@@ -316,51 +316,7 @@ app.delete("/api/dms/:nick", (c) => {
   }
 });
 
-// Notes: the signed-in person's private scratchpad. App-only, never IRC. Every read and write is
-// keyed by the session's own account id; another account's note id answers 404 like a missing one.
-// Writes tell the owner's other tabs and devices over /api/events so they reload the list.
-function notesOwner(c: any) {
-  const nick = currentUser(c);
-  const account = nick ? accountByNick(nick) : null;
-  return account?.kind === "human" ? account : null;
-}
-const notesCsrf = (c: any) => sameOriginJson(c, "X-Slirc-Notes");
-app.use("/api/notes*", bodyLimit({ maxSize: 16_384 }));
-app.use("/api/notes*", async (c, next) => { c.header("Cache-Control", "no-store"); await next(); });
-app.get("/api/notes", (c) => {
-  const account = notesOwner(c);
-  if (!account) return c.json({ error: "not signed in" }, 401);
-  return c.json({ notes: listNotes(account.id) });
-});
-app.post("/api/notes", async (c) => {
-  const account = notesOwner(c);
-  if (!account) return c.json({ error: "not signed in" }, 401);
-  if (!notesCsrf(c)) return c.json({ error: "same-origin request required" }, 403);
-  const body = noteBody((await c.req.json().catch(() => ({})))?.body);
-  if (!body) return c.json({ error: "Write something first, up to 4000 characters." }, 400);
-  const note = addNote(account.id, body);
-  publish(account.nick, "notes", {});
-  return c.json({ note });
-});
-app.patch("/api/notes/:id", async (c) => {
-  const account = notesOwner(c);
-  if (!account) return c.json({ error: "not signed in" }, 401);
-  if (!notesCsrf(c)) return c.json({ error: "same-origin request required" }, 403);
-  const body = noteBody((await c.req.json().catch(() => ({})))?.body);
-  if (!body) return c.json({ error: "Write something first, up to 4000 characters." }, 400);
-  const note = editNote(account.id, c.req.param("id"), body);
-  if (!note) return c.json({ error: "note not found" }, 404);
-  publish(account.nick, "notes", {});
-  return c.json({ note });
-});
-app.delete("/api/notes/:id", (c) => {
-  const account = notesOwner(c);
-  if (!account) return c.json({ error: "not signed in" }, 401);
-  if (!notesCsrf(c)) return c.json({ error: "same-origin request required" }, 403);
-  if (!deleteNote(account.id, c.req.param("id"))) return c.json({ error: "note not found" }, 404);
-  publish(account.nick, "notes", {});
-  return c.body(null, 204);
-});
+app.route("/", notes);
 
 app.get("/api/sessions", (c) => {
   c.header("Cache-Control", "no-store");
