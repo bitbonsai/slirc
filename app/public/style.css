@@ -401,11 +401,7 @@ html[data-transition="tab"]::view-transition-old(mobile-nav), html[data-transiti
 .recent-contact { display: grid; justify-items: center; gap: .3rem; min-width: 3.9rem; padding: .35rem .25rem; border: 0; border-radius: var(--radius-lg); background: transparent; color: var(--muted); font: 600 var(--text-2xs)/1 var(--ui); }
 .recent-contact .room-mark { width: 2.75rem; height: 2.75rem; }
 .recent-contact small { max-width: 3.6rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-2xs); }
-.mobile-collapsible > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: .35rem; min-height: 2.75rem; margin: .5rem .65rem 0; }
-.mobile-collapsible > summary::-webkit-details-marker { display: none; }
 /* Chevron on the right, like the Home section toggles. Open points down, closed points right. */
-.mobile-collapsible > summary::after { content: ""; width: .45rem; height: .45rem; margin-left: auto; margin-right: .3rem; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); rotate: -45deg; transition: rotate var(--dur-fast) ease; }
-.mobile-collapsible[open] > summary::after { rotate: 45deg; }
 .room-topic { max-width: min(46vw, 32rem); overflow: hidden; padding: 0; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: var(--text-2xs); line-height: 1.15; text-align: right; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .room-topic.expanded { white-space: normal; overflow-wrap: anywhere; }
 .channel-menu-topic { display: none; }
@@ -1595,7 +1591,6 @@ body.peeking .chat #messages { padding-bottom: calc(4.5rem + env(safe-area-inset
 .profile-dialog-card.channels-only { width: min(30rem, calc(100vw - 2rem)); }
 .channels-only .profile-heading, .channels-only .profile-tabs { display: none; }
 .profile-panels { overflow: hidden; }
-.mobile-settings-head { display: none; }
 .profile-close { position: absolute; top: .75rem; right: .75rem; display: grid; place-items: center; width: 2rem; height: 2rem; border: 0; border-radius: var(--radius-round); background: transparent; color: var(--muted); font-size: var(--text-lg); cursor: pointer; }
 .profile-close svg { width: 1.15rem; height: 1.15rem; }
 .profile-close:hover, .profile-close:focus-visible { background: var(--panel-hi); color: var(--text); outline: none; }
@@ -2114,16 +2109,7 @@ body.peeking .chat #messages { padding-bottom: calc(4.5rem + env(safe-area-inset
   /* The phone message avatar is 24px; a 40px invisible pad makes it an easy tap and long press target. */
   .message-avatar.avatar-status-host::before { content: ""; position: absolute; inset: -.5rem; }
   .composer { border-color: transparent; background: var(--nav-surface); box-shadow: var(--nav-edge); backdrop-filter: var(--nav-glass); -webkit-backdrop-filter: var(--nav-glass); }
-  .mobile-settings-modal { z-index: var(--z-mobile-screen); display: block; overflow: hidden; padding: 0; background: var(--bg); backdrop-filter: none; }
-  .mobile-settings-modal .profile-dialog-card { display: flex; flex-direction: column; width: 100%; height: 100dvh; max-height: none; overflow: hidden; padding: 0; border: 0; border-radius: 0; background: var(--bg); box-shadow: none; }
-  .mobile-settings-modal .profile-close, .mobile-settings-modal .profile-heading, .mobile-settings-modal .profile-tabs, .mobile-settings-modal .profile-panels > .profile-note, .mobile-settings-modal .profile-panels > .profile-error { display: none !important; }
-  .mobile-settings-modal .profile-panels { flex: 1; min-height: 0; height: 100% !important; overflow: hidden; transition: none; }
-  .mobile-settings-modal .channel-prefs, .mobile-settings-modal .admin-settings, .mobile-settings-modal .channel-settings, .mobile-settings-modal .agent-settings, .mobile-settings-modal .bot-settings, .mobile-settings-modal .irc-settings { display: flex; height: 100%; min-height: 0; flex-direction: column; }
-  .mobile-settings-modal .mobile-settings-head { display: flex; }
-  .mobile-settings-modal .channel-prefs-head { display: none; }
   .channel-prefs .mobile-settings-body { align-content: start; }
-  .mobile-settings-head .mobile-back, .mobile-head-balance { width: 2.75rem; height: 2.75rem; flex: 0 0 2.75rem; }
-  .mobile-settings-head .mobile-back { margin: 0; }
   .mobile-settings-body { min-height: 0; flex: 1; overflow-y: auto; padding: .75rem 1rem calc(var(--nav-h) + var(--nav-lift) + 1rem); }
   .admin-settings > .mobile-settings-body, .channel-settings > .mobile-settings-body, .agent-settings > .mobile-settings-body, .bot-settings > .mobile-settings-body, .irc-settings > .mobile-settings-body { display: flex; flex-direction: column; }
   .admin-settings > .mobile-settings-body::before, .channel-settings > .mobile-settings-body::before, .agent-settings > .mobile-settings-body::before, .bot-settings > .mobile-settings-body::before, .irc-settings > .mobile-settings-body::before { content: ""; margin-top: auto; }
