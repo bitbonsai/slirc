@@ -1,0 +1,56 @@
+/* One fixed column above the composer; a sticky toast sits above the timed one when both show.
+   The timed toast lasts 5s plus 1s per 30 characters, capped at 9s, via --toast-ms from toasts.html. */
+.toast-region { position: fixed; z-index: var(--z-toast); left: 50%; bottom: calc(var(--composer-space, 5rem) + .75rem); display: flex; flex-direction: column; align-items: center; gap: .5rem; width: max-content; max-width: min(34rem, calc(100vw - 2rem)); translate: -50% 0; pointer-events: none; }
+.glass-toast { position: relative; display: flex; align-items: center; gap: .5rem; max-width: 100%; padding: var(--space-3) var(--space-4); border-radius: var(--radius-xl); background: var(--glass-tint); box-shadow: var(--shadow-md); backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter); color: var(--text); font: 650 var(--text-sm)/1.4 var(--ui); pointer-events: auto; }
+.glass-toast > span { min-width: 0; overflow-wrap: anywhere; }
+.glass-toast .notify-banner-close { width: 1.75rem; height: 1.75rem; border-radius: var(--radius-pill); }
+/* Notices dismiss themselves: a slightly lighter layer drains toward the dismiss button, and its animationend
+   clears the note. Hover or focus pauses it; reduced motion keeps the layer still but still times out. */
+.glass-toast { gap: .75rem; padding: .45rem .45rem .45rem 1rem; border-radius: 1.4rem; overflow: hidden; isolation: isolate; }
+.glass-toast::before { content: ""; position: absolute; inset: 0; z-index: -1; background: color-mix(in srgb, var(--text) 8%, transparent); transform-origin: right; animation: toast-progress var(--toast-ms, 5s) linear forwards; }
+.glass-toast:hover::before, .glass-toast:focus-within::before { animation-play-state: paused; }
+@keyframes toast-progress { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@keyframes toast-hold { from { opacity: 1; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .glass-toast::before { animation-name: toast-hold; } }
+/* Every toast fades in rising from below, since the column is anchored at the bottom; a replaced timed
+   toast is a new element, so it rises again. Sticky toasts wait for an action: no drain, a still mint tint and a bell. */
+.glass-toast { animation: toast-in var(--dur-base) cubic-bezier(.2, .8, .2, 1); }
+.glass-toast.sticky { gap: .5rem; }
+.toast-region.no-composer { bottom: max(1rem, env(safe-area-inset-bottom)); }
+.glass-toast.sticky.more { justify-content: center; }
+.glass-toast.sticky::before { animation: none; background: transparent; }
+/* On a phone the reminder text takes the first row and its buttons wrap below it, right-aligned, so a
+   long "View in DM with …" label never squeezes the text; a label wider than the toast wraps inside. */
+.toast-action { max-width: 100%; }
+@media (max-width: 500px) { .glass-toast.sticky:not(.more) { flex-wrap: wrap; } .glass-toast.sticky:not(.more) > span { flex: 1 1 calc(100% - 1.5rem); } .glass-toast.sticky:not(.more) > .toast-action:first-of-type { margin-left: auto; } }
+/* The update toast is a dark HUD in both themes, matching the Mac app's: lime text, icon and Refresh on
+   blurred near-black, a hairline border and a grey Dismiss. It carries dark theme values so the buttons follow. */
+.glass-toast.hud { --brand: #a6e3a1; --text: #cdd6f4; --muted: #9399b2; background: color-mix(in srgb, #11111b 80%, transparent); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1), 0 .5rem 1.5rem #0009; backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4); color: var(--brand); color-scheme: dark; }
+/* Rex's update pill: compact, lime text that scrolls sideways when it is wider than its slot, a lime Refresh and a
+   bare close x that brightens and grows on hover. The track is at least as wide as its slot; it slides by the difference (margin-left: 100% is the
+   slot, translate -100% is the track), so text that fits never moves. Hover or focus pauses it. Screen readers get
+   the static .sr-only copy once; the moving copy is aria-hidden. It scrolls under reduced motion too, by Mauricio's
+   call, since the text would not fit otherwise; only the x's grow drops its easing there. */
+.glass-toast.hud { gap: .5rem; padding: .3rem .3rem .3rem .75rem; border-radius: var(--radius-pill); }
+.glass-toast.hud > .toast-icon { width: .95rem; height: .95rem; }
+.toast-marquee { display: block; flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; mask-image: linear-gradient(90deg, transparent, #000 .5rem, #000 calc(100% - .5rem), transparent); }
+.toast-marquee-track { display: inline-block; min-width: 100%; padding: 0 .5rem; animation: toast-marquee 12s ease-in-out 1s infinite alternate; }
+.glass-toast.hud:hover .toast-marquee-track, .glass-toast.hud:focus-within .toast-marquee-track { animation-play-state: paused; }
+@keyframes toast-marquee { 0%, 15% { margin-left: 0; translate: 0; } 85%, 100% { margin-left: 100%; translate: -100%; } }
+.glass-toast.hud > .toast-action { min-height: 1.6rem; font-weight: 700; }
+.toast-close { display: grid; place-items: center; flex: 0 0 auto; width: 1.6rem; height: 1.6rem; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; }
+.toast-close svg { width: .85rem; height: .85rem; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; transition: scale var(--dur-fast) ease; }
+.toast-close:hover, .toast-close:focus-visible { color: var(--text); }
+.toast-close:hover svg, .toast-close:focus-visible svg { scale: 1.2; }
+@media (prefers-reduced-motion: reduce) { .toast-close svg { transition: none; } }
+@media (max-width: 500px) { .glass-toast.hud.sticky:not(.more) { flex-wrap: nowrap; } .glass-toast.hud.sticky:not(.more) > .toast-action:first-of-type { margin-left: 0; } }
+.glass-toast .toast-icon { width: 1rem; height: 1rem; flex: 0 0 auto; fill: none; stroke: var(--brand); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.toast-action { flex: 0 0 auto; min-height: 1.75rem; padding: 0 .75rem; border: 0; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--brand) 18%, transparent); color: var(--brand); font: inherit; cursor: pointer; transition: background-color var(--dur-fast) ease; }
+.toast-action:hover, .toast-action:focus-visible { background: color-mix(in srgb, var(--brand) 28%, transparent); }
+.toast-action.quiet { background: transparent; color: var(--muted); }
+.toast-action.quiet:hover, .toast-action.quiet:focus-visible { background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--text); }
+@keyframes toast-in { from { opacity: 0; translate: 0 .75rem; } }
+@media (prefers-reduced-motion: reduce) { .glass-toast { animation: none; } .toast-action { transition: none; } }
+/* Something new landed below while the reader is scrolled up; tapping it goes to the bottom. */
+.new-below { position: fixed; z-index: var(--z-sidebar); left: 50%; bottom: calc(var(--composer-space, 5rem) + .75rem); min-height: 2.25rem; padding: 0 1rem; border: 0; border-radius: var(--radius-pill); background: var(--glass-tint); box-shadow: var(--shadow-md); backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter); color: var(--text); font: 650 var(--text-sm)/1 var(--ui); translate: -50% 0; touch-action: manipulation; cursor: pointer; }
+.new-below.public { bottom: calc(4.8rem + env(safe-area-inset-bottom) + .75rem); }

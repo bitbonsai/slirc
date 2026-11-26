@@ -6,7 +6,7 @@ Small things, made well. Favor the smallest change that makes correct behavior u
 
 ## Start here
 
-- **Current client:** `app/public/index.html`, TypeScript in `app/client/`, served as `/client.js`. Trace the entrypoint and shell selection in `app/src/server.ts` before editing. Shared styles live in `app/public/style.css`.
+- **Current client:** `app/public/index.html`, TypeScript in `app/client/`, served as `/client.js`. Trace the entrypoint and shell selection in `app/src/server.ts` before editing. Shared styles live in `app/styles/*.css`, assembled into the served `app/public/style.css` by `bun run assemble`; edit the parts, never the generated file.
 - **One client:** current client is the default in every environment; no `SLIRC_CLIENT` flags. Legacy shell, bundle and boot document are removed. `/sw.js` retires old shell caches without touching IndexedDB, drafts or sessions. Keep shared utilities still imported by current code.
 - **Local testing:** `just dev` serves the app on loopback port `9110` (or an HTTPS URL configured via `SLIRC_DEV_ORIGIN`). Canonical routes include `/profile`, `/dm/:nick`, `/dms`, and `/more`.
 - **Visual rules:** `design.md`.

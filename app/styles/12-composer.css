@@ -1,0 +1,60 @@
+/* Typing: a compact avatar row anchored above the composer, so the composer itself never moves. */
+.typing-row { position: absolute; left: .35rem; bottom: calc(100% + .35rem); display: flex; align-items: center; gap: .4rem; padding: .18rem .5rem .18rem .25rem; border-radius: var(--radius-pill); border: 1px solid color-mix(in srgb, var(--line) 80%, transparent); background: var(--glass-tint); box-shadow: var(--shadow-sm); backdrop-filter: var(--blur-medium); pointer-events: none; }
+.typing-avatars { display: flex; align-items: center; }
+.typing-avatar { width: 1.25rem; height: 1.25rem; flex: 0 0 auto; display: grid; place-items: center; overflow: hidden; border-radius: var(--radius-round); background: var(--avatar-fill); pointer-events: auto; }
+.typing-avatar + .typing-avatar { margin-left: -.4rem; }
+.typing-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.typing-avatar:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.typing-dots { display: inline-flex; gap: .16rem; padding-left: .1rem; }
+.typing-dots i { width: .22rem; height: .22rem; border-radius: var(--radius-round); background: var(--muted); animation: typing-bounce .95s cubic-bezier(.2,.7,.2,1) infinite; }
+.typing-dots i:nth-child(2) { animation-delay: .12s; }
+.typing-dots i:nth-child(3) { animation-delay: .24s; }
+@keyframes typing-bounce { 0%, 100% { transform: translateY(0); } 35% { transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .typing-dots i { animation: none; opacity: .6; } }
+.composer.tall { align-items: start; border-radius: 1.25rem; }
+.composer-nick.editing { color: var(--mine); }
+/* The edit label takes its own line above the field, so the draft keeps the full width. On phones
+   Esc becomes a Cancel button. Its padding is pulled back by margins: a full touch target, no taller row. */
+.composer-editing { order: -2; flex-basis: 100%; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin: 0; padding: 0 .25rem; color: var(--brand); font: var(--text-xs)/1.3 var(--ui); }
+@media (pointer: coarse) {
+  .composer-edit-cancel { margin: -.6rem -.25rem -.6rem 0; padding: .6rem .75rem; border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 500; cursor: pointer; }
+}
+.composer-plus {
+  flex: 0 0 auto;
+  width: 2.15rem;
+  height: 2.15rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color var(--dur-fast) ease, transform var(--dur-micro) ease;
+}
+.composer-plus:hover { color: var(--brand); }
+.composer-plus:active { transform: scale(.92); }
+.composer-plus { order: -1; }
+.composer-plus img { display: block; width: 1.2rem; height: 1.2rem; }
+.composer-send {
+  flex: 0 0 auto;
+  width: 2.15rem;
+  height: 2.15rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  position: relative;
+  border: 0;
+  border-radius: var(--radius-round);
+  background: transparent;
+  color: var(--brand);
+  box-shadow: none;
+  cursor: pointer;
+  transition: transform var(--dur-micro) ease;
+}
+.composer-send img { display: block; width: 1.5rem; height: 1.5rem; transition: filter var(--dur-fast) ease, opacity var(--dur-fast) ease; }
+.composer-send:disabled { cursor: default; color: color-mix(in srgb, var(--muted) 60%, transparent); box-shadow: none; opacity: var(--disabled-opacity); filter: saturate(0); }
+
+.composer-send:not(:disabled):active { transform: scale(.92); }
+.composer-plus:focus-within { outline: .125rem solid var(--brand); outline-offset: .125rem; }
+.custom-modal { position: fixed; z-index: var(--z-dialog); inset: 0; display: grid; overflow-y: auto; padding: 1rem; padding-bottom: calc(1rem + var(--kb, 0px)); background: #09091040; backdrop-filter: var(--blur-light); }

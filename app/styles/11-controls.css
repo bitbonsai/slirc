@@ -1,0 +1,242 @@
+/* Buttons: btn-primary (brand), btn-secondary (neutral), btn-danger (red). No other button classes. */
+.btn-primary, .btn-secondary, .btn-danger {
+  min-height: 2.5rem; padding: 0 .9rem; border: 0; border-radius: var(--radius-md); background: var(--secondary-fill); color: var(--text);
+  font: 700 var(--text-sm)/1 var(--ui); cursor: pointer;
+  transition: transform var(--dur-fast) ease, background-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+}
+.btn-primary { background: var(--brand-fill); color: var(--on-brand); }
+.btn-danger { background: var(--danger); color: var(--bg); }
+.btn-primary:not(:disabled):hover, .btn-primary:focus-visible,
+.btn-secondary:not(:disabled):hover, .btn-secondary:focus-visible,
+.btn-danger:not(:disabled):hover, .btn-danger:focus-visible {
+  outline: none;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm), 0 0 0 3px color-mix(in srgb, var(--brand) 28%, transparent);
+}
+.btn-primary:not(:disabled):hover, .btn-primary:focus-visible { background: color-mix(in srgb, var(--brand-fill) 86%, white); }
+.btn-secondary:not(:disabled):hover, .btn-secondary:focus-visible { background: var(--secondary-fill-hover); }
+.btn-danger:not(:disabled):hover, .btn-danger:focus-visible {
+  background: color-mix(in srgb, var(--danger) 86%, white);
+  box-shadow: var(--shadow-sm), 0 0 0 3px color-mix(in srgb, var(--danger) 28%, transparent);
+}
+.btn-primary:not(:disabled):active, .btn-secondary:not(:disabled):active, .btn-danger:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: none;
+  transition-duration: .06s;
+}
+.btn-primary:disabled, .btn-secondary:disabled, .btn-danger:disabled {
+  opacity: var(--disabled-opacity);
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}
+@media (pointer: coarse) {
+  .btn-primary:hover:not(:focus-visible), .btn-secondary:hover:not(:focus-visible), .btn-danger:hover:not(:focus-visible) {
+    transform: none;
+    box-shadow: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary, .btn-secondary, .btn-danger { transition: none; }
+}
+.btn-primary.busy, .btn-secondary.busy, .btn-danger.busy, button[disabled].busy { position: relative; color: transparent !important; }
+.btn-primary.busy::after, .btn-secondary.busy::after, .btn-danger.busy::after, button[disabled].busy::after { content: ""; position: absolute; inset: 0; margin: auto; width: 1rem; height: 1rem; border: 2px solid transparent; border-top-color: var(--on-brand); border-radius: var(--radius-round); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner, .busy::after { animation-duration: 2s; } }
+.help-docs { display: block; margin-top: .25rem; color: var(--brand); text-decoration: none; font-weight: 650; }
+.help-docs:hover { text-decoration: underline; }
+.reaction-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem;
+  position: fixed;
+  z-index: var(--z-floating-panel);
+  width: max-content;
+  max-width: calc(100vw - 16px);
+  margin: 0;
+  padding: .35rem .45rem;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--line) 85%, transparent);
+  /* backdrop-filter over message text does not visibly blur on Chromium (AGENTS.md); a low-alpha panel
+     tint carries readability instead, and it has to be there on the first frame, not faded in with the
+     rest of the panel, or message text shows through while the entrance animation runs. */
+  background: var(--glass-tint);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
+  animation: picker-in var(--dur-fast) ease-out;
+}
+.picker-reaction { display: inline-flex; align-items: center; gap: .15rem; border: 0; border-radius: var(--radius-xs); background: transparent; color: var(--text); padding: .2rem; cursor: pointer; opacity: .7; transition: opacity var(--dur-micro) var(--ease-standard), transform var(--dur-micro) var(--ease-standard); }
+.picker-reaction .pr-emoji { font-size: var(--text-lg); line-height: 1; }
+.picker-reaction:hover { opacity: 1; transform: scale(1.16); }
+.picker-search-input { width: 100%; padding: .35rem .5rem; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 75%, transparent); outline: none; background: transparent; color: var(--text); font: var(--text-sm)/1.3 var(--ui); }
+.picker-search-input::placeholder { color: var(--muted); }
+.picker-empty { flex: 1 1 100%; margin: 0; padding: .25rem .5rem; color: var(--muted); font-size: var(--text-xs); }
+.sheet-reaction-search { padding: 0 .25rem; }
+.reaction-picker-presets { display: contents; }
+.picker-reaction .pr-icon { display: grid; place-items: center; width: 1.15rem; height: 1.15rem; color: var(--muted); }
+.picker-reaction .pr-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+/* Add reaction: the picker grows into a search panel at the same anchor. */
+.reaction-picker.searching { display: block; width: 19rem; padding: .35rem; border-radius: var(--radius-lg); }
+.reaction-search-input { appearance: none; -webkit-appearance: none; }
+.reaction-search-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: .1rem; max-height: 12.5rem; margin-top: .35rem; overflow-y: auto; scrollbar-width: none; }
+.reaction-search-grid button { display: grid; place-items: center; aspect-ratio: 1; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text); font: var(--text-lg)/1 var(--ui); cursor: pointer; }
+.reaction-search-grid button.active { background: color-mix(in srgb, var(--brand) 18%, transparent); }
+.reaction-search-grid button:disabled { opacity: var(--disabled-opacity); cursor: default; }
+.reaction-search-grid .custom-emoji { width: 1.35rem; height: 1.35rem; margin: 0; }
+.reaction-search-code { margin: .3rem .25rem 0; overflow: hidden; color: var(--muted); font: var(--text-xs)/1.2 var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+.message-more {
+  position: absolute;
+  z-index: var(--z-control);
+  top: 0;
+  left: 0;
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  opacity: 0;
+  cursor: pointer;
+  transition: color var(--dur-micro) var(--ease-standard), opacity var(--dur-micro) var(--ease-standard);
+}
+.message-more svg { width: .875rem; height: .875rem; fill: currentColor; }
+.msg:hover .message-more, .msg:focus-within .message-more, .message-more[aria-expanded="true"] { opacity: .7; }
+.message-more:hover, .message-more:focus-visible { color: var(--text); opacity: 1; }
+.message-more:active { opacity: .75; }
+.message-menu {
+  position: absolute;
+  z-index: var(--z-sticky);
+  top: 1.8rem;
+  left: .2rem;
+  min-width: 10rem;
+  padding: .3rem;
+  border: 1px solid color-mix(in srgb, var(--line) 85%, transparent);
+  border-radius: var(--radius-lg);
+  background: var(--glass-tint);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
+}
+.message-menu.popover-up { top: auto; bottom: calc(100% - .3rem); }
+.message-menu button { display: flex; align-items: center; gap: .5rem; width: 100%; padding: .5rem .6rem; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text); font: var(--text-sm)/1.2 var(--ui); text-align: left; cursor: pointer; }
+.message-menu button:hover, .message-menu button:focus-visible { background: var(--panel-hi); outline: none; }
+.message-menu button.danger { color: var(--danger); }
+.message-menu button.danger:hover, .message-menu button.danger:focus-visible { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+.remind-form { display: grid; gap: .5rem; min-width: 14rem; padding: .3rem; }
+.remind-form label { display: grid; gap: .35rem; color: var(--muted); font: var(--text-xs)/1.2 var(--ui); }
+.remind-form input { min-height: 2.25rem; padding: 0 .5rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font: var(--text-sm)/1.2 var(--ui); }
+.remind-form-actions { display: flex; justify-content: flex-end; gap: .4rem; }
+/* The menu's own button look would flatten the form buttons. */
+.message-menu .remind-form button { width: auto; justify-content: center; padding: 0 .8rem; font-weight: 700; }
+.message-menu .remind-form .btn-primary { background: var(--brand-fill); color: var(--on-brand); }
+.message-menu .remind-form .btn-secondary { background: var(--secondary-fill); }
+.message-menu .remind-form .btn-primary:hover, .message-menu .remind-form .btn-primary:focus-visible { background: color-mix(in srgb, var(--brand-fill) 86%, white); }
+.message-menu .remind-form .btn-secondary:hover, .message-menu .remind-form .btn-secondary:focus-visible { background: var(--secondary-fill-hover); }
+@keyframes picker-in { from { transform: translateY(-.25rem); } to { transform: translateY(0); } }
+@keyframes reaction-in { from { transform: scale(.8); opacity: 0; } to { transform: scale(1); opacity: .5; } }
+@keyframes stamp { 0% { transform: scale(.65); } 55% { transform: scale(1.28); filter: drop-shadow(0 0 8px var(--brand)); } 100% { transform: scale(1); filter: none; } }
+
+.giphy-results {
+  position: fixed;
+  z-index: var(--z-side-panel);
+  inset: auto 0 var(--composer-space, calc(5rem + env(safe-area-inset-bottom)));
+  display: flex;
+  gap: .5rem;
+  overflow-x: auto;
+  padding: .5rem .75rem;
+  background: var(--glass-tint);
+  backdrop-filter: var(--blur-medium) saturate(1.1);
+}
+.giphy-results::after { content: "GIPHY"; align-self: end; color: var(--muted); font: var(--text-2xs)/1 var(--mono); }
+.giphy-results button { flex: 0 0 auto; padding: .18rem; border: 2px solid transparent; border-radius: var(--radius-md); background: none; cursor: pointer; transition: border-color var(--dur-micro) var(--ease-standard), transform var(--dur-micro) var(--ease-standard); }
+.giphy-results button.selected { border-color: var(--brand); transform: translateY(-.1rem); }
+.giphy-results img { display: block; width: 5rem; height: 4rem; object-fit: cover; border-radius: var(--radius-xs); }
+.command-palette { position: fixed; z-index: var(--z-floating); display: grid; max-height: min(18rem, 45vh); overflow-y: auto; padding: .35rem; border: 1px solid color-mix(in srgb, var(--line) 85%, transparent); border-radius: var(--radius-lg); background: var(--glass-tint); box-shadow: var(--shadow-md); backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter); scrollbar-width: none; -ms-overflow-style: none; }
+.command-palette::-webkit-scrollbar { display: none; }
+.command-palette button { display: flex; align-items: baseline; gap: .7rem; width: 100%; padding: .5rem .6rem; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--muted); text-align: left; cursor: pointer; }
+.command-palette button:focus-visible { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); outline: none; }
+@media (hover: hover) { .command-palette button:hover { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); outline: none; } }
+.command-palette code { min-width: 4.8rem; color: var(--brand); font: var(--text-sm)/1 var(--mono); }
+.command-palette button.danger code, .command-palette button.danger:hover { color: var(--danger); }
+@media (hover: hover) { .command-palette button.danger:hover { background: color-mix(in srgb, var(--danger) 14%, transparent); } }
+.mention-palette button { align-items: center; gap: .6rem; padding: .4rem .5rem; }
+.mention-palette button.active { background: color-mix(in srgb, var(--brand) 18%, transparent); color: var(--text); }
+.mention-avatar { position: relative; flex: 0 0 auto; display: grid; place-items: center; width: 1.75rem; height: 1.75rem; overflow: hidden; border-radius: var(--radius-round); background: var(--avatar-fill); color: #11111b; font: 750 var(--text-xs)/1 var(--ui); }
+.command-palette .mention-nick { min-width: 0; color: var(--muted); }
+.mention-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.mention-avatar > span { display: grid; place-items: center; width: 100%; height: 100%; border-radius: var(--radius-round); }
+.emoji-palette button { align-items: center; gap: .6rem; padding: .4rem .5rem; }
+.emoji-palette button.active { background: color-mix(in srgb, var(--brand) 18%, transparent); color: var(--text); }
+.emoji-glyph { flex: 0 0 auto; display: grid; place-items: center; width: 1.5rem; font-size: var(--text-lg); line-height: 1; }
+.emoji-glyph .custom-emoji { width: 1.4rem; height: 1.4rem; margin: 0; }
+.emoji-code { min-width: 0; overflow: hidden; color: var(--text); font: var(--text-sm)/1 var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+.composer {
+  position: fixed;
+  z-index: var(--z-header);
+  left: 50%;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  width: min(calc(100% - 1rem), 860px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .375rem;
+  padding: .35rem .45rem;
+  border-radius: var(--radius-pill);
+  /* Native feel: taps never start a double-tap zoom or a delayed click. */
+  touch-action: manipulation;
+  border: 1px solid color-mix(in srgb, var(--line) 85%, transparent);
+  background: var(--glass-chrome);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: var(--glass-filter);
+  translate: -50% 0;
+  transition: background-color var(--dur-fast) ease;
+}
+
+/* A bot's answer takes a moment (docs search, then the model), so the wait gets a label above the
+   composer. It floats: no layout shift, and it lives out its short life without touching the list.
+   The left offset lines it up with the message avatars: the messages column's 1rem padding, the row's
+   .25rem padding and 2rem leading grid column, and the column gap. */
+.bot-thinking { position: absolute; bottom: 100%; left: calc(1rem + .25rem + 2rem + 9px); display: flex; align-items: center; gap: .35rem; margin-bottom: .3rem; padding: .3rem .45rem; border-radius: var(--radius-pill); background: var(--glass-tint); color: var(--muted); font: 500 var(--text-xs)/1 var(--ui); pointer-events: none; animation: thinking-in var(--dur-fast) ease-out; }
+.thinking-dots { display: inline-flex; gap: .15rem; }
+.thinking-dots i { width: .2rem; height: .2rem; border-radius: var(--radius-round); background: currentColor; animation: thinking 1.2s ease-in-out infinite; }
+.thinking-dots i:nth-child(2) { animation-delay: .15s; }
+.thinking-dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes thinking { 0%, 60%, 100% { opacity: .25; } 30% { opacity: 1; } }
+@keyframes thinking-in { from { opacity: 0; } }
+/* A status line whose text is only for screen readers; the dots carry it visually. */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+@media (prefers-reduced-motion: reduce) { .bot-thinking { animation: none; } .thinking-dots i { animation: none; opacity: .6; } }
+
+.composer-editor {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 1.5rem;
+  max-height: 10rem;
+  overflow-y: auto;
+}
+.composer-input {
+  display: block;
+  width: 100%;
+  min-height: 1.5rem;
+  max-height: 10rem;
+  overflow-y: auto;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  padding: 0 .25rem;
+  font: var(--text-base)/1.5 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  caret-color: var(--brand);
+}
+.composer-input:empty::before { content: attr(data-placeholder); color: var(--muted); opacity: .78; pointer-events: none; }
+.composer-input code { border-radius: var(--radius-xs); background: color-mix(in srgb, var(--panel) 70%, transparent); color: var(--mine); padding: 0 .16em; font: .9em/1.5 var(--mono); }
+.composer-input .fence { margin: .35rem 0; padding: .45rem .6rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--panel) 55%, transparent); overflow-x: auto; }
+.composer-input .fence code { display: block; width: max-content; min-width: 100%; padding: 0; background: transparent; color: var(--text); }
+.composer-input a { color: var(--mine); text-decoration: underline; text-underline-offset: .15em; }
+.composer-waiting { display: flex; align-items: center; gap: .45rem; min-height: 1.5rem; color: var(--muted); font: var(--text-sm)/1.5 var(--ui); }

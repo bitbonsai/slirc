@@ -1,0 +1,247 @@
+/* Links view: a channel's saved links in the main area. Search on top, rows under day headings,
+   filters in a column beside them. It takes .chat's place on screen and scrolls as one. */
+/* It starts under the header on every shell, so the search field can stick to its own top edge. */
+.links-view { top: var(--header-h); width: auto; font-family: var(--ui); padding-top: 0; padding-bottom: 4rem; }
+.links-frame { display: grid; grid-template-columns: minmax(0, 46rem) 13.5rem; justify-content: center; align-items: start; gap: var(--space-6); }
+.links-main { min-width: 0; }
+
+/* The search field stays put while the list scrolls under it. */
+/* The band is opaque, painted with the page's own background so it does not show as a patch,
+   and a short fade under it lets a row leave cleanly. */
+.links-search { position: sticky; z-index: var(--z-local); top: 0; display: grid; gap: var(--space-2); margin-inline: calc(-1 * var(--space-3)); padding: var(--space-4) var(--space-3) var(--space-2); background: var(--bg-glow) fixed, var(--bg); }
+.links-search::after { content: ""; position: absolute; inset: 100% 0 auto; height: .9rem; background: linear-gradient(to bottom, var(--bg), transparent); pointer-events: none; }
+.links-field { display: flex; align-items: center; gap: var(--space-2); min-height: 2.9rem; padding: 0 var(--space-2) 0 var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--panel) 80%, transparent); transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease; }
+.links-field:focus-within { border-color: color-mix(in srgb, var(--brand) 60%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 15%, transparent); }
+.links-field-icon { display: grid; place-items: center; flex: 0 0 auto; color: var(--muted); }
+.links-field-icon svg { width: 1.1rem; height: 1.1rem; }
+.links-field input { flex: 1; min-width: 0; height: 2.75rem; border: 0; outline: none; background: transparent; color: var(--text); font: var(--text-base)/1.5 var(--mono); }
+.links-field input::placeholder { color: var(--muted); opacity: .8; }
+.links-filters-button { display: none; flex: 0 0 auto; align-items: center; gap: .35rem; min-height: 2.1rem; padding: 0 .7rem; border: 0; border-radius: var(--radius-md); background: var(--secondary-fill); color: var(--text); font: 600 var(--text-sm)/1 var(--ui); cursor: pointer; }
+.links-filters-button.on { background: var(--active-fill); box-shadow: inset 0 0 0 1px var(--active-ring); }
+.links-filters-count { min-width: 1.15rem; padding: .12rem .3rem; border-radius: var(--radius-pill); background: var(--brand-fill); color: var(--on-brand); font: 700 var(--text-2xs)/1.2 var(--mono); text-align: center; }
+.links-action { display: flex; align-items: center; gap: var(--space-3); }
+.links-add { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 2.25rem; padding: 0 .8rem; border: 0; border-radius: var(--radius-md); font: 700 var(--text-sm)/1 var(--ui); cursor: pointer; }
+.links-add kbd { padding: .15rem .35rem; border-radius: var(--radius-xs); background: color-mix(in srgb, var(--on-brand) 12%, transparent); font: 600 var(--text-2xs)/1 var(--mono); }
+.links-add[disabled] { opacity: var(--disabled-opacity); cursor: default; }
+.links-known { display: flex; align-items: center; gap: var(--space-2); color: var(--muted); font: var(--text-sm)/1.4 var(--ui); }
+.links-note { margin: 0; color: var(--muted); font: var(--text-sm)/1.4 var(--ui); }
+.links-tokens { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.links-token { display: inline-flex; align-items: center; gap: .3rem; min-height: 1.75rem; padding: 0 .35rem 0 .6rem; border: 0; border-radius: var(--radius-sm); background: var(--active-fill); box-shadow: inset 0 0 0 1px var(--active-ring); color: var(--text); font: 600 var(--text-sm)/1 var(--ui); cursor: pointer; transition: background-color var(--dur-fast) ease; }
+.links-token:hover { background: color-mix(in srgb, var(--brand) 22%, transparent); }
+.links-token-x { display: grid; place-items: center; color: var(--muted); }
+.links-token-x svg { width: .85rem; height: .85rem; }
+.links-token:hover .links-token-x { color: var(--text); }
+.links-clear { padding: .2rem .4rem; border: 0; border-radius: var(--radius-sm); background: none; color: var(--muted); font: 600 var(--text-sm)/1.2 var(--ui); cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: .2em; }
+.links-clear:hover { color: var(--text); text-decoration-color: currentColor; }
+.links-count { margin: 0; color: var(--muted); font: var(--text-xs)/1.4 var(--mono); }
+
+/* Rows, dense: icon, title and domain; one line of summary; topics and who shared it. */
+.links-day + .links-day { margin-top: var(--space-4); }
+/* Days off screen skip layout and paint but stay in find-in-page and the accessibility tree. The
+   size is a guess until a day has been drawn once; after that the browser remembers it. The
+   containment clips to the padding box, so the padding holds row hovers and focus rings, and a
+   day being edited opts out so the topic list can overflow and the phone sheet stays fixed. */
+.links-day { content-visibility: auto; contain-intrinsic-size: auto 520px; margin-inline: calc(-1 * var(--space-3)); padding: 0 var(--space-3) .25rem; }
+.links-day:has(.link-row.editing) { content-visibility: visible; }
+.links-day-heading { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-1); padding: var(--space-3) 0 var(--space-1); color: var(--muted); font: 700 var(--text-2xs)/1.2 var(--ui); letter-spacing: .09em; text-transform: uppercase; }
+.links-list { display: grid; margin: 0; padding: 0; list-style: none; }
+.link-row { display: grid; grid-template-columns: 6rem minmax(0, 1fr); gap: 0 var(--space-4); margin-inline: calc(-1 * var(--space-3)); padding: .55rem var(--space-3); border-radius: var(--radius-md); transition: background-color var(--dur-fast) ease; }
+.link-row:hover, .link-row:focus-within { background: color-mix(in srgb, var(--panel) 75%, transparent); }
+/* The preview sits at the left, 16:10, its space reserved so the list never jumps. */
+.link-thumb { display: grid; place-items: center; width: 6rem; aspect-ratio: 16 / 10; margin-top: .2rem; overflow: hidden; border-radius: var(--radius-md); background: color-mix(in srgb, var(--panel-hi) 38%, transparent); }
+.link-thumb-image { display: block; width: 100%; height: 100%; object-fit: cover; }
+.link-row.has-image .link-thumb { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line) 60%, transparent); }
+.link-icon { display: grid; place-items: center; width: 1.25rem; height: 1.25rem; overflow: hidden; border-radius: var(--radius-xs); opacity: .9; }
+.link-icon.inline { display: inline-grid; width: .875rem; height: .875rem; margin-right: .3rem; vertical-align: -.12em; opacity: .85; }
+.link-icon.inline img { width: .875rem; height: .875rem; }
+/* Every row keeps the left slot, so titles line up. A row without an image shows the site's
+   icon there on a quiet surface, and then the icon is not repeated beside the domain. */
+.link-row.no-image .link-icon.inline { display: none; }
+.links-day-new { padding: .1rem .35rem; border-radius: var(--radius-xs); background: var(--active-fill); box-shadow: inset 0 0 0 1px var(--active-ring); color: var(--brand); font: 700 var(--text-2xs)/1.2 var(--ui); letter-spacing: .04em; text-transform: none; }
+.link-thumb .link-icon { position: relative; }
+.link-icon-none { position: absolute; inset: 0; display: grid; place-items: center; color: color-mix(in srgb, var(--muted) 55%, transparent); }
+.link-icon-none svg { width: 1rem; height: 1rem; }
+.link-thumb .link-icon img { position: relative; background: var(--bg); }
+.link-icon img { display: block; width: 1.25rem; height: 1.25rem; object-fit: contain; }
+.link-body { display: grid; gap: .1rem; min-width: 0; }
+.link-body h3 { margin: 0; font: 600 var(--text-base)/1.4 var(--ui); overflow-wrap: anywhere; }
+.link-title { color: var(--text); text-decoration: underline; text-decoration-color: transparent; text-decoration-thickness: 1px; text-underline-offset: .2em; transition: text-decoration-color var(--dur-fast) ease; }
+.link-title:hover, .link-title:focus-visible { text-decoration-color: var(--brand); }
+.link-title:visited { color: color-mix(in srgb, var(--text) 68%, var(--muted)); }
+.link-host { margin-left: var(--space-2); padding: 0; border: 0; background: none; color: var(--muted); font: 500 var(--text-xs)/1 var(--mono); white-space: nowrap; cursor: pointer; }
+.link-host:hover { color: var(--mine); }
+.link-row.post .link-title { font-weight: 600; }
+.link-summary { display: -webkit-box; margin: 0; overflow: hidden; -webkit-line-clamp: 1; -webkit-box-orient: vertical; color: var(--muted); font: var(--text-sm)/1.5 var(--ui); }
+.link-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0 .55rem; min-height: 1.4rem; color: var(--muted); font: var(--text-xs)/1.4 var(--ui); }
+.link-topic { padding: 0; border: 0; background: none; color: var(--mine); font: 500 var(--text-xs)/1.4 var(--mono); cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: .2em; }
+.link-topic:hover { text-decoration-color: currentColor; }
+.link-topic.on { color: var(--brand); font-weight: 700; }
+.link-filter { padding: 0; border: 0; background: none; color: color-mix(in srgb, var(--text) 78%, var(--muted)); font: 500 var(--text-xs)/1.4 var(--ui); cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: .2em; transition: text-decoration-color var(--dur-fast) ease, color var(--dur-fast) ease; }
+.link-filter:hover { color: var(--text); text-decoration-color: currentColor; }
+.links-known .link-filter { font-size: var(--text-sm); color: var(--text); text-decoration-color: color-mix(in srgb, var(--brand) 60%, transparent); }
+.link-filter.by { color: var(--muted); font-weight: 400; }
+.link-filter.by:hover { color: var(--text); }
+.link-by-name { font-weight: 500; }
+.link-extra::before { content: "·"; margin-right: .55rem; color: color-mix(in srgb, var(--muted) 60%, transparent); }
+.link-private { color: var(--brand); }
+.link-remove { margin-left: auto; padding: 0 .4rem; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--muted); font: 600 var(--text-xs)/1.4 var(--ui); cursor: pointer; opacity: 0; transition: opacity var(--dur-fast) ease, color var(--dur-fast) ease, background-color var(--dur-fast) ease; }
+.link-row:hover .link-remove, .link-row:focus-within .link-remove { opacity: 1; }
+.link-remove:hover, .link-remove:focus-visible { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+@media (hover: none) { .link-remove { opacity: 1; } }
+.link-title:focus-visible, .link-host:focus-visible, .link-filter:focus-visible, .link-topic:focus-visible, .link-remove:focus-visible, .links-entry:focus-visible, .links-show-all:focus-visible, .links-token:focus-visible, .links-clear:focus-visible, .links-filters-button:focus-visible, .links-add:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: var(--radius-xs); }
+.links-more { margin: var(--space-4) 0 0; color: var(--muted); font: var(--text-xs)/1.4 var(--ui); text-align: center; }
+/* Past the rows scrolling loads, one button asks for the next stretch. */
+.links-older { display: block; margin: var(--space-5) auto 0; }
+.links-empty { display: grid; justify-items: center; gap: var(--space-2); margin: 14vh auto 0; text-align: center; }
+.links-empty h2 { margin: 0; font: 700 var(--text-lg)/1.25 var(--ui); }
+.links-empty p { max-width: 30rem; margin: 0; color: var(--muted); font: var(--text-sm)/1.5 var(--ui); }
+.links-empty .btn-secondary { margin-top: var(--space-2); }
+.links-remove-name { margin: 0 0 var(--space-2) !important; color: var(--text) !important; font: var(--text-sm)/1.45 var(--mono); overflow-wrap: anywhere; }
+
+/* Filters: fixed groups in a fixed order. A chosen entry is marked where it stands. */
+.links-filters { position: sticky; top: 0; display: grid; align-content: start; gap: var(--space-5); max-height: calc(100dvh - var(--header-h)); padding: calc(var(--space-4) + .35rem) 0 var(--space-6); overflow-y: auto; scrollbar-width: none; }
+.links-filters::-webkit-scrollbar { display: none; }
+.links-sheet-head, .links-sheet-backdrop { display: none; }
+.links-group h3 { margin: 0 0 var(--space-1); padding-left: var(--space-2); color: var(--muted); font: 700 var(--text-2xs)/1.2 var(--ui); letter-spacing: .09em; text-transform: uppercase; }
+.links-group ul { display: grid; margin: 0; padding: 0; list-style: none; }
+.links-entry { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); width: 100%; padding: .22rem var(--space-2); border: 0; border-radius: var(--radius-sm); background: none; color: color-mix(in srgb, var(--text) 82%, var(--muted)); font: 500 var(--text-sm)/1.4 var(--ui); text-align: left; cursor: pointer; transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease; }
+.links-entry:hover { background: color-mix(in srgb, var(--panel-hi) 55%, transparent); color: var(--text); }
+.links-entry-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.links-entry-count { flex: 0 0 auto; color: var(--muted); font: var(--text-xs)/1.4 var(--mono); }
+.links-entry.on { background: var(--active-fill); box-shadow: inset 0 0 0 1px var(--active-ring); color: var(--text); font-weight: 650; }
+.links-entry.on .links-entry-count { color: var(--brand); }
+.links-show-all { margin: .15rem 0 0; padding: .2rem var(--space-2); border: 0; background: none; color: var(--muted); font: 500 var(--text-xs)/1.4 var(--ui); cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: .2em; }
+.links-show-all:hover { color: var(--text); text-decoration-color: currentColor; }
+
+/* Header: the Links and Messages switch. */
+.view-switch { display: inline-flex; flex: 0 0 auto; padding: .15rem; border-radius: var(--radius-md); background: color-mix(in srgb, var(--panel-hi) 55%, transparent); }
+.view-switch button { min-height: 1.85rem; padding: 0 .7rem; border: 0; border-radius: calc(var(--radius-md) - .1rem); background: transparent; color: var(--muted); font: 600 var(--text-sm)/1 var(--ui); cursor: pointer; transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease; }
+.view-switch button:hover { color: var(--text); }
+.view-switch button.on { background: var(--bg); color: var(--text); box-shadow: var(--shadow-sm); }
+.view-switch button:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+
+/* Narrow: the column becomes a sheet opened from the Filters button in the field. */
+@media (max-width: 60rem) {
+  .links-frame { grid-template-columns: minmax(0, 46rem); }
+  .links-filters-button { display: inline-flex; }
+  .links-filters { position: fixed; z-index: calc(var(--z-overlay) + 1); inset: auto 0 0; max-height: min(78dvh, 40rem); padding: 0 var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom, 0px)); border-radius: var(--radius-xl) var(--radius-xl) 0 0; border-top: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow-lg); gap: var(--space-4); translate: 0 105%; visibility: hidden; transition: translate var(--dur-entrance) var(--ease-standard), visibility 0s linear var(--dur-entrance); }
+  .links-filters.open { translate: 0 0; visibility: visible; transition: translate var(--dur-entrance) var(--ease-standard), visibility 0s; }
+  .links-sheet-head { position: sticky; z-index: 1; top: 0; display: flex; align-items: center; gap: var(--space-3); margin-inline: calc(-1 * var(--space-4)); padding: var(--space-4) var(--space-4) var(--space-3); background: var(--panel); }
+  .links-sheet-head h2 { margin: 0 auto 0 0; font: 700 var(--text-base)/1.2 var(--ui); }
+  .links-sheet-close { min-height: 2.25rem; padding: 0 .9rem; border: 0; border-radius: var(--radius-md); font: 700 var(--text-sm)/1 var(--ui); cursor: pointer; }
+  .links-sheet-backdrop { display: block; position: fixed; z-index: var(--z-overlay); inset: 0; border: 0; background: #09091066; backdrop-filter: var(--blur-light); -webkit-backdrop-filter: var(--blur-light); }
+  .links-entry { padding-block: .5rem; font-size: var(--text-base); }
+}
+@media (max-width: 640px) {
+  .links-view { padding-bottom: calc(var(--composer-bottom, 1rem) + 2rem); }
+  .link-row { grid-template-columns: 4rem minmax(0, 1fr); gap: 0 var(--space-3); }
+  .link-thumb { width: 4rem; border-radius: var(--radius-sm); }
+  .link-icon { width: 1rem; height: 1rem; }
+  .link-icon img { width: 1rem; height: 1rem; }
+  .link-summary { -webkit-line-clamp: 2; }
+  .link-host { display: block; margin: .1rem 0 0; }
+  .view-switch button { padding: 0 .55rem; }
+}
+@media (prefers-reduced-motion: reduce) { .link-row, .link-title, .link-remove, .links-entry, .links-token, .links-filters, .view-switch button { transition: none; } }
+/* The list is its own layer under the phone navigation, so the navigation steps aside for the sheet. */
+body:has(.links-filters.open) .mobile-nav { translate: 0 150%; opacity: 0; pointer-events: none; }
+
+/* Editing a row's topics: a "+" on the meta line opens a type-ahead in the row. On a phone it
+   opens as a small sheet. Clicking a topic still filters; removing one is its own control.
+   The "+" keeps its place and shows on hover and keyboard focus, always on a phone, and always
+   on a row with no topics, so nothing shifts when it appears. */
+.link-topic-item { display: inline-flex; align-items: center; gap: .1rem; }
+.link-topic-x { display: grid; place-items: center; width: 1.1rem; height: 1.1rem; padding: 0; border: 0; border-radius: var(--radius-xs); background: none; color: var(--muted); cursor: pointer; }
+.link-topic-x svg { width: .75rem; height: .75rem; }
+.link-topic-x:hover, .link-topic-x:focus-visible { background: color-mix(in srgb, var(--danger) 16%, transparent); color: var(--danger); }
+.link-topic-add { display: inline-flex; align-items: center; gap: .25rem; min-height: 1.2rem; padding: 0 .25rem; border: 0; border-radius: var(--radius-xs); background: none; color: var(--muted); font: 500 var(--text-xs)/1.4 var(--ui); cursor: pointer; opacity: 0; transition: opacity var(--dur-fast) ease, color var(--dur-fast) ease, background-color var(--dur-fast) ease; }
+.link-topic-plus { display: grid; place-items: center; }
+.link-topic-plus svg { width: .8rem; height: .8rem; }
+.link-topic-add.empty, .link-row:hover .link-topic-add, .link-row:focus-within .link-topic-add { opacity: 1; }
+.link-topic-add:hover, .link-topic-add:focus-visible { background: color-mix(in srgb, var(--panel-hi) 70%, transparent); color: var(--text); }
+@media (hover: none) { .link-topic-add { opacity: 1; } }
+@media (pointer: coarse) { .link-topic-add, .link-remove { opacity: 1; } }
+.link-row.editing { background: color-mix(in srgb, var(--panel) 75%, transparent); }
+.link-row.editing .link-meta { position: relative; }
+.topic-editor { position: relative; display: inline-flex; align-items: center; }
+.topic-editor-title, .topic-editor-done, .topic-editor-current { display: none; }
+.topic-editor input { width: 9.5rem; height: 1.5rem; padding: 0 .4rem; border: 1px solid color-mix(in srgb, var(--brand) 55%, var(--line)); border-radius: var(--radius-sm); outline: none; background: var(--bg); color: var(--text); font: var(--text-xs)/1 var(--mono); }
+.topic-editor input::placeholder { color: var(--muted); }
+.topic-options { position: absolute; z-index: var(--z-popover); top: calc(100% + .3rem); left: 0; width: 14rem; margin: 0; padding: .25rem; list-style: none; border: 1px solid color-mix(in srgb, var(--line) 85%, transparent); border-radius: var(--radius-lg); background: var(--glass-tint); backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter); box-shadow: var(--shadow-md); }
+.topic-option { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); padding: .3rem .5rem; border-radius: var(--radius-md); color: var(--text); font: 500 var(--text-sm)/1.3 var(--mono); cursor: pointer; }
+.topic-option.active { background: color-mix(in srgb, var(--text) 10%, transparent); }
+.topic-option-count { color: var(--muted); font: var(--text-xs)/1.3 var(--mono); }
+.topic-option.create { margin-top: .25rem; padding-top: .45rem; border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); border-radius: 0 0 var(--radius-md) var(--radius-md); color: var(--muted); font-family: var(--ui); }
+.topic-option.create.active { color: var(--text); }
+.topic-editor-error { position: absolute; top: calc(100% + .3rem); left: 0; width: 14rem; margin: 0; padding: .35rem .5rem; border-radius: var(--radius-md); background: var(--panel); color: var(--danger); font: var(--text-xs)/1.3 var(--ui); box-shadow: var(--shadow-sm); }
+.topic-editor.sheet { position: fixed; z-index: calc(var(--z-overlay) + 1); inset: auto 0 var(--kb, 0px); display: grid; gap: var(--space-2); padding: var(--space-4) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); border-radius: var(--radius-xl) var(--radius-xl) 0 0; background: var(--panel); box-shadow: var(--shadow-lg); grid-template-columns: minmax(0, 1fr) auto; }
+.topic-editor.sheet .topic-editor-title { display: block; margin: 0; color: var(--muted); font: 700 var(--text-2xs)/1.2 var(--ui); letter-spacing: .09em; text-transform: uppercase; }
+/* The sheet covers the row, so the row's topics show here with their remove controls. */
+.topic-editor.sheet .topic-editor-title { grid-column: 1; align-self: center; }
+.topic-editor.sheet .topic-editor-done { grid-column: 2; grid-row: 1; min-height: 2.1rem; }
+.topic-editor.sheet .topic-editor-current { display: flex; flex-wrap: wrap; gap: .4rem; grid-column: 1 / -1; }
+.topic-editor.sheet input { grid-column: 1 / -1; width: 100%; height: 2.6rem; padding: 0 .75rem; border-radius: var(--radius-md); font-size: var(--text-base); }
+.topic-editor.sheet .topic-editor-done { display: inline-flex; align-items: center; min-height: 2.6rem; padding: 0 .9rem; border: 0; border-radius: var(--radius-md); background: var(--secondary-fill); color: var(--text); font: 600 var(--text-sm)/1 var(--ui); cursor: pointer; }
+.topic-editor.sheet .topic-options { position: static; grid-column: 1 / -1; width: auto; max-height: 40dvh; overflow-y: auto; padding: 0; border: 0; background: none; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.topic-editor.sheet .topic-option { padding: .6rem .5rem; font-size: var(--text-base); }
+.topic-editor.sheet .topic-editor-error { position: static; grid-column: 1 / -1; width: auto; padding: 0; background: none; box-shadow: none; }
+body:has(.topic-editor.sheet) .mobile-nav { translate: 0 150%; opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .link-topic-add { transition: none; } }
+
+/* An X post is a quoted post: the handle and the words behind a thin rule. Its text starts at
+   the same left edge as every other row's, and its slot holds a picture only when the post has
+   one or its author's is known. */
+.link-row.post.no-image .link-thumb { background: none; }
+.link-row.avatar .link-thumb { background: none; box-shadow: none; }
+.link-row.avatar .link-thumb-image { width: 2.5rem; height: 2.5rem; border-radius: var(--radius-round); }
+.link-post { display: grid; gap: .3rem; min-width: 0; }
+.link-quote { margin: .1rem 0 .15rem; padding: 0 0 0 var(--space-3); border-left: 2px solid color-mix(in srgb, var(--line) 90%, var(--muted)); }
+.link-quote-by { display: flex; align-items: baseline; gap: var(--space-2); margin: 0; font: var(--text-sm)/1.45 var(--ui); }
+.link-handle { color: color-mix(in srgb, var(--text) 82%, var(--muted)); font-weight: 600; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: .2em; transition: text-decoration-color var(--dur-fast) ease; }
+.link-handle.main { color: var(--text); font-size: var(--text-base); }
+.link-handle:hover, .link-handle:focus-visible { text-decoration-color: var(--brand); }
+.link-handle.main:visited { color: color-mix(in srgb, var(--text) 68%, var(--muted)); }
+.link-onx { color: var(--muted); font: 500 var(--text-xs)/1 var(--mono); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--muted) 45%, transparent); text-underline-offset: .2em; }
+.link-onx:hover, .link-onx:focus-visible { color: var(--text); text-decoration-color: currentColor; }
+.link-handle:focus-visible, .link-onx:focus-visible, .links-fold:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: var(--radius-xs); }
+.link-quote-text { display: -webkit-box; margin: 0; overflow: hidden; -webkit-line-clamp: 3; -webkit-box-orient: vertical; color: color-mix(in srgb, var(--text) 88%, var(--muted)); font: var(--text-sm)/1.5 var(--ui); white-space: pre-line; overflow-wrap: anywhere; }
+
+/* Orientation: where the member stopped reading, and busy days folded behind one control. */
+.links-last-here { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--space-3); margin: .15rem 0 .5rem; color: var(--brand); font: 700 var(--text-2xs)/1.2 var(--ui); letter-spacing: .06em; text-transform: uppercase; }
+.links-last-here::before, .links-last-here::after { content: ""; flex: 1; height: 1px; background: color-mix(in srgb, var(--brand) 45%, transparent); }
+.links-day > .links-last-here { margin: var(--space-2) 0; }
+.links-fold { display: block; margin: .1rem 0 0 calc(6rem + var(--space-4)); padding: .3rem .6rem; border: 0; border-radius: var(--radius-md); background: color-mix(in srgb, var(--panel-hi) 45%, transparent); color: color-mix(in srgb, var(--text) 82%, var(--muted)); font: 600 var(--text-sm)/1.3 var(--ui); cursor: pointer; transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease; }
+.links-fold:hover { background: var(--secondary-fill); color: var(--text); }
+@media (max-width: 640px) { .links-fold { margin-left: calc(4rem + var(--space-3)); } .link-row.avatar .link-thumb-image { width: 2rem; height: 2rem; } .link-quote-text { -webkit-line-clamp: 4; } }
+@media (prefers-reduced-motion: reduce) { .links-fold, .link-handle { transition: none; } }
+
+/* "Clear all" at the top of the filter column, in line with the first group's heading. On a
+   phone the sheet's own head carries it. */
+.links-clear-column { position: absolute; top: calc(var(--space-4) + .15rem); right: 0; padding: .1rem .4rem; font-size: var(--text-xs); color: var(--brand); }
+.links-clear-column:hover { color: var(--text); }
+@media (max-width: 60rem) { .links-clear-column { display: none; } }
+
+/* A saved copy: a quiet second link on the row, and a plain reader view. The stored text is
+   drawn as text, block by block; nothing from the page is rendered as markup. */
+.link-copy { margin-left: var(--space-2); padding: 0; border: 0; background: none; color: var(--muted); font: 500 var(--text-xs)/1 var(--mono); cursor: pointer; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--muted) 45%, transparent); text-underline-offset: .2em; white-space: nowrap; }
+.link-quote-by .link-copy { margin-left: 0; }
+.link-copy:hover, .link-copy:focus-visible { color: var(--text); text-decoration-color: currentColor; }
+.link-copy:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: var(--radius-xs); }
+.link-gone { margin-left: var(--space-2); color: var(--attention); font: 500 var(--text-xs)/1 var(--ui); white-space: nowrap; }
+.link-quote-by .link-gone { margin-left: 0; }
+.links-reader-card { width: min(44rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); padding: 0; overflow-y: auto; text-align: left; }
+.links-reader-head { position: sticky; z-index: 1; top: 0; display: grid; gap: .3rem; padding: var(--space-5) var(--space-5) var(--space-3); border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); background: var(--panel); }
+.links-reader-kicker { margin: 0; color: var(--brand); font: 700 var(--text-2xs)/1.2 var(--ui); letter-spacing: .09em; text-transform: uppercase; }
+.links-reader-head h2 { margin: 0; font: 700 var(--text-lg)/1.25 var(--ui); overflow-wrap: anywhere; }
+.links-reader-meta { margin: 0; color: var(--muted); font: var(--text-xs)/1.4 var(--mono); overflow-wrap: anywhere; }
+.links-reader-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+.links-reader-actions .btn-secondary { display: inline-flex; align-items: center; min-height: 2.1rem; padding: 0 .8rem; text-decoration: none; }
+.links-reader-card > .profile-error { margin: var(--space-4) var(--space-5); }
+.links-reader-text { display: grid; gap: var(--space-3); padding: var(--space-4) var(--space-5) var(--space-6); color: var(--text); font: var(--text-base)/1.65 var(--ui); }
+.links-reader-text p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+.links-reader-image { display: block; width: 100%; max-width: 100%; height: auto; border-radius: var(--radius-md); object-fit: cover; }
+.links-reader-text .reader-h1 { margin-top: var(--space-2); font: 700 var(--text-lg)/1.3 var(--ui); }
+.links-reader-text .reader-h2, .links-reader-text .reader-h3 { margin-top: var(--space-2); font: 700 var(--text-base)/1.35 var(--ui); }
+.links-reader-text .reader-li { padding-left: 1.1rem; text-indent: -1.1rem; }
+.links-reader-text .reader-li::before { content: "•"; display: inline-block; width: 1.1rem; text-indent: 0; color: var(--muted); }
+@media (max-width: 640px) { .links-reader-head { padding: var(--space-4) var(--space-4) var(--space-3); } .links-reader-text { padding: var(--space-4) var(--space-4) var(--space-6); } .link-copy, .link-gone { display: inline-block; margin: .15rem var(--space-2) 0 0; } }

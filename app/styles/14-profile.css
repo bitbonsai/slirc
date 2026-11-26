@@ -1,0 +1,159 @@
+/* The channel panel on its own: no profile heading or tabs, the panel's own title shows instead, and the
+   card only needs room for the form. */
+.profile-close { position: absolute; top: .75rem; right: .75rem; display: grid; place-items: center; width: 2rem; height: 2rem; border: 0; border-radius: var(--radius-round); background: transparent; color: var(--muted); font-size: var(--text-lg); cursor: pointer; }
+.profile-close svg { width: 1.15rem; height: 1.15rem; }
+.profile-close:hover, .profile-close:focus-visible { background: var(--panel-hi); color: var(--text); outline: none; }
+.profile-heading { display: flex; align-items: center; gap: .9rem; margin-bottom: 1.2rem; }
+.profile-heading h2 { display: flex; align-items: center; gap: .4rem; margin: 0; font: 700 var(--text-lg)/1.25 var(--ui); }
+.profile-heading p { margin: .15rem 0 0; color: var(--muted); font-size: var(--text-xs); }
+.profile-dialog-card .profile-modal-avatar { width: 4rem; height: 4rem; flex: 0 0 auto; display: grid; place-items: center; overflow: hidden; border-radius: var(--radius-round); background: var(--panel-hi); color: var(--bg); font: 750 1.75rem/1 var(--ui); }
+.profile-modal-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.profile-dialog-card form { display: grid; gap: .75rem; }
+.profile-page .profile-form { gap: 1rem; }
+.profile-page .profile-form .profile-actions { margin-top: .5rem; }
+.profile-status-group { display: grid; gap: .3rem; }
+.profile-status-row { display: grid; grid-template-columns: 2.75rem minmax(0, 1fr); align-items: end; gap: .5rem; }
+.profile-badge-trigger, .profile-status-row input { min-height: 2.75rem; }
+.profile-badge-trigger { display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg); color: var(--text); cursor: pointer; transition: border-color var(--dur-fast) ease, background-color var(--dur-fast) ease; }
+.profile-badge-trigger:hover, .profile-badge-trigger:focus-visible { border-color: var(--brand); background: var(--panel-hi); }
+.profile-badge-symbol { flex: 0 0 auto; display: grid; place-items: center; place-content: center; width: 10px; height: 10px; border-radius: var(--radius-round); background: var(--muted); }
+.profile-badge-symbol[data-badge="available"] { background: var(--brand); }
+.profile-badge-symbol[data-badge="busy"] { background: var(--danger); }
+.profile-badge-symbol:is([data-badge="focus"], [data-badge="break"], [data-badge="resting"], [data-badge="vacation"]) { width: 1rem; height: 1rem; background: transparent; font: var(--text-base)/1 "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.profile-badge-picker { position: fixed; inset: auto; width: min(14rem, calc(100vw - 1rem)); max-height: calc(100dvh - 1rem); margin: 0; padding: .35rem; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--glass-tint); color: var(--text); box-shadow: var(--shadow-md); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); transition: opacity var(--dur-fast) ease; }
+.profile-badge-picker:popover-open { display: grid; gap: .15rem; }
+.profile-badge-picker button { display: flex; align-items: center; gap: .7rem; min-height: 2.75rem; padding: .4rem .7rem; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text); font: var(--text-sm)/1.3 var(--ui); text-align: left; cursor: pointer; }
+.profile-badge-picker button:hover, .profile-badge-picker button:focus-visible, .profile-badge-picker button[aria-pressed="true"] { background: color-mix(in srgb, var(--brand) 10%, transparent); }
+.profile-badge-check { margin-left: auto; color: var(--brand); }
+@starting-style { .profile-badge-picker:popover-open { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .profile-badge-trigger, .profile-badge-picker { transition: none; } }
+.irc-settings h3, .irc-credential h4 { margin: 0 0 .35rem; }
+.irc-settings > .mobile-settings-body > p, .irc-credential > p { margin: 0 0 .9rem; color: var(--muted); font-size: var(--text-xs); line-height: 1.45; }
+.irc-device-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: .4rem; margin-bottom: .8rem; }
+.irc-device-row { display: flex; min-width: 0; min-height: 3rem; align-items: center; justify-content: space-between; gap: .75rem; padding: .5rem .65rem; border: 1px solid color-mix(in srgb, var(--line) 72%, transparent); border-radius: var(--radius-md); background: color-mix(in srgb, var(--panel-hi) 42%, transparent); }
+.irc-device-row > span { min-width: 0; flex: 1; }
+.irc-device-row > button { flex-shrink: 0; }
+.irc-device-remove-all { justify-self: end; }
+.irc-device-row strong, .irc-device-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.irc-device-row strong { font: 650 var(--text-sm)/1.35 var(--ui); }
+.irc-device-row small { color: var(--muted); font-size: var(--text-2xs); }
+.irc-device-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.irc-device-form { padding: .7rem; border: 1px solid var(--line); border-radius: var(--radius-md); background: color-mix(in srgb, var(--panel-hi) 35%, transparent); }
+.irc-device-form > p { margin: 0; color: var(--muted); font-size: var(--text-xs); line-height: 1.4; }
+.irc-device-form > p a, .irc-settings > .mobile-settings-body > p a { color: var(--brand); }
+.irc-credential { display: grid; gap: .7rem; }
+.irc-password { display: flex; align-items: stretch; gap: .45rem; }
+.irc-password code { min-width: 0; flex: 1; padding: .65rem; overflow-wrap: anywhere; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg); color: var(--brand); font: var(--text-xs)/1.35 var(--mono); }
+.irc-password button { border: 0; border-radius: var(--radius-md); padding: 0 .8rem; color: var(--text); font-weight: 700; }
+.irc-config { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-md); }
+.irc-config > div { display: flex; align-items: center; justify-content: space-between; padding: .5rem .65rem; background: var(--panel-hi); font-size: var(--text-xs); }
+.irc-config .link-button { min-height: 1.75rem; padding: .25rem .5rem; border-radius: var(--radius-sm); transition: background-color var(--dur-micro) var(--ease-standard), color var(--dur-micro) var(--ease-standard); }
+.irc-config .link-button:hover, .irc-config .link-button:focus-visible { background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--text); }
+.irc-config .link-button.copied { background: color-mix(in srgb, var(--brand) 14%, transparent); color: var(--brand); }
+.irc-config pre { max-height: 12rem; margin: 0; padding: .65rem; overflow: auto; background: var(--bg); color: var(--text); font: var(--text-2xs)/1.45 var(--mono); white-space: pre; }
+.irc-done { justify-self: end; }
+.link-button { padding: 0 .25rem; border: 0; background: transparent; color: var(--brand); font: inherit; font-size: var(--text-sm); cursor: pointer; }
+.link-button.danger { min-width: 2.75rem; min-height: 2.75rem; color: var(--danger); opacity: .7; transition: opacity var(--dur-fast) ease; }
+.link-button.danger:hover, .link-button.danger:focus-visible { opacity: 1; }
+.profile-dialog-card label { display: grid; gap: .3rem; color: var(--muted); font-size: var(--text-xs); }
+.form-fields { display: grid; gap: var(--space-4); }
+.form-fields > label, .form-fields > .form-field > label { gap: var(--space-2); font-size: var(--text-sm); }
+.form-field { display: grid; gap: var(--space-2); }
+.profile-dialog-card .form-field .field-hint { margin: 0; font-size: var(--text-sm); }
+.form-error { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0; padding: var(--space-3); border: 0; border-radius: var(--radius-md); background: color-mix(in srgb, var(--danger) 10%, var(--panel)); color: var(--danger); font-size: var(--text-sm); line-height: 1.45; }
+.form-error svg { flex: 0 0 auto; width: 1.125rem; height: 1.125rem; margin-top: .0625rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.profile-dialog-card .form-consent { display: flex; align-items: center; gap: var(--space-3); min-height: 2.75rem; padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg); color: var(--text); font-size: var(--text-sm); cursor: pointer; }
+.profile-dialog-card .form-consent input[type="checkbox"] { flex: 0 0 auto; width: 1.125rem; height: 1.125rem; margin: 0; padding: 0; appearance: auto; accent-color: var(--brand); }
+.profile-dialog-card .form-consent input[type="checkbox"]:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+.profile-dialog-card input:not(.sr-only), .profile-dialog-card textarea, .profile-dialog-card select { width: 100%; padding: .6rem .7rem; border: 1px solid var(--line); border-radius: var(--radius-md); outline: none; background: var(--bg); color: var(--text); font: var(--text-sm)/1.35 var(--ui); resize: vertical; }
+.profile-dialog-card input:focus, .profile-dialog-card textarea:focus, .profile-dialog-card select:focus { border-color: var(--brand); }
+.profile-dialog-card input:read-only, .profile-dialog-card textarea:read-only { border-color: transparent; padding-left: 0; background: transparent; resize: none; }
+.profile-dialog-card textarea { resize: none; }
+.profile-member + .profile-member { margin-top: .3rem; }
+.profile-member a, .field-hint a { color: var(--brand); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color var(--dur-base) ease-in-out; }
+.profile-member a:hover, .profile-member a:focus-visible, .field-hint a:hover, .field-hint a:focus-visible { border-bottom-color: currentColor; }
+.profile-meta { display: flex; align-items: baseline; justify-content: space-between; gap: .35rem 1rem; flex-wrap: wrap; }
+.profile-meta .profile-member { margin: 0; }
+/* Founder-only welcome control: stays out of the profile save form so toggling it never saves drafts. */
+.profile-welcome { display: grid; gap: .5rem; margin-top: .5rem; padding-top: 1rem; border-top: 1px solid color-mix(in srgb, var(--line) 75%, transparent); }
+.profile-welcome .settings-toggle { margin: 0; }
+/* "Add your phone": the first card on Devices. One click shows a one-time pairing QR. Desktop only. */
+.phone-offer { display: grid; gap: .75rem; margin-bottom: 1rem; padding: 1rem; border: 1px solid color-mix(in srgb, var(--brand) 45%, var(--line)); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--brand) 6%, transparent); }
+.phone-offer-intro { display: flex; align-items: center; gap: .9rem; }
+.phone-offer-intro > div { flex: 1; min-width: 0; }
+.phone-offer-intro h3 { margin: 0; font-size: var(--text-lg); }
+.phone-offer-intro p { margin: .15rem 0 0; color: var(--muted); font-size: var(--text-sm); }
+.phone-offer-intro .btn-primary { flex: 0 0 auto; }
+.phone-offer-welcome { justify-self: start; padding: 0; text-decoration: none; }
+.phone-offer-app { margin: 0; color: var(--muted); font-size: var(--text-sm); }
+.phone-offer-app a { display: inline-flex; align-items: center; gap: var(--space-1); padding: 0; text-decoration: none; }
+.phone-offer-app .menu-icon { width: .875rem; height: .875rem; }
+.phone-offer-mark { display: grid; place-items: center; flex: 0 0 auto; width: 2.5rem; height: 2.5rem; border-radius: var(--radius-round); background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--brand); }
+.phone-offer-mark svg { width: 1.25rem; height: 1.25rem; }
+.profile-prefs { margin-top: 1rem; }
+.phone-offer-card { display: grid; justify-items: center; gap: var(--space-2, .5rem); padding: .75rem; border: 1px solid color-mix(in srgb, var(--line) 75%, transparent); border-radius: var(--radius-lg); text-align: center; }
+.phone-offer-card .invite-qr { padding: .7rem; border-radius: var(--radius-md); }
+.phone-offer-card .invite-qr svg { width: 11rem; height: 11rem; display: block; }
+.phone-offer-card p { margin: 0; }
+.phone-offer-countdown { color: var(--muted); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
+.profile-member a { color: var(--brand); }
+.field-hint code { font-size: var(--text-xs); color: var(--text); }
+.profile-member, .profile-note, .profile-error { margin: 0; color: var(--muted); font-size: var(--text-xs); }
+.profile-error { color: var(--danger); }
+.profile-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: .25rem; }
+/* Reserve room for the saving spinner so the button does not change width mid-save. */
+.profile-save { min-width: 8.75rem; }
+.profile-save .spinner { width: .85rem; height: .85rem; margin-right: .4rem; vertical-align: -.1rem; }
+.admin-refresh .spinner { width: .85rem; height: .85rem; margin-right: .4rem; vertical-align: -.1rem; }
+.profile-tabs { display: flex; gap: .25rem; margin: -.25rem 0 1rem; padding: .2rem; border-radius: var(--radius-lg); background: var(--bg); }
+.profile-tabs button { flex: 1; min-height: 2.25rem; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--muted); font: 650 var(--text-sm)/1 var(--ui); cursor: pointer; }
+.profile-tabs button.active { background: var(--panel-hi); color: var(--text); }
+.account-tabs a { flex: 1; display: grid; place-items: center; min-height: 2.75rem; border-radius: var(--radius-md); color: var(--muted); text-decoration: none; font: 650 var(--text-sm)/1 var(--ui); transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease; }
+.account-tabs a:hover { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
+.account-tabs a.active { background: var(--panel-hi); color: var(--text); }
+.account-tabs a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .account-tabs a { transition: none; } }
+/* Channel settings dialog: name in the title, a compact segmented control, one Save, delete apart below. */
+.channel-settings-card { display: grid; gap: 1.25rem; width: min(28rem, calc(100vw - 2rem)); }
+.channel-settings-title { margin: 0; font: 700 var(--text-lg)/1.25 var(--ui); overflow-wrap: anywhere; }
+.profile-dialog-card .channel-settings-form { gap: 1rem; }
+.channel-visibility { display: grid; justify-items: start; gap: .4rem; }
+.channel-visibility-label { color: var(--muted); font-size: var(--text-xs); }
+.channel-visibility-value { font: 600 var(--text-sm)/1.3 var(--ui); }
+.profile-dialog-card .channel-visibility .field-hint { margin: 0; }
+.segmented { display: inline-flex; gap: .125rem; padding: .125rem; border-radius: var(--radius-md); background: color-mix(in srgb, var(--text) 8%, transparent); }
+.segmented button { min-height: 2rem; padding: 0 .85rem; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--muted); font: 600 var(--text-sm)/1 var(--ui); cursor: pointer; transition: background var(--dur-fast) ease, color var(--dur-fast) ease; }
+.segmented button:not(:disabled):hover { color: var(--text); }
+.segmented button[aria-checked="true"] { background: var(--panel); color: var(--text); box-shadow: var(--shadow-sm); }
+.segmented button:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.segmented button:disabled { cursor: default; }
+@media (pointer: coarse) { .segmented button { min-height: 2.75rem; } }
+@media (prefers-reduced-motion: reduce) { .segmented button { transition: none; } }
+.channel-danger { padding-top: 1rem; border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.channel-danger-row { display: flex; align-items: center; gap: 1rem; }
+.channel-danger .btn-secondary, .channel-danger .btn-danger { flex: 0 0 auto; min-height: 2.25rem; font-size: var(--text-sm); }
+.channel-danger-button { color: var(--danger); }
+.channel-danger .prefs-confirm { margin: 0; }
+.channel-danger .prefs-confirm input:disabled { opacity: var(--disabled-opacity); }
+.agent-list { display: grid; gap: .35rem; }
+.agent-row { display: flex; align-items: flex-start; gap: .7rem; min-height: 3.5rem; padding: .55rem .65rem; border: 1px solid color-mix(in srgb, var(--line) 72%, transparent); border-radius: var(--radius-md); background: color-mix(in srgb, var(--panel-hi) 42%, transparent); }
+.agent-mark { flex: 0 0 auto; padding: .2rem .4rem; border: 1px solid color-mix(in srgb, var(--brand) 45%, transparent); border-radius: var(--radius-pill); color: var(--brand); font: 750 .6rem/1 var(--ui); letter-spacing: .05em; text-transform: uppercase; }
+.agent-avatar { flex: 0 0 auto; width: 2rem; height: 2rem; display: grid; place-items: center; align-self: center; }
+.agent-avatar img { width: 100%; height: 100%; }
+.agent-copy { min-width: 0; flex: 1; display: grid; gap: .1rem; }
+.agent-copy strong, .agent-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-copy strong { font: 700 var(--text-sm)/1.25 var(--mono); }
+.agent-copy small { color: var(--muted); font-size: var(--text-xs); }
+.agent-copy .agent-presence { color: var(--brand); }
+.agent-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: .7rem; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.agent-open:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: var(--radius-sm); }
+.agent-status { display: inline-flex; align-items: center; align-self: center; gap: .35rem; flex: 0 0 auto; color: var(--muted); font: 600 var(--text-xs)/1 var(--ui); white-space: nowrap; }
+.agent-status::before { content: ""; width: .5rem; height: .5rem; border-radius: var(--radius-round); background: var(--muted); }
+.agent-status[data-state="ready"] { color: var(--brand); }
+.agent-status[data-state="ready"]::before { background: var(--brand); }
+.agent-status[data-state="working"] { color: var(--mine); }
+.agent-status[data-state="working"]::before { background: var(--mine); }
+.agent-status[data-state="input"] { color: var(--attention); }
+.agent-status[data-state="input"]::before { background: var(--attention); }
+.agent-status[data-state="unverified"]::before { background: transparent; border: 1px solid var(--muted); }
+.agent-row > .link-button { align-self: center; flex-shrink: 0; }

@@ -1,0 +1,132 @@
+/* Phone: the chat header and the tab heads share one name, so a tab <-> chat move morphs the bar
+   instead of sliding it with the page. Only one of them is displayed at a time (x-show), which the
+   API requires. */
+@media (pointer: coarse) {
+  header, .mobile-screen-head { view-transition-name: header; }
+  ::view-transition-group(header) { animation-duration: var(--dur-base); animation-timing-function: cubic-bezier(.2, .7, .2, 1); }
+  html[data-transition="forward"]::view-transition-old(header), html[data-transition="back"]::view-transition-old(header) { animation: var(--dur-fast) ease both vt-fade-out; }
+  html[data-transition="forward"]::view-transition-new(header), html[data-transition="back"]::view-transition-new(header) { animation: var(--dur-fast) ease both vt-fade-in; }
+}
+@keyframes vt-fade-out { to { opacity: 0; } }
+@keyframes vt-fade-in { from { opacity: 0; } }
+html[data-transition="forward"]::view-transition-old(root) { animation: var(--dur-base) ease both vt-forward-out; }
+html[data-transition="forward"]::view-transition-new(root) { animation: var(--dur-base) ease both vt-forward-in; }
+html[data-transition="back"]::view-transition-old(root) { animation: var(--dur-base) ease both vt-back-out; }
+html[data-transition="back"]::view-transition-new(root) { animation: var(--dur-base) ease both vt-back-in; }
+html[data-transition="tab"]::view-transition-old(root) { animation: var(--dur-fast) ease both vt-tab-out; }
+html[data-transition="tab"]::view-transition-new(root) { animation: var(--dur-base) ease both vt-tab-in; }
+html[data-transition="tab"]::view-transition-old(mobile-nav), html[data-transition="tab"]::view-transition-new(mobile-nav) { animation: none; }
+@keyframes vt-forward-out { to { opacity: .55; transform: translateX(-12%); } }
+@keyframes vt-forward-in { from { transform: translateX(100%); } }
+@keyframes vt-back-out { to { transform: translateX(100%); } }
+@keyframes vt-back-in { from { opacity: .55; transform: translateX(-12%); } }
+@keyframes vt-tab-out { to { opacity: 0; transform: translateY(3px); } }
+@keyframes vt-tab-in { from { opacity: 0; transform: translateY(3px); } }
+.room-title-text { display: grid; min-width: 0; }
+.room-subtitle { display: none; }
+.thread-parent-link { flex: 0 0 auto; display: inline-flex; align-items: center; gap: .25rem; padding: .15rem 0; border: 0; background: none; color: var(--muted); font: 500 var(--text-xs)/1.2 var(--ui); cursor: pointer; }
+.thread-parent-link:hover, .thread-parent-link:focus-visible { color: var(--text); }
+.thread-parent-link:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: var(--radius-xs); }
+.thread-parent-link .menu-icon { width: .8rem; height: .8rem; }
+/* Chevron on the right, like the Home section toggles. Open points down, closed points right. */
+/* Quiet connection line in the header (instant.md: connection is background state, never a
+   blocking screen). Only rendered at all while disconnected (the x-show on #status in the header partial). */
+header .status { display: flex; align-items: center; gap: .4rem; color: var(--muted); font-size: var(--text-xs); }
+/* Connecting stays at full strength in the brand green while connecting-dim fades the chat behind it. */
+header .status:not(.err) { color: var(--brand); font-weight: 600; }
+header .status:not(.err) .status-spinner { opacity: 1; }
+header .status.err { color: var(--danger, #d33); }
+.status-spinner { width: .65rem; height: .65rem; border-radius: var(--radius-round); border: 1.5px solid currentColor; border-top-color: transparent; opacity: .7; animation: status-spin .8s linear infinite; }
+@keyframes status-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .status-spinner { animation: none; } }
+/* Connecting dim (connecting-dim.ts): chat surfaces fade to half while the socket connects. The
+   header and its status line stay full strength. Input stays live; the outbox queues it. */
+body.connecting-dim :is(#chat, #composer, #rooms, #members-panel, #links-view, [data-phone-screen="home"], [data-phone-screen="dms"]) { opacity: .5; animation: connecting-dim-in var(--dur-base) var(--ease-standard); }
+@keyframes connecting-dim-in { from { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { body.connecting-dim :is(#chat, #composer, #rooms, #members-panel, #links-view, [data-phone-screen="home"], [data-phone-screen="dms"]) { animation: none; } }
+.login .status { display: block; color: var(--muted); font-size: var(--text-sm); }
+header select, header button {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-hi);
+  color: var(--text);
+  padding: 6px 8px;
+  font: inherit;
+}
+header button { cursor: pointer; }
+header > .header-icon {
+  flex: 0 0 2.75rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+/* Ghost toggle on every layout, like .mobile-back; without this phones get the filled header button. */
+header > .members-toggle, header > .channel-search-toggle { border: 0; border-radius: var(--radius-md); background: transparent; color: var(--muted); }
+header > .members-toggle.active { color: var(--brand); }
+header > .channel-search-toggle .menu-icon { display: inline-flex; align-items: center; justify-content: center; }
+header > .channel-search-toggle .menu-icon svg { width: 1.15rem; height: 1.15rem; }
+header .room-title { border: 0; background: none; padding: 0; }
+/* Offer, not a permanent fixture: one slim row above the conversation, dismissible. */
+
+/* Pull-to-refresh chip (pull-refresh.ts): the Slirc logo rides under the header of a phone screen.
+   While pulling it follows the finger (--pull, with resistance), grows and turns as --pull-progress
+   rises, and gets its colour back at the threshold. It breathes during the catch-up, pops once when
+   caught up and leaves upwards. Offline or unreachable widens it into a short note. Same glass as the
+   notify banner. */
+.pull-indicator { position: fixed; z-index: var(--z-pull-indicator); top: var(--header-h); left: 50%; display: flex; align-items: center; justify-content: center; gap: .4rem; min-width: 2.5rem; height: 2.5rem; padding: 0 .4rem; border: 1px solid color-mix(in srgb, var(--line) 85%, transparent); border-radius: var(--radius-pill); background: var(--glass-tint); backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter); color: var(--muted); font: 650 var(--text-sm)/1 var(--ui); white-space: nowrap; translate: -50% calc(var(--pull, 0px) - 3rem); opacity: var(--pull-progress, 0); pointer-events: none; }
+.mobile-screen > .pull-indicator { top: calc(4.6rem + env(safe-area-inset-top, 0px)); }
+.pull-indicator.is-idle { transition: translate var(--dur-entrance) cubic-bezier(.34, 1.56, .64, 1), opacity var(--dur-entrance) var(--ease-standard); }
+.pull-indicator:is(.is-refreshing, .is-current, .is-offline, .is-failed) { opacity: 1; transition: translate var(--dur-base) var(--ease-standard); }
+.pull-logo { flex: none; width: 1.6rem; height: 1.6rem; filter: grayscale(1); opacity: .7; scale: calc(.55 + var(--pull-progress, 0) * .45); rotate: calc((1 - var(--pull-progress, 0)) * -90deg); transition: filter var(--dur-fast) ease, opacity var(--dur-fast) ease; }
+.pull-indicator:is(.armed, .is-refreshing, .is-current) .pull-logo { filter: none; opacity: 1; }
+.pull-indicator.is-refreshing .pull-logo { animation: pull-breathe .9s var(--ease-standard) infinite alternate; }
+.pull-indicator.is-current .pull-logo { animation: pull-pop var(--dur-entrance) cubic-bezier(.34, 1.56, .64, 1) both; }
+@keyframes pull-breathe { from { scale: 1; } to { scale: .8; } }
+@keyframes pull-pop { 0% { scale: .85; } 60% { scale: 1.25; } 100% { scale: 1; } }
+.pull-label { display: none; padding-right: .3rem; }
+.pull-indicator:is(.is-offline, .is-failed) .pull-label { display: inline; }
+/* Reduced motion: the logo stays at its resting place and only fades; no spring, turn or pulse. */
+@media (prefers-reduced-motion: reduce) {
+  .pull-indicator { translate: -50% .5rem; }
+  .pull-indicator.is-idle, .pull-indicator:is(.is-refreshing, .is-current, .is-offline, .is-failed) { transition: opacity var(--dur-base) linear; }
+  .pull-logo, .pull-indicator:is(.is-refreshing, .is-current) .pull-logo { scale: none; rotate: none; animation: none; }
+}
+/* Safari turns a downward drag at the top into its own page reload; we handle the gesture. */
+@media (pointer: coarse) { html, body { overscroll-behavior: none; } .chat { overscroll-behavior-y: contain; } }
+/* top 0 is the chat's content edge, which sits below the header (see .chat), so the banner pins
+   where it rests instead of behind the header. */
+.notify-banner { position: sticky; top: 0; z-index: var(--z-sticky); display: flex; align-items: center; gap: .55rem; margin: 0 0 .35rem; padding: .5rem .55rem .5rem .7rem; border: 0; border-radius: var(--radius-md); background: var(--glass-tint); backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter); color: var(--text); font: var(--text-sm)/1.35 var(--ui); }
+.notify-banner p { flex: 1; min-width: 0; margin: 0; }
+.notify-banner-close { flex: 0 0 auto; width: 1.75rem; height: 1.75rem; display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--muted); cursor: pointer; }
+.notify-banner-close:hover, .notify-banner-close:focus-visible { background: var(--panel-hi); color: var(--text); }
+.notify-banner-close svg { width: .95rem; height: .95rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.install-banner span { flex: 1; min-width: 0; }
+.install-banner a { color: var(--brand); font-weight: 600; text-decoration: none; }
+/* Verification reminder: a banner rather than a dialog, so the code field sits inline and the whole
+   thing can be dismissed without losing the header button that brings it back. */
+.header-dms { position: relative; display: flex; align-items: center; min-height: 2.75rem; padding: 0 .35rem; }
+.header-dm-list { position: absolute; z-index: var(--z-popover); top: calc(100% + .35rem); left: 0; min-width: 12rem; display: grid; padding: .35rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--glass-tint); box-shadow: var(--shadow-md); }
+.header-dm-list button { display: flex; align-items: center; gap: .55rem; min-height: 2.75rem; padding: 0 .6rem; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--text); font: var(--text-sm)/1 var(--ui); text-align: left; cursor: pointer; }
+.header-dm-list button:hover { background: var(--panel-hi); }
+.header-dm-list img { width: 1.5rem; height: 1.5rem; border-radius: var(--radius-round); object-fit: cover; }
+.header-dm-list small { margin-left: auto; color: var(--muted); }
+header button svg, .message-add svg { display: block; width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.settings-toggle.busy::after { border-top-color: var(--brand); }
+header select { max-width: 10.5rem; }
+
+.rooms {
+  position: fixed;
+  z-index: var(--z-sidebar);
+  inset: 0;
+  background: #0006;
+  backdrop-filter: var(--blur-light);
+}
+.rooms-enter, .rooms-leave { transition: opacity var(--dur-base) var(--ease-standard); }
+.rooms-enter .rooms-sheet, .rooms-leave .rooms-sheet { transition: translate var(--dur-base) var(--ease-standard); }
+.rooms-hidden { opacity: 0; }
+.rooms-hidden .rooms-sheet { translate: -100% 0; }
+.rooms-visible { opacity: 1; }
+.rooms-visible .rooms-sheet { translate: 0 0; }
+@media (prefers-reduced-motion: reduce) { .rooms-enter, .rooms-leave, .rooms-enter .rooms-sheet, .rooms-leave .rooms-sheet { transition: none; } }

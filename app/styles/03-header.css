@@ -1,0 +1,23 @@
+/* Every phone and desktop screen head shares one glass: content scrolls under it blurred, and no tint, so it never shows as a band over the page. */
+header, .mobile-screen-head { background: transparent; backdrop-filter: var(--head-glass); -webkit-backdrop-filter: var(--head-glass); }
+header .brand {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+}
+header .brand { min-width: 2.75rem; min-height: 2.75rem; display: grid; place-items: center; }
+header .brand svg { width: 1.5rem; height: 1.5rem; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; }
+.header-logo { display: inline-flex; align-items: center; gap: .3rem; color: var(--text); text-decoration: none; }
+.header-logo .header-wordmark { width: auto; height: .85rem; }
+.room-heading { min-width: 0; margin-left: auto; display: grid; justify-items: end; }
+.room-heading-main { min-width: 0; display: flex; align-items: center; gap: .65rem; }
+.room-title { display: inline-flex; align-items: center; gap: .45rem; border: 0; background: none; color: var(--muted); font: inherit; cursor: pointer; }
+/* A two-line agent title starts level with its avatar; one-line headers keep the old centring. */
+header .room-title:has(.room-subtitle:not(:empty)) > .room-mark { align-self: flex-start; }
+.room-title.direct { color: var(--muted); }
+.room-title:disabled { opacity: 1; cursor: default; }
+.rooms-toggle { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; flex: 0 0 auto; padding: 0; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--muted); cursor: pointer; transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease; }
+.rooms-toggle:hover { color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent); }
+.rooms-toggle:focus-visible { color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent); outline: 2px solid var(--brand); outline-offset: 2px; }

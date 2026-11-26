@@ -1,0 +1,169 @@
+/* Notes: your own scratchpad rows carry no name, avatar or presence, only the text with its time on the right. */
+.msg.note { grid-template-columns: 2rem minmax(0, 1fr) auto; grid-template-rows: auto; }
+.msg.note .nick, .msg.note .message-avatar, .msg.note .mobile-time, .msg.note .message-add { display: none; }
+.msg.note .body { grid-column: 2; grid-row: 1; }
+.msg.note .time { display: block; grid-column: 3; grid-row: 1; align-self: baseline; justify-self: end; transform: none; font-size: var(--text-2xs); }
+@media (max-width: 500px) { .msg.note { grid-template-columns: 1.25rem minmax(0, 1fr) auto; } }
+@media (not (pointer: coarse)) and (min-width: 501px) {
+  .msg.note { grid-template-columns: 4.25rem minmax(0, 1fr) auto; }
+  .msg.note, .msg.note:not(.cont):not(.action) { margin-bottom: .35rem; padding-top: .25rem; }
+  .message-entry:has(.msg.note) { margin-top: 0; }
+  .msg.note .message-more { grid-row: 1; }
+}
+
+/* Poll cards (+slirc/poll=<id>). Like the agent offline card, a poll stands outside the message
+   layout in the conversation intro's look. Options read as a ledger: a tick, the label, voters'
+   faces, a tabular count, and a thin bar of the share of people who picked it. */
+.poll-card { width: min(100%, 30rem); margin: .45rem 0 .7rem; font-family: var(--ui); }
+.poll-card-body, .poll-card.is-loading { padding: .85rem .95rem .7rem; border: 1px solid color-mix(in srgb, var(--line) 75%, transparent); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--panel-hi) 50%, transparent); }
+.poll-loading { margin: 0; color: var(--muted); font-size: var(--text-sm); }
+.poll-head { display: flex; align-items: center; gap: .55rem; }
+.poll-mark { display: grid; place-items: center; flex: 0 0 auto; width: 1.75rem; height: 1.75rem; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--brand) 14%, transparent); color: var(--brand); }
+.poll-mark svg, .poll-tick svg, .poll-winner svg, .poll-flag svg, .composer-plus-menu svg, .poll-option-handle svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2.25; stroke-linecap: round; stroke-linejoin: round; }
+.poll-byline { display: flex; flex-wrap: wrap; align-items: baseline; gap: .1rem .45rem; min-width: 0; margin: 0; }
+.poll-eyebrow { color: var(--brand); font: 750 var(--text-xs)/1.3 var(--ui); letter-spacing: .06em; text-transform: uppercase; }
+.poll-card.is-closed .poll-eyebrow, .poll-card.is-closed .poll-mark { color: var(--muted); }
+.poll-card.is-closed .poll-mark { background: color-mix(in srgb, var(--muted) 16%, transparent); }
+.poll-by { color: var(--muted); font-size: var(--text-xs); }
+.poll-flag { display: inline-flex; align-items: center; gap: .25rem; color: var(--muted); font-size: var(--text-xs); }
+.poll-flag svg { width: .8rem; height: .8rem; }
+.poll-time { margin-left: auto; color: var(--muted); font: var(--text-xs)/1.3 var(--ui); font-variant-numeric: tabular-nums; }
+.poll-menu-host { position: relative; flex: 0 0 auto; }
+.poll-more { display: grid; place-items: center; width: 1.85rem; height: 1.85rem; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--muted); cursor: pointer; }
+.poll-more:hover, .poll-more:focus-visible, .poll-more[aria-expanded="true"] { background: var(--panel-hi); color: var(--text); }
+.poll-more:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.poll-menu { position: absolute; z-index: var(--z-sticky); }
+.poll-menu, .composer-plus-menu { min-width: 10.5rem; padding: .3rem; border: 1px solid color-mix(in srgb, var(--line) 85%, transparent); border-radius: var(--radius-lg); background: var(--glass-tint); box-shadow: var(--shadow-md); backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter); animation: picker-in var(--dur-fast) var(--ease-standard); }
+.poll-menu { top: calc(100% + .25rem); right: 0; }
+.poll-menu button, .composer-plus-menu button { display: flex; align-items: center; gap: .55rem; width: 100%; padding: .55rem .6rem; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text); font: var(--text-sm)/1.2 var(--ui); text-align: left; cursor: pointer; }
+.poll-menu button:hover, .poll-menu button:focus-visible, .composer-plus-menu button:hover, .composer-plus-menu button:focus-visible { background: var(--panel-hi); outline: none; }
+.poll-menu button.danger { color: var(--danger); }
+.poll-menu button.danger:hover, .poll-menu button.danger:focus-visible { background: color-mix(in srgb, var(--danger) 14%, transparent); }
+.poll-question { margin: .6rem 0 .15rem; color: var(--text); font: 750 var(--text-base)/1.35 var(--ui); letter-spacing: -.01em; overflow-wrap: anywhere; }
+.poll-hint { margin: 0 0 .55rem; color: var(--muted); font-size: var(--text-xs); line-height: 1.4; }
+.poll-options { display: grid; gap: .15rem; }
+.poll-option { display: flex; align-items: flex-start; gap: .65rem; width: 100%; padding: .5rem .45rem .55rem; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: background-color var(--dur-fast) ease; }
+.poll-option:hover { background: color-mix(in srgb, var(--panel-hi) 70%, transparent); }
+.poll-option:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.poll-option.is-mine { background: color-mix(in srgb, var(--brand) 7%, transparent); }
+.poll-card.is-closed .poll-option { cursor: default; }
+.poll-card.is-closed .poll-option:hover { background: transparent; }
+.poll-card.is-closed .poll-option.is-mine { background: color-mix(in srgb, var(--brand) 7%, transparent); }
+.poll-tick { display: grid; place-items: center; flex: 0 0 auto; width: 1.15rem; height: 1.15rem; margin-top: .05rem; border: 2px solid color-mix(in srgb, var(--muted) 80%, transparent); color: transparent; transition: background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease; }
+.poll-tick.is-dot { border-radius: var(--radius-round); }
+.poll-tick.is-box { border-radius: var(--radius-xs); }
+.poll-tick svg { width: .75rem; height: .75rem; stroke-width: 3.25; }
+.poll-option.is-mine .poll-tick { border-color: var(--brand-fill); background: var(--brand-fill); color: var(--on-brand); }
+.poll-card.is-closed .poll-option:not(.is-mine) .poll-tick { opacity: .45; }
+.poll-option-main { display: grid; gap: .35rem; flex: 1; min-width: 0; }
+.poll-option-row { display: flex; align-items: center; gap: .45rem; min-height: 1.2rem; }
+.poll-option-label { flex: 1; min-width: 0; font-size: var(--text-sm); line-height: 1.35; overflow-wrap: anywhere; }
+.poll-option.is-winner .poll-option-label { font-weight: 700; }
+.poll-winner { display: inline-grid; place-items: center; flex: 0 0 auto; color: var(--brand); }
+.poll-winner svg { width: .9rem; height: .9rem; }
+.poll-voters { display: inline-flex; flex: 0 0 auto; flex-direction: row-reverse; }
+.poll-voters img { width: 1.125rem; height: 1.125rem; margin-left: -.3rem; border-radius: var(--radius-round); background: var(--avatar-fill); box-shadow: 0 0 0 2px var(--panel); }
+.poll-voters img:last-child { margin-left: 0; }
+.poll-count { flex: 0 0 auto; min-width: 1.25rem; color: var(--muted); font: 600 var(--text-xs)/1 var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+.poll-option.is-mine .poll-count, .poll-option.is-winner .poll-count { color: var(--text); }
+.poll-bar { display: block; height: .25rem; overflow: hidden; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--panel-hi) 90%, transparent); }
+.poll-bar > span { display: block; height: 100%; border-radius: inherit; background: color-mix(in srgb, var(--muted) 70%, transparent); transition: width var(--dur-entrance) var(--ease-standard); }
+.poll-option.is-mine .poll-bar > span, .poll-option.is-winner .poll-bar > span { background: var(--brand-fill); }
+.poll-error { margin: .4rem .45rem 0; font-size: var(--text-xs); }
+.poll-foot { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .45rem; padding: .5rem .45rem 0; border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.poll-total { color: var(--muted); font-size: var(--text-xs); }
+.poll-view-votes { padding: .3rem .5rem; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--brand); font: 700 var(--text-sm)/1.2 var(--ui); cursor: pointer; }
+.poll-view-votes:hover, .poll-view-votes:focus-visible { background: color-mix(in srgb, var(--brand) 12%, transparent); outline: none; }
+
+/* The composer's + menu sits above the button. */
+/* Teleported to <body>; placePlusMenu (popups.ts) sets left and bottom from the + button. */
+.composer-plus-menu { position: fixed; z-index: var(--z-floating); top: auto; right: auto; }
+
+/* Create-poll dialog and the votes sheet: a centred card on desktop, a bottom sheet on phones. */
+.poll-dialog-card { text-align: left; }
+.poll-dialog-card.notice-card { width: min(28rem, calc(100vw - 2rem)); padding: 1.15rem 1.25rem 1.25rem; }
+.poll-dialog-card.action-sheet { max-height: calc(100dvh - 2rem - var(--kb, 0px)); overflow-y: auto; padding-inline: 1rem; }
+.poll-form { display: grid; gap: 1rem; }
+.poll-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.poll-dialog-head h2 { margin: 0; font: 700 var(--text-lg)/1.3 var(--ui); }
+.poll-field { display: grid; gap: .4rem; min-width: 0; margin: 0; padding: 0; border: 0; }
+.poll-field > span, .poll-field > legend { padding: 0; color: var(--muted); font: 600 var(--text-xs)/1.2 var(--ui); letter-spacing: .03em; }
+.poll-field > legend { margin-bottom: .4rem; }
+.poll-field input[type="text"] { width: 100%; min-height: 2.5rem; padding: 0 .7rem; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg); color: var(--text); font: var(--text-sm)/1.2 var(--ui); }
+.poll-field input[type="text"]:focus-visible { outline: 2px solid var(--brand); outline-offset: -1px; border-color: transparent; }
+.poll-option-list { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; }
+.poll-option-list .poll-draft-row { display: flex; align-items: center; gap: .25rem; border-radius: var(--radius-md); transition: background-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease; }
+.poll-option-list .poll-draft-row.is-dragging { background: color-mix(in srgb, var(--panel-hi) 80%, transparent); box-shadow: var(--shadow-sm); }
+.poll-option-handle, .poll-option-remove { display: grid; place-items: center; flex: 0 0 auto; width: 2rem; height: 2.5rem; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--muted); }
+.poll-option-handle { cursor: grab; touch-action: none; }
+.poll-draft-row.is-dragging .poll-option-handle { cursor: grabbing; }
+.poll-option-remove { cursor: pointer; }
+.poll-option-handle:hover, .poll-option-handle:focus-visible, .poll-option-remove:hover, .poll-option-remove:focus-visible { background: var(--panel-hi); color: var(--text); outline: none; }
+.poll-option-handle svg { stroke-width: 3; }
+.poll-option-add { display: inline-flex; align-items: center; justify-self: start; gap: .4rem; margin-top: .15rem; padding: .45rem .6rem .45rem .5rem; border: 1px dashed color-mix(in srgb, var(--muted) 60%, transparent); border-radius: var(--radius-md); background: transparent; color: var(--text); font: 600 var(--text-sm)/1.2 var(--ui); cursor: pointer; }
+.poll-option-add:hover, .poll-option-add:focus-visible { border-color: var(--brand); color: var(--brand); outline: none; }
+.poll-option-add .menu-icon svg { width: .95rem; height: .95rem; }
+.poll-settings { display: grid; gap: .4rem; }
+.poll-settings .settings-toggle { min-height: 3rem; }
+.poll-settings .settings-toggle small::before { content: none; }
+.poll-settings .settings-toggle > span:first-child { flex-direction: column; align-items: flex-start; gap: .1rem; }
+.poll-segments { display: grid; grid-template-columns: repeat(4, 1fr); gap: .15rem; padding: .15rem; border-radius: var(--radius-md); background: color-mix(in srgb, var(--panel-hi) 55%, transparent); }
+.poll-segment { position: relative; display: grid; place-items: center; min-height: 2.1rem; border-radius: calc(var(--radius-md) - .1rem); color: var(--muted); font: 600 var(--text-xs)/1 var(--ui); cursor: pointer; transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease; }
+.poll-segment input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.poll-segment:hover { color: var(--text); }
+.poll-segment:has(input:checked) { background: var(--bg); color: var(--text); box-shadow: var(--shadow-sm); }
+.poll-segment:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 1px; }
+.poll-actions { margin-top: .1rem; }
+.poll-votes-card { display: grid; gap: .75rem; }
+.poll-votes-body { display: grid; gap: .9rem; }
+.poll-votes-question { margin: 0; color: var(--text); font: 700 var(--text-base)/1.35 var(--ui); overflow-wrap: anywhere; }
+.poll-votes-body .poll-hint { margin: -.5rem 0 0; }
+.poll-votes-option h3 { display: flex; align-items: center; gap: .4rem; margin: 0; padding-bottom: .35rem; border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); font: 600 var(--text-sm)/1.3 var(--ui); }
+.poll-votes-label { min-width: 0; overflow-wrap: anywhere; }
+.poll-votes-count { margin-left: auto; color: var(--muted); font: 600 var(--text-xs)/1 var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.poll-votes-option ul { display: grid; gap: .1rem; margin: .35rem 0 0; padding: 0; list-style: none; }
+.poll-votes-option li { display: flex; align-items: center; gap: .55rem; min-height: 2.25rem; }
+.poll-votes-option li img { width: 1.5rem; height: 1.5rem; border-radius: var(--radius-round); background: var(--avatar-fill); }
+.poll-votes-name { flex: 1; min-width: 0; font-size: var(--text-sm); overflow-wrap: anywhere; }
+.poll-votes-option time { color: var(--muted); font: var(--text-xs)/1 var(--ui); font-variant-numeric: tabular-nums; }
+:root[data-theme="light"] .poll-voters img { box-shadow: 0 0 0 2px var(--bg); }
+@media (max-width: 500px) {
+  .poll-card-body { padding: .75rem .7rem .6rem; }
+  .poll-option { padding-block: .6rem .65rem; }
+}
+@media (prefers-reduced-motion: reduce) { .poll-option, .poll-tick, .poll-bar > span, .poll-menu, .composer-plus-menu, .poll-segment, .poll-option-list .poll-draft-row { transition: none; animation: none; } }
+.poll-draft-row .poll-option-input { flex: 1; min-width: 0; }
+.poll-option-remove svg { width: .95rem; height: .95rem; }
+.poll-dialog-card .pair-actions.poll-actions { justify-content: flex-end; }
+/* On desktop the card starts where message avatars do, past the time gutter of .msg. On a phone it fills the column. */
+@media (not (pointer: coarse)) and (min-width: 501px) { .poll-card { margin-left: calc(.35rem + 4.25rem + .6rem); } }
+.poll-dialog-card .poll-votes-question { color: var(--text); }
+/* Job cards: a bot's daily job digest, drawn on the poll card's frame. */
+.job-card { width: min(100%, 36rem); }
+.job-card .poll-by { overflow-wrap: anywhere; }
+.job-tabs { display: flex; flex-wrap: wrap; gap: .3rem; margin: .75rem 0 .35rem; }
+.job-tabs button { padding: .3rem .65rem; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--muted); font: 650 var(--text-xs)/1 var(--ui); cursor: pointer; transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease; }
+.job-tabs button:hover { color: var(--text); }
+.job-tabs button.on { background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--brand); }
+.job-tabs button:focus-visible, .job-more:focus-visible, .job-row:focus-visible, .job-foot a:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.job-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.job-row { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; align-items: center; gap: .7rem; margin: 0 -.4rem; padding: .5rem .4rem; border-radius: var(--radius-md); color: inherit; text-decoration: none; transition: background-color var(--dur-fast) ease; }
+.job-list li + li .job-row { box-shadow: 0 -1px 0 color-mix(in srgb, var(--line) 55%, transparent); }
+.job-row:hover { background: color-mix(in srgb, var(--panel-hi) 55%, transparent); }
+.job-logo { position: relative; display: grid; place-items: center; width: 2rem; height: 2rem; overflow: hidden; border-radius: var(--radius-sm); }
+/* Logos are drawn for white; the letter tile under one shows when it fails to load. */
+.job-logo img { position: absolute; inset: 0; width: 100%; height: 100%; background: #fff; object-fit: contain; }
+.job-logo > span { display: grid; place-items: center; width: 100%; height: 100%; background: color-mix(in srgb, var(--brand) 22%, var(--panel-hi)); color: var(--text); font: 750 var(--text-sm)/1 var(--ui); }
+.job-main { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
+.job-main strong { overflow: hidden; color: var(--text); font: 650 var(--text-sm)/1.25 var(--ui); text-overflow: ellipsis; white-space: nowrap; }
+.job-main small { overflow: hidden; color: var(--muted); font: var(--text-xs)/1.2 var(--ui); text-overflow: ellipsis; white-space: nowrap; }
+.job-pay { padding: .3rem .45rem; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--mine) 12%, transparent); color: var(--mine); font: 600 var(--text-xs)/1 var(--mono); white-space: nowrap; }
+.job-pay.none { background: transparent; color: var(--muted); font-weight: 400; }
+.job-more { margin: .35rem 0 0; padding: .35rem 0; border: 0; background: transparent; color: var(--brand); font: 650 var(--text-xs)/1 var(--ui); cursor: pointer; }
+.job-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .75rem; margin-top: .55rem; padding-top: .6rem; border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent); color: var(--muted); font: var(--text-xs)/1.3 var(--ui); }
+.job-foot a { color: var(--mine); text-decoration: none; }
+.job-foot > a { font-weight: 650; }
+.job-foot a:hover { text-decoration: underline; }
+@media (max-width: 500px) { .job-pay { padding-inline: .35rem; } }
+@media (prefers-reduced-motion: reduce) { .job-tabs button, .job-row { transition: none; } }
+
