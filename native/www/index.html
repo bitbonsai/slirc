@@ -58,10 +58,10 @@
   main.ready { visibility: visible; }
   /* Shown while a saved workspace is checked and opened, until the form or the workspace takes over.
      Same box as the web boot screen (the small viewport, mark centred), so the mark stays where the
-     launch screen put it and where the boot screen will. The label hangs below it and never moves it. */
+     launch screen put it and where the boot screen will. It carries no text: a label that arrives late
+     reads as a flicker. */
   .opening { position: fixed; top: 0; left: 0; right: 0; height: 100svh; display: grid; place-items: center; }
   .opening img { width: var(--boot-mark); height: var(--boot-mark); margin: 0; }
-  .opening span { position: absolute; top: calc(50% + var(--boot-mark) / 2 + 1rem); left: 0; right: 0; text-align: center; color: var(--muted); font-size: var(--text-sm); }
   main.ready ~ .opening { display: none; }
   img { display: block; height: 2.25rem; width: auto; margin: 0 auto 1.1rem; }
   h1 { margin: 0 0 .35rem; font-size: var(--text-lg); line-height: 1.25; }
@@ -134,7 +134,6 @@
     <source srcset="logo-light.webp" media="(prefers-color-scheme: light)" />
     <img src="logo.webp" width="384" height="384" decoding="sync" alt="Slirc" />
   </picture>
-  <span></span>
 </div>
 <script>
   // The launch screen stays up until the mark above has painted, so it hands over with no gap. The
@@ -194,14 +193,13 @@
     store = next;
   }
 
-  // The logo screen with "Opening <host>…" while the shell loads a workspace.
-  function opening(url) {
+  // The mark alone while the shell loads a workspace. Text would arrive late and flicker.
+  function opening() {
     main.classList.remove("ready");
-    document.querySelector(".opening span").textContent = "Opening " + hostOf(workspaceOrigin(url) || url) + "…";
   }
 
   async function navigateToWorkspace(url) {
-    opening(url);
+    opening();
     const shell = window.Capacitor?.Plugins?.SlircShell;
     if (shell?.openWorkspace) {
       await shell.openWorkspace({ url });
