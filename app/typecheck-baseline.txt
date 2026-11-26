@@ -27,6 +27,12 @@ src/routes/agents.ts TS18048 'seen' is possibly 'undefined'.
 src/routes/agents.ts TS18048 'seen' is possibly 'undefined'.
 src/routes/agents.ts TS2769 No overload matches this call.
 src/routes/channels.ts TS2345 Argument of type '(channel: string) => Promise<ChannelHistoryResult>' is not assignable to parameter of type '(channel: string) => Promise<void>'.
+src/routes/uploads.ts TS2345 Argument of type 'string | undefined' is not assignable to parameter of type 'string | null'.
+src/routes/uploads.ts TS2769 No overload matches this call.
+src/routes/uploads.ts TS2769 No overload matches this call.
+src/routes/uploads.ts TS2769 No overload matches this call.
+src/routes/uploads.ts TS2769 No overload matches this call.
+src/routes/uploads.ts TS2769 No overload matches this call.
 src/server.ts TS2322 Type 'EmbedMeta' is not assignable to type 'Record<string, unknown>'.
 src/server.ts TS2339 Property 'email' does not exist on type '{}'.
 src/server.ts TS2339 Property 'greeting_note_seen' does not exist on type '{}'.
@@ -38,16 +44,10 @@ src/server.ts TS2339 Property 'theme' does not exist on type '{}'.
 src/server.ts TS2339 Property 'verified_at' does not exist on type '{}'.
 src/server.ts TS2345 Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'Record<string, string>'.
 src/server.ts TS2345 Argument of type 'string | undefined' is not assignable to parameter of type 'string | URL'.
-src/server.ts TS2345 Argument of type 'string | undefined' is not assignable to parameter of type 'string | null'.
 src/server.ts TS2345 Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
 src/server.ts TS2345 Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
 src/server.ts TS2345 Argument of type '{ data: RelaySocketData; headers?: Record<string, string> | undefined; }' is not assignable to parameter of type '{ headers?: HeadersInit | undefined; data?: undefined; }'.
 src/server.ts TS2345 Argument of type '{ width?: number | undefined; height?: number | undefined; }' is not assignable to parameter of type 'Record<string, string>'.
-src/server.ts TS2769 No overload matches this call.
-src/server.ts TS2769 No overload matches this call.
-src/server.ts TS2769 No overload matches this call.
-src/server.ts TS2769 No overload matches this call.
-src/server.ts TS2769 No overload matches this call.
 src/server.ts TS2769 No overload matches this call.
 src/server.ts TS2769 No overload matches this call.
 src/server.ts TS2769 No overload matches this call.
