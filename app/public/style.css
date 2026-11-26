@@ -246,7 +246,6 @@ header .brand {
 header .brand { min-width: 2.75rem; min-height: 2.75rem; display: grid; place-items: center; }
 header .brand svg { width: 1.5rem; height: 1.5rem; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; }
 .header-logo { display: inline-flex; align-items: center; gap: .3rem; color: var(--text); text-decoration: none; }
-.header-logo .header-mark { width: 1.25rem; height: 1.25rem; }
 .header-logo .header-wordmark { width: auto; height: .85rem; }
 .room-heading { min-width: 0; margin-left: auto; display: grid; justify-items: end; }
 .room-heading-main { min-width: 0; display: flex; align-items: center; gap: .65rem; }
@@ -378,11 +377,6 @@ html[data-transition="tab"]::view-transition-old(mobile-nav), html[data-transiti
 @keyframes vt-tab-out { to { opacity: 0; transform: translateY(3px); } }
 @keyframes vt-tab-in { from { opacity: 0; transform: translateY(3px); } }
 .room-title-text { display: grid; min-width: 0; }
-.thread-title-rich { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.thread-title-seg { display: inline; }
-.thread-title-rich code { padding: .08em .25em; border-radius: var(--radius-xs); background: color-mix(in srgb, var(--panel-hi) 72%, transparent); font: .9em/1 var(--mono); }
-.thread-title-quote { margin-right: .25rem; padding-left: .35rem; border-left: 2px solid color-mix(in srgb, var(--brand) 70%, transparent); color: var(--muted); font-style: italic; }
-.thread-title-rich a { color: inherit; text-decoration: underline; }
 .room-subtitle { display: none; }
 .thread-parent-link { flex: 0 0 auto; display: inline-flex; align-items: center; gap: .25rem; padding: .15rem 0; border: 0; background: none; color: var(--muted); font: 500 var(--text-xs)/1.2 var(--ui); cursor: pointer; }
 .thread-parent-link:hover, .thread-parent-link:focus-visible { color: var(--text); }
@@ -404,7 +398,6 @@ html[data-transition="tab"]::view-transition-old(mobile-nav), html[data-transiti
 /* Chevron on the right, like the Home section toggles. Open points down, closed points right. */
 .room-topic { max-width: min(46vw, 32rem); overflow: hidden; padding: 0; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: var(--text-2xs); line-height: 1.15; text-align: right; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .room-topic.expanded { white-space: normal; overflow-wrap: anywhere; }
-.channel-menu-topic { display: none; }
 /* Quiet connection line in the header (instant.md: connection is background state, never a
    blocking screen). Only rendered at all while disconnected (the x-show on #status in the header partial). */
 header .status { display: flex; align-items: center; gap: .4rem; color: var(--muted); font-size: var(--text-xs); }
@@ -482,12 +475,6 @@ header .room-title { border: 0; background: none; padding: 0; }
 /* Verification reminder: a banner rather than a dialog, so the code field sits inline and the whole
    thing can be dismissed without losing the header button that brings it back. */
 .header-dms { position: relative; display: flex; align-items: center; min-height: 2.75rem; padding: 0 .35rem; }
-.header-dm { position: relative; width: 1.9rem; height: 1.9rem; margin-left: -.55rem; padding: 0; border: 0; border-radius: var(--radius-round); background: var(--panel-hi); color: var(--text); font: 700 var(--text-2xs)/1 var(--ui); cursor: pointer; }
-.header-dm:first-child { margin-left: 0; }
-.header-dm img { width: 100%; height: 100%; border-radius: var(--radius-round); object-fit: cover; }
-.header-dm { box-shadow: 0 0 0 .18rem var(--panel); }
-.header-dm-more { display: grid; place-items: center; }
-.header-dm-count { position: absolute; top: -.2rem; right: -.2rem; min-width: .95rem; height: .95rem; padding: 0 .2rem; border: 2px solid var(--panel); border-radius: var(--radius-pill); background: var(--brand); color: var(--bg); font: 750 .55rem/.75rem var(--ui); text-align: center; }
 .header-dm-list { position: absolute; z-index: var(--z-popover); top: calc(100% + .35rem); left: 0; min-width: 12rem; display: grid; padding: .35rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--glass-tint); box-shadow: var(--shadow-md); }
 .header-dm-list button { display: flex; align-items: center; gap: .55rem; min-height: 2.75rem; padding: 0 .6rem; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--text); font: var(--text-sm)/1 var(--ui); text-align: left; cursor: pointer; }
 .header-dm-list button:hover { background: var(--panel-hi); }
@@ -495,20 +482,6 @@ header .room-title { border: 0; background: none; padding: 0; }
 .header-dm-list small { margin-left: auto; color: var(--muted); }
 header button svg, .message-add svg { display: block; width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .settings-toggle.busy::after { border-top-color: var(--brand); }
-.header-tooltip {
-  position: fixed;
-  z-index: var(--z-floating);
-  width: max-content;
-  max-width: min(18rem, calc(100vw - 2rem));
-  padding: .55rem .7rem;
-  border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--panel-hi) 82%, transparent);
-  color: var(--text);
-  box-shadow: var(--shadow-md);
-  backdrop-filter: var(--blur-light) saturate(1.2);
-  font: var(--text-xs)/1.3 var(--ui);
-  pointer-events: none;
-}
 header select { max-width: 10.5rem; }
 
 .rooms {
@@ -554,7 +527,6 @@ header select { max-width: 10.5rem; }
   /* 5. Room list scrolls fully clear of the fixed footer. */
   body.rooms-docked .rooms-sheet { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)); }
   .header-logo { position: absolute; left: calc(var(--rail-w) + 1rem); top: 50%; display: inline-flex; align-items: center; gap: .4rem; padding: 0; translate: 0 -50%; }
-  .header-logo .header-mark { width: 1.5rem; height: 1.5rem; }
   .header-logo .header-wordmark { width: auto; height: 1rem; }
   /* Dedicated sidebar toggle: on the header row beside the mark, right-aligned inside the 15rem
      rail when open; it stays in the header (not the sidebar) so it is reachable while collapsed. */
@@ -917,9 +889,6 @@ img[src^="data:image/svg+xml"] { scale: .9; object-fit: contain !important; bord
 .message-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .thread-root { margin-bottom: .45rem; padding-bottom: .55rem; border-bottom: 1px solid color-mix(in srgb, var(--brand) 25%, transparent); }
 .thread-root .nick, .thread-root .time { display: none; }
-.thread-root-origin { grid-column: 4; grid-row: 1; justify-self: start; display: inline-flex; align-items: center; gap: .25rem; padding: 0; border: 0; background: none; color: var(--muted); font: 600 var(--text-xs)/1.4 var(--ui); cursor: pointer; }
-.thread-root-origin:hover, .thread-root-origin:focus-visible { color: var(--text); }
-.thread-root-origin .menu-icon { width: .75rem; height: .75rem; }
 .msg .body { grid-column: 4; min-width: 0; overflow-wrap: anywhere; container-type: inline-size; }
 .message-copy { display: block; }
 .msg .body .body-seg > span { white-space: pre-wrap; }
@@ -1076,11 +1045,6 @@ html.boot-landed .mobile-screen .mobile-row { animation: row-in var(--dur-entran
   transition: color var(--dur-micro) var(--ease-standard);
 }
 .thread-link svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transform: scaleX(-1); }
-.thread-avatars { display: flex; flex-direction: row-reverse; }
-.thread-avatar { width: 1.1rem; height: 1.1rem; margin-left: -.3rem; flex: 0 0 auto; overflow: hidden; border: 1px solid var(--bg); border-radius: var(--radius-round); background: var(--avatar-fill); }
-.thread-avatar img { width: 100%; height: 100%; display: block; border-radius: 0 !important; object-fit: cover; scale: 1 !important; }
-.thread-avatar:has(img[src^="data:image/svg+xml"]), .thread-avatar:has(img[src^="/icons/agents/"]) { background: var(--panel-hi); }
-.thread-avatar img[src^="data:image/svg+xml"], .thread-avatar img[src^="/icons/agents/"] { object-fit: contain !important; }
 .thread-link:hover, .thread-link:focus-visible { color: var(--brand); }
 .msg.action { grid-template-columns: 2rem 3.25rem auto minmax(0, 1fr); color: var(--muted); font-style: italic; }
 .msg.action .nick { color: var(--brand); font-weight: 650; overflow: visible; font-style: italic; }
@@ -1202,7 +1166,6 @@ html.boot-landed .mobile-screen .mobile-row { animation: row-in var(--dur-entran
 @keyframes thumb-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .thumb-img.thumb-loaded { animation: none; } }
 .reaction-chip .custom-emoji, .picker-reaction .custom-emoji, .sheet-reactions .custom-emoji, .sheet-reaction-rows .custom-emoji, .reaction-tooltip .custom-emoji { width: 1.35rem; height: 1.35rem; margin: 0; vertical-align: middle; }
-.thread-title-rich .custom-emoji { width: 1em; height: 1em; }
 .msg .body video {
   display: block;
   max-width: min(100%, 440px);
@@ -1950,9 +1913,6 @@ body.peeking .chat #messages { padding-bottom: calc(4.5rem + env(safe-area-inset
 /* Channel settings dialog: two toggles for everyone, owner fields below. */
 /* Channel settings: title + summary, then Your view, About, Access, Danger. Spacing separates sections; no hairlines.
    Font floor in this dialog is .75rem. */
-.channel-prefs .mobile-settings-body { display: grid; gap: 1.25rem; }
-.channel-prefs-head { display: grid; gap: .2rem; padding-right: 2.5rem; }
-.channel-prefs-title { margin: 0; font: 750 var(--text-lg)/1.2 var(--ui); }
 .prefs-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: .35rem .1rem; border: 0; background: transparent; cursor: pointer; }
 .prefs-toggle:hover { color: var(--text); }
 .prefs-text { display: grid; gap: .15rem; min-width: 0; flex: 1; }
@@ -2024,7 +1984,6 @@ body.peeking .chat #messages { padding-bottom: calc(4.5rem + env(safe-area-inset
   .message-avatar { display: grid; grid-column: 2; grid-row: 1; align-self: start; width: 1.5rem; height: 1.5rem; }
   .mobile-time { display: inline; grid-column: 4; grid-row: 1; align-self: baseline; }
   .msg .body { grid-column: 3; grid-row: 1; }
-  .thread-root-origin { grid-column: 3; grid-row: 1; }
   .thread-root .body { grid-row: 2; }
   .composer { gap: .25rem; }
   .reaction-picker { display: none !important; }
@@ -2049,7 +2008,6 @@ body.peeking .chat #messages { padding-bottom: calc(4.5rem + env(safe-area-inset
   .msg .nick { grid-column: 3; grid-row: 1; justify-self: start; text-align: left; font: 700 var(--text-sm)/1.4 var(--ui); }
   .msg .time { grid-column: 4; grid-row: 1; align-self: baseline; justify-self: start; text-align: left; transform: translateY(.1875rem); color: color-mix(in srgb, var(--muted) 45%, transparent); font: 400 var(--text-xs)/1.4 var(--ui); }
   .msg .body { grid-column: 3 / span 2; grid-row: 2; line-height: 1.55; }
-  .thread-root-origin { grid-column: 3 / span 2; grid-row: 1; }
   .msg.cont .message-avatar, .msg.cont:not(.action) .nick { display: none; }
   .msg.cont .body { grid-row: 1; }
   .msg.cont .time { display: none; }
@@ -2077,11 +2035,10 @@ body.peeking .chat #messages { padding-bottom: calc(4.5rem + env(safe-area-inset
   .room-title-text > span { font: 650 var(--text-base)/1.15 var(--ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .room-subtitle { display: block; overflow: hidden; color: var(--muted); font: 500 var(--text-xs)/1.2 var(--ui); text-overflow: ellipsis; white-space: nowrap; max-width: 46vw; }
   .thread-link { gap: .35rem; margin-top: .25rem; color: var(--muted); font: 600 var(--text-xs)/1 var(--ui); white-space: nowrap; }
-  .thread-avatar { width: 1.25rem; height: 1.25rem; }
   .room-title-chevron { display: block; flex: 0 0 auto; width: 1rem; height: 1rem; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .mobile-back svg, header button svg { width: 1.5rem; height: 1.5rem; stroke-width: 2; }
   /* 44pt hit areas for small visuals */
-  .header-dm::after, .image-preview summary::after { content: ""; position: absolute; inset: -.45rem; }
+  .image-preview summary::after { content: ""; position: absolute; inset: -.45rem; }
   .mobile-time { font-size: var(--text-2xs); }
   /* Phones reach channels through More, and the channels panel hides both the back arrow and the × when it
      stands alone, so the sheet keeps no + that could strand someone. */
@@ -2109,7 +2066,6 @@ body.peeking .chat #messages { padding-bottom: calc(4.5rem + env(safe-area-inset
   /* The phone message avatar is 24px; a 40px invisible pad makes it an easy tap and long press target. */
   .message-avatar.avatar-status-host::before { content: ""; position: absolute; inset: -.5rem; }
   .composer { border-color: transparent; background: var(--nav-surface); box-shadow: var(--nav-edge); backdrop-filter: var(--nav-glass); -webkit-backdrop-filter: var(--nav-glass); }
-  .channel-prefs .mobile-settings-body { align-content: start; }
   .mobile-settings-body { min-height: 0; flex: 1; overflow-y: auto; padding: .75rem 1rem calc(var(--nav-h) + var(--nav-lift) + 1rem); }
   .admin-settings > .mobile-settings-body, .channel-settings > .mobile-settings-body, .agent-settings > .mobile-settings-body, .bot-settings > .mobile-settings-body, .irc-settings > .mobile-settings-body { display: flex; flex-direction: column; }
   .admin-settings > .mobile-settings-body::before, .channel-settings > .mobile-settings-body::before, .agent-settings > .mobile-settings-body::before, .bot-settings > .mobile-settings-body::before, .irc-settings > .mobile-settings-body::before { content: ""; margin-top: auto; }
@@ -2126,7 +2082,6 @@ body.peeking .chat #messages { padding-bottom: calc(4.5rem + env(safe-area-inset
   .channel-menu { position: fixed; z-index: var(--z-navigation-menu); inset: auto 0 0; width: 100vw; min-width: 0; padding: .75rem .75rem calc(.75rem + env(safe-area-inset-bottom, 0px)); border: 0; border-top: 1px solid color-mix(in srgb, var(--text) 12%, transparent); border-radius: 1.25rem 1.25rem 0 0; background: var(--glass-tint); backdrop-filter: var(--blur-heavy) saturate(1.3); -webkit-backdrop-filter: var(--blur-heavy) saturate(1.3); box-shadow: none; animation: sheet-in var(--dur-base) ease-out; }
   .channel-menu button { min-height: 2.9rem; padding: 0 .9rem; border-radius: var(--radius-md); font: var(--text-base)/1 var(--ui); }
   .channel-menu button:active { background: var(--panel-hi); }
-  .channel-menu-topic { display: block; margin: 0 0 .5rem; padding: .4rem .9rem .75rem; border-bottom: 1px solid var(--line); color: var(--muted); font: var(--text-sm)/1.35 var(--ui); overflow-wrap: anywhere; }
   /* Above-composer floaters: composer top edge = --composer-bottom + composer height (--composer-space minus kb and its 16px gap). */
   .toast-region, .giphy-results, .new-below { --above-composer: calc(var(--composer-bottom) + var(--composer-space, 4rem) - var(--kb, 0px) - 16px + .5rem); }
   .toast-region, .new-below { bottom: var(--above-composer); }
@@ -2334,10 +2289,6 @@ dialog.custom-modal.sheet-modal { padding: 0 0 var(--kb, 0px); }
 .notice-card h2 { margin: .8rem 0 .5rem; font-size: var(--text-lg); }
 .notice-card p { color: var(--muted); }
 .delete-thread-name { margin: .8rem 0 1rem; padding: .2rem 0 .2rem .8rem; border-left: 2px solid var(--brand); color: var(--text); font-style: italic; font-weight: 550; line-height: 1.4; }
-.channel-topic-card { text-align: left; }
-.channel-topic-card form, .channel-topic-card label { display: grid; gap: .75rem; }
-.channel-topic-card input { width: 100%; padding: .7rem .8rem; border: 1px solid var(--line); border-radius: var(--radius-md); outline: none; background: var(--bg); color: var(--text); font: inherit; }
-.channel-topic-card input:focus { border-color: var(--brand); }
 .notice-icon { width: 3.5rem; height: 3.5rem; fill: none; stroke: var(--text); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .notice-steps { padding: .75rem 1rem; border-radius: var(--radius-lg); background: var(--bg); text-align: left; }
 .notice-steps ol { margin: .5rem 0; padding-left: 1.25rem; }
@@ -2438,9 +2389,6 @@ dialog.custom-modal.sheet-modal { padding: 0 0 var(--kb, 0px); }
 .channel-intro-meta { margin: 0 0 .7rem; color: var(--muted); font-size: var(--text-xs); }
 .channel-intro-topic { max-width: 40rem; margin: 0 0 1rem; color: var(--text); font-size: var(--text-base); line-height: 1.5; }
 .channel-intro-topic.muted { color: var(--muted); }
-.channel-intro-actions { display: flex; gap: .5rem; }
-.channel-intro-actions button { display: inline-flex; align-items: center; gap: .4rem; min-height: 2.25rem; padding: 0 .8rem; border: 0; border-radius: var(--radius-md); font: 650 var(--text-sm)/1 var(--ui); cursor: pointer; }
-.channel-intro-actions .menu-icon { width: .9rem; height: .9rem; }
 .public-channel-intro { margin: 1rem 0 2rem; padding: 1.25rem 0; }
 .public-channel-intro h1 { margin: 0 0 .8rem; color: var(--text); font: 750 clamp(1.7rem, 6vw, 2.8rem)/1 var(--ui); letter-spacing: -.035em; }
 .public-motd { display: grid; margin-bottom: .75rem; color: var(--muted); font: var(--text-base)/1.5 var(--mono); }
@@ -2448,9 +2396,6 @@ dialog.custom-modal.sheet-modal { padding: 0 0 var(--kb, 0px); }
 .public-motd-cta { color: var(--text); font-weight: 700; }
 .public-channel-intro a { color: var(--brand); }
 /* Member view of the same welcome: mono copy, sized to sit inside the intro card. */
-.channel-intro-lines { max-width: 40rem; margin-bottom: 1rem; font-size: var(--text-base); }
-.channel-intro-pulse::before { content: ""; display: inline-block; width: .4rem; height: .4rem; margin-right: .45rem; border-radius: var(--radius-round); background: color-mix(in srgb, var(--muted) 70%, transparent); vertical-align: middle; }
-.channel-intro-pulse.fresh::before { background: var(--brand); }
 /* Archived channel: a quiet pill in the composer's place, docked the same way. */
 .archived-channel { position: fixed; z-index: var(--z-header); left: 50%; bottom: max(1rem, env(safe-area-inset-bottom)); width: min(calc(100% - 1rem), 860px); display: flex; align-items: center; justify-content: center; gap: .5rem; margin: 0; padding: .8rem 1rem; border: 1px dashed color-mix(in srgb, var(--line) 95%, transparent); border-radius: var(--radius-pill); background: var(--glass-chrome); backdrop-filter: var(--glass-filter); color: var(--muted); font-size: var(--text-sm); text-align: center; translate: -50% 0; }
 .archived-channel .menu-icon { width: 1rem; height: 1rem; flex: 0 0 auto; }
