@@ -81,6 +81,7 @@ import { createLinkActions } from "@client/link-actions.ts";
 import { createClientState, type ClientSession } from "@client/client-state.ts";
 import { createView } from "@client/view.ts";
 import { createRuntimeState } from "@client/core/runtime-state.ts";
+import { createDrafts } from "@client/features/drafts.ts";
 import { createSidebarLists } from "@client/features/sidebar-lists.ts";
 import { createDirectMessages } from "@client/features/direct-messages.ts";
 import { createUnread } from "@client/features/unread.ts";
@@ -124,7 +125,6 @@ export function createClient(Alpine: any) {
 
   let projection: ConversationProjection | null = null;
   let unread: UnreadProjection | null = null;
-  let focusDraftConversationId: string | null = null;
   // Immutable account id from the latest /auth/me, kept even when access is denied for zero
   // conversations. The join acceptance compares this instead of the mutable scope key.
   let painted = false;
@@ -256,6 +256,7 @@ export function createClient(Alpine: any) {
   const { unreadCount, homeDot, threadsUnread, dmsDot, applyUnreadChrome, conversationOnScreen, scheduleMarkRead, cancelMarkRead, applyServerMarker, seedReadMarker } = createUnread({ state: rs, ui, isGroupRoom: (...args) => isGroupRoom(...args), wireSend: (...args) => wireSend(...args), transcript: () => transcript });
   const { dmPeerIds, provisioning, peerAccountIdFor, pendingIdForNick, pendingDirectRows, contactList, isLocallyEnqueueable, ensurePendingDirect, restorePendingDirects, retryPendingDirect, provisionDirect, openDirect } = createDirectMessages({ state: rs, ui, nav, connect: (...args) => connect(...args), openNotes: (...args) => openNotes(...args), refreshDrafts: (...args) => refreshDrafts(...args) });
   const { dmPeerNick, conversationIdForDm, isGroupRoom, groupList, roomLabelFor, channelList, saveChannelOrder, directList, agentList, headerTitle, headerSubtitle, activeChannelArchived, headerTooltip, starredItems, toggleStar, toggleMute, isOpenRoom } = createSidebarLists({ state: rs, ui, pendingDirectRows, applyUnreadChrome, menus: () => menus });
+  const { refreshDrafts, updateDraftNavigation, draftWriter, draftsList, clearDraftFocus, focusLoadedDraft, openDraft, deleteDraft } = createDrafts({ state: rs, ui, nextTick: (...args) => nextTick(...args), editor: () => editor, openRoom: (...args) => openRoom(...args), openDirect: (...args) => openDirect(...args) });
   Object.assign(ui, {
     commandPaletteStyle: () => commandPaletteStyle(ui.isDesktop),
     giphyPanelStyle: () => giphyPanelStyle(ui.isDesktop),
@@ -860,36 +861,6 @@ export function createClient(Alpine: any) {
     return hasContent && ui.sendEnabled && rs.capsOk && !(rs.composer?.committing ?? false) && !ui.mediaBusy && !ui.mediaCompress;
   }
 
-  // Only follow a growing list when the reader was already at the bottom (or after their own send).
-
-  async function refreshDrafts(expectedDb = rs.db): Promise<void> {
-    if (!expectedDb) { ui.drafts = []; return; }
-    try {
-      const drafts = await expectedDb.drafts.toArray();
-      if (rs.db === expectedDb && !rs.stopped) ui.drafts = draftNavigationItems(drafts, rs.authorized, ui.directs, ui.threads,
-        [...rs.pendingDms].map(([conversationId, entry]) => ({ conversationId, nick: entry.nick })));
-    } catch { /* Keep last visible rows; a later edit or navigation retries the read. */ }
-  }
-
-  function updateDraftNavigation(draft: Draft): void {
-    const drafts = ui.drafts.filter((item: Draft) => item.conversationId !== draft.conversationId);
-    if (draft.text.trim()) drafts.push(draft);
-    ui.drafts = draftNavigationItems(drafts, rs.authorized, ui.directs, ui.threads,
-      [...rs.pendingDms].map(([conversationId, entry]) => ({ conversationId, nick: entry.nick })));
-  }
-
-  function draftWriter(targetDb: ClientDatabase) {
-    return {
-      put: async (draft: Draft) => { await targetDb.drafts.put(draft); await refreshDrafts(targetDb); },
-      delete: async (id: string) => { await targetDb.drafts.delete(id); await refreshDrafts(targetDb); },
-    };
-  }
-
-  function draftsList(): (Draft & { label: string })[] {
-    const hideActive = ui.isDesktop || ui.mobileNav === null;
-    return visibleDraftNavigationItems(ui.drafts, ui.currentConversationId, hideActive);
-  }
-
   // Cmd/Ctrl+K: channels (starred ones too), groups, DMs including agents, then contacts.
   function openJump(): void {
     if (!ui.authenticated) return;
@@ -991,46 +962,6 @@ export function createClient(Alpine: any) {
     void connect();
   }
 
-  function focusLoadedDraft(id: string): void {
-    if (focusDraftConversationId !== id) return;
-    void Alpine.nextTick(() => {
-      if (focusDraftConversationId !== id || rs.roomId !== id) return;
-      const input = document.querySelector<HTMLElement>("#input");
-      if (!input || !input.getClientRects().length) return;
-      editor.focusComposerAtEnd(input);
-      focusDraftConversationId = null;
-    });
-  }
-
-  function openDraft(id: string): void {
-    const conversation = rs.authorized.find((item) => item.conversationId === id);
-    if (!conversation) return;
-    focusDraftConversationId = id;
-    if (conversation.kind === "dm") {
-      const direct = ui.directs.find((item: any) => foldIdentifier(item.channel) === foldIdentifier(conversation.wireTarget));
-      if (direct) void openDirect(direct.nick);
-    } else openRoom(conversation.wireTarget);
-    if (rs.roomId === id) focusLoadedDraft(id);
-  }
-
-  async function deleteDraft(id: string): Promise<void> {
-    const targetDb = rs.db;
-    if (!targetDb || !rs.directories.has(id)) return;
-    try {
-      if (rs.roomId === id && rs.composer) {
-        const targetComposer = rs.composer;
-        if (!await targetComposer.discard()) return;
-        if (rs.db !== targetDb || rs.composer !== targetComposer) return;
-        ui.composer = "";
-        editor.resizeComposer();
-      } else await targetDb.drafts.delete(id);
-      rs.composerTextByConversation.delete(id);
-      await refreshDrafts(targetDb);
-    } catch {
-      if (rs.db === targetDb) ui.error = "Could not delete this draft. It is still saved.";
-    }
-  }
-
   function linkThread(screen: Screen): boolean {
     return (screen.kind === "room" || screen.kind === "dm") && !!screen.thread;
   }
@@ -1066,7 +997,7 @@ export function createClient(Alpine: any) {
 
   function selectConversation(id: string | null, focusMessageId?: string, focusThread = false): void {
     linkRun += 1;
-    if (focusDraftConversationId && focusDraftConversationId !== id) focusDraftConversationId = null;
+    clearDraftFocus(id);
     // Leaving a conversation ends our own typing there; the target is still the previous roomId.
     if (rs.roomId !== id) { typing.stopTyping(); abandonPendingThread(); closeReplyThread(); }
     ui.currentConversationId = id;
@@ -1696,7 +1627,7 @@ export function createClient(Alpine: any) {
     rs.composer = null;
     rs.scope = null;
     rs.roomId = null;
-    focusDraftConversationId = null;
+    clearDraftFocus();
     rs.currentScope = "";
     rs.authenticatedAccountId = "";
     rs.composerTextByConversation.clear(); transcript.reset();
@@ -2944,7 +2875,7 @@ export function createClient(Alpine: any) {
     painted = false;
     rs.scope = access.scope;
     rs.roomId = access.conversation.conversationId;
-    focusDraftConversationId = null;
+    clearDraftFocus();
     ui.currentConversationId = rs.roomId;
     rs.currentScope = scopeKey(access.scope);
     const accountDb = new ClientDatabase(access.scope);
