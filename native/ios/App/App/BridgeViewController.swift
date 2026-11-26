@@ -57,6 +57,7 @@ class BridgeViewController: CAPBridgeViewController {
     private var bridgeGuard: BridgeGuard?
     private var loadGuard: CancelledLoadGuard?
     private let workspaceState = WorkspaceNavigationState()
+    private lazy var startCover = StartCover(host: self)
     private lazy var loadWatch = WorkspaceLoadWatch(workspaceState: workspaceState) { [weak self] origin in
         self?.showUnreachable(origin)
     }
@@ -83,10 +84,13 @@ class BridgeViewController: CAPBridgeViewController {
         handler.contentController.add(bridgeGuard, name: BridgeGuard.handlerName)
         webView.uiDelegate = bridgeGuard
         self.bridgeGuard = bridgeGuard
-        let loadGuard = CancelledLoadGuard(handler: handler, loadWatch: loadWatch)
+        let loadGuard = CancelledLoadGuard(handler: handler, loadWatch: loadWatch) { [weak self] webView in
+            guard let self = self, let url = webView.url else { return }
+            if self.workspaceState.isActiveOrigin(url) { self.startCover.settle(webView) } else { self.startCover.hide() }
+        }
         webView.navigationDelegate = loadGuard
         self.loadGuard = loadGuard
-        bridge.registerPluginInstance(SlircShellPlugin(workspaceState: workspaceState, loadWatch: loadWatch))
+        bridge.registerPluginInstance(SlircShellPlugin(workspaceState: workspaceState, loadWatch: loadWatch, startCover: startCover))
         handler.contentController.addUserScript(WKUserScript(source: noFocusZoomScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         hideFormAccessoryBar(in: webView)
         handler.contentController.addUserScript(WKUserScript(source: shellInfoScript(), injectionTime: .atDocumentStart, forMainFrameOnly: true))
@@ -200,6 +204,73 @@ final class WorkspaceLoadWatch {
     }
 }
 
+// The launch screen's mark, held over the web view while a workspace opens. The picker hands the web
+// view to the workspace page, and the page paints its own mark a moment later, so without this the
+// mark would vanish for a frame or two in between. The cover goes on when the picker opens the
+// workspace, stays through the page's own boot, and fades only once the app is showing and its
+// animations are idle, so the fade runs over a finished app. A picker page that loads instead (the
+// workspace failed, or the person switched) takes it off at once. It never takes touches.
+final class StartCover {
+    private weak var host: BridgeViewController?
+    private var screen: UIViewController?
+    private var generation = 0
+    private static let giveUp: TimeInterval = 15
+    private static let busyGrace: TimeInterval = 1
+    // 0 while the client is booting, 1 once it shows but something still animates, 2 when idle.
+    private static let stateScript = """
+    !document.querySelector('[data-client-root]') || document.documentElement.classList.contains('booting') ? 0 :
+    document.getAnimations().some((a) => a.playState === 'running') ? 1 : 2
+    """
+
+    init(host: BridgeViewController) {
+        self.host = host
+    }
+
+    func show() {
+        generation += 1
+        let current = generation
+        if screen == nil, let host = host, let controller = UIStoryboard(name: "LaunchScreen", bundle: nil).instantiateInitialViewController() {
+            controller.view.frame = host.view.bounds
+            controller.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            controller.view.isUserInteractionEnabled = false
+            host.view.addSubview(controller.view)
+            screen = controller
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.giveUp) { [weak self] in
+            if self?.generation == current { self?.hide() }
+        }
+    }
+
+    // The workspace page finished loading: wait for the client to boot and settle, then fade.
+    func settle(_ webView: WKWebView) {
+        guard screen != nil else { return }
+        poll(webView, generation: generation, bootedAt: nil)
+    }
+
+    private func poll(_ webView: WKWebView, generation current: Int, bootedAt: Date?) {
+        guard generation == current, screen != nil else { return }
+        webView.evaluateJavaScript(Self.stateScript) { [weak self, weak webView] result, _ in
+            guard let self = self, let webView = webView, self.generation == current else { return }
+            let state = result as? Int ?? 0
+            var booted = bootedAt
+            if state > 0 && booted == nil { booted = Date() }
+            if state == 2 || (booted.map { Date().timeIntervalSince($0) > Self.busyGrace } ?? false) {
+                self.hide(fade: 0.2)
+                return
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { self.poll(webView, generation: current, bootedAt: booted) }
+        }
+    }
+
+    func hide(fade: TimeInterval = 0) {
+        generation += 1
+        guard let view = screen?.view else { return }
+        screen = nil
+        if fade <= 0 { view.removeFromSuperview(); return }
+        UIView.animate(withDuration: fade, delay: 0, options: [.curveEaseOut], animations: { view.alpha = 0 }) { _ in view.removeFromSuperview() }
+    }
+}
+
 // iOS zooms the page into any form field with text under 16px and leaves it zoomed, which pushes
 // the page past the right edge. Several web client fields are 14px. A viewport capped at scale 1
 // stops that zoom on every page the shell shows. It adds a user script and leaves the bridge alone.
@@ -257,10 +328,12 @@ class SlircShellPlugin: CAPPlugin, CAPBridgedPlugin {
     ]
     private let workspaceState: WorkspaceNavigationState
     private let loadWatch: WorkspaceLoadWatch
+    private let startCover: StartCover
 
-    init(workspaceState: WorkspaceNavigationState, loadWatch: WorkspaceLoadWatch) {
+    init(workspaceState: WorkspaceNavigationState, loadWatch: WorkspaceLoadWatch, startCover: StartCover) {
         self.workspaceState = workspaceState
         self.loadWatch = loadWatch
+        self.startCover = startCover
         super.init()
     }
 
@@ -289,7 +362,8 @@ class SlircShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         workspaceState.setActive(url)
         call.resolve()
-        DispatchQueue.main.async { [loadWatch] in
+        DispatchQueue.main.async { [loadWatch, startCover] in
+            startCover.show()
             loadWatch.start(url, in: bridge.webView)
             _ = bridge.webView?.load(URLRequest(url: url))
         }
@@ -409,10 +483,17 @@ final class BridgeGuard: NSObject, WKScriptMessageHandler, WKUIDelegate {
 final class CancelledLoadGuard: NSObject, WKNavigationDelegate {
     private weak var handler: WebViewDelegationHandler?
     private let loadWatch: WorkspaceLoadWatch
+    private let onFinish: (WKWebView) -> Void
 
-    init(handler: WebViewDelegationHandler, loadWatch: WorkspaceLoadWatch) {
+    init(handler: WebViewDelegationHandler, loadWatch: WorkspaceLoadWatch, onFinish: @escaping (WKWebView) -> Void) {
         self.handler = handler
         self.loadWatch = loadWatch
+        self.onFinish = onFinish
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        handler?.webView(webView, didFinish: navigation)
+        onFinish(webView)
     }
 
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
