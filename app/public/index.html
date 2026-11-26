@@ -3238,6 +3238,7 @@
         </span>
         <button type="button" class="channel-search-clear" x-show="query" aria-label="Clear search" x-on:click="clear()"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('x')"></span></button>
       </div>
+      <div class="channel-search-body" x-ref="body"><div x-ref="inner">
       <div id="channel-search-list" class="palette-list" x-ref="list" role="listbox" aria-label="Matching messages" x-show="hasQuery">
         <template x-for="(row, i) in hits" :key="row.id">
           <button type="button" tabindex="-1" role="option" class="search-hit" :id="'channel-search-option-' + i" :class="i === index && 'active'" :aria-selected="String(i === index)" x-on:mouseenter="index = i" x-on:click="choose(row)">
@@ -3259,6 +3260,7 @@
         <span class="channel-search-status" role="status" x-show="hasQuery || loadError" x-text="statusText()"></span>
         <button type="button" class="channel-search-older" x-show="hasQuery && !isNotes && !exhausted" :aria-disabled="String(loadingOlder)" x-on:click="loadOlder(); $refs.search.focus()" x-text="loadingOlder ? 'Loading…' : 'Load older'"></button>
       </div>
+      </div></div>
     </section>
   </dialog>
   <dialog id="help-dialog" class="custom-modal palette-modal" x-data="helpDialog" x-cloak x-on:cancel.prevent="close()" x-on:click="if ($event.target === $el) close()">

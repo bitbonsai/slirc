@@ -175,6 +175,7 @@ export function channelSearchDialogComponent(): Record<string, unknown> {
     loadError: "",
     wrapNote: "",
     _wrapTimer: 0,
+    _resize: null as ResizeObserver | null,
     hits: [] as SearchHit[],
     total: 0,
     index: 0,
@@ -187,6 +188,13 @@ export function channelSearchDialogComponent(): Record<string, unknown> {
     _previewFn: null as ((urls: string[]) => Promise<boolean>) | null,
     init(this: any): void {
       this._dialog = document.querySelector<HTMLDialogElement>("#channel-search-dialog");
+      // The panel grows and shrinks with its content: the body height follows the inner block and CSS eases it.
+      const body = this.$refs.body as HTMLElement | undefined;
+      const inner = this.$refs.inner as HTMLElement | undefined;
+      if (body && inner && typeof ResizeObserver !== "undefined") {
+        this._resize = new ResizeObserver(() => { body.style.height = `${inner.offsetHeight}px`; });
+        this._resize.observe(inner);
+      }
       this._onOpen = (event: Event): void => {
         if (this._dialog?.open) { this.close(); return; }
         const detail = (event as CustomEvent<ChannelSearchOpenDetail>).detail;
@@ -217,6 +225,8 @@ export function channelSearchDialogComponent(): Record<string, unknown> {
       window.addEventListener("slirc:channel-search-open", this._onOpen);
     },
     destroy(this: any): void {
+      this._resize?.disconnect();
+      this._resize = null;
       if (this._onOpen) window.removeEventListener("slirc:channel-search-open", this._onOpen);
       this._onOpen = null;
       this._dialog = null;
