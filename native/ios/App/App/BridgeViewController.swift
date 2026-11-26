@@ -61,6 +61,17 @@ class BridgeViewController: CAPBridgeViewController {
         self?.showUnreachable(origin)
     }
 
+    // The launch screen's background shows behind and between pages, so a page change never flashes
+    // the web view's default white or black.
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        guard let background = UIColor(named: "LaunchBackground") else { return }
+        view.backgroundColor = background
+        webView?.backgroundColor = background
+        webView?.scrollView.backgroundColor = background
+        webView?.underPageBackgroundColor = background
+    }
+
     // Runs inside loadView, before the first page loads. Capacitor builds its own message handler
     // there, so the guard takes that handler's place and passes on what it allows.
     override func capacitorDidLoad() {

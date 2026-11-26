@@ -87,7 +87,6 @@
   --ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "Cascadia Code", "SFMono-Regular", Menlo, monospace;
   --ease-standard: cubic-bezier(.2,.7,.2,1);
-  --dur-boot-pop: .45s;
   --dur-boot-exit: .15s;
   --dur-reaction: .38s;
   /* Five motion steps. Loops (spinners, pulses, the focus flash), stagger delays and the .06s press snap
@@ -103,7 +102,6 @@
 @view-transition { navigation: auto; }
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
-  .boot-screen img { animation: none; }
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -140,11 +138,12 @@ body {
   pointer-events: none;
   transition: opacity var(--dur-reveal) ease-in-out, visibility 0s linear var(--dur-reveal);
 }
-/* A slow pulse, not a spin: a dropped frame in a rotation shows as a jump, in an opacity ramp it does not. */
-.boot-screen img { width: var(--boot-mark); height: var(--boot-mark); will-change: opacity; animation: boot-logo 1.6s ease-in-out infinite; animation-delay: var(--boot-pulse-delay, 0s); }
+/* The mark never moves, resizes or fades while the app starts. The iOS launch screen and the shell's
+   Opening view draw the same mark at the same size on the same background, so a handover between
+   the three is invisible. Only the whole screen leaves, once the shell is ready. */
+.boot-screen img { width: var(--boot-mark); height: var(--boot-mark); }
 /* Pull-to-refresh on the way out: the boot screen fades in over the faded list, and the reload continues it. */
 html.leaving .boot-screen { opacity: 1; visibility: visible; transition-delay: 0s; }
-@keyframes boot-logo { 50% { opacity: .2; } }
 .auth-card .login-logo {
   filter: none;
   display: block;
@@ -155,20 +154,11 @@ html.booting .auth-card .login-logo { opacity: 0; transform: perspective(900px) 
 html.booting body > :not(.boot-screen):not(.auth-modal) { visibility: hidden; }
 html.booting .boot-screen { opacity: 1; visibility: visible; transition-delay: 0s; }
 /* boot:end */
-/* The shell boots directly. Keep the finite animation independent of .booting so readiness cannot snap it back during exit. */
+/* The shell boots directly: the boot screen is opaque while .booting and fades out once as a whole. */
 body[data-client-root] > .boot-screen { transition: opacity var(--dur-boot-exit) ease-out, visibility 0s linear var(--dur-boot-exit); }
 html.booting body[data-client-root] > .boot-screen { transition: none; }
-body[data-client-root] > .boot-screen img { animation: none; will-change: auto; }
-@media (prefers-reduced-motion: no-preference) {
-  body[data-client-root] > .boot-screen img { animation: boot-pop var(--dur-boot-pop) ease-out 1; }
-}
 @media (prefers-reduced-motion: reduce) {
   body[data-client-root] > .boot-screen { transition: none; }
-}
-@keyframes boot-pop {
-  0% { transform: scale(.8) rotate(-12deg); }
-  65% { transform: scale(1.08) rotate(3deg); }
-  100% { transform: scale(1) rotate(0deg); }
 }
 /* Native <details> opens and closes smoothly instead of snapping. `interpolate-size` makes the
    `auto` keyword animatable, and transitioning `content-visibility` with `allow-discrete` keeps the
@@ -203,14 +193,6 @@ body[data-client-root] > .boot-screen img { animation: none; will-change: auto; 
 html.booting .auth-modal { z-index: var(--z-boot-dialog); background: transparent; backdrop-filter: none; }
 html.booting .auth-card { border-color: transparent; background: transparent; box-shadow: none; }
 html.booting .auth-card > :not(.login-logo) { visibility: hidden; opacity: 0; pointer-events: none; }
-/* Signed-in load: the shell is painted under the boot screen for a couple of frames first, so the
-   reveal is one composited fade of that screen rather than the app's cold first paint. */
-@keyframes page-reveal { from { opacity: 0; } }
-/* Boot as a view transition: the logo snapshot crossfades into the finished shell over .5s. Entrance
-   animations stay off while it runs, so nothing moves under the fade. */
-html[data-transition="boot"]::view-transition-old(root), html[data-transition="boot"]::view-transition-new(root) { animation-duration: var(--dur-reveal); animation-timing-function: ease-in-out; }
-@keyframes modal-reveal { from { background: transparent; backdrop-filter: blur(0); } }
-@keyframes card-reveal { from { border-color: transparent; background: transparent; box-shadow: none; } }
 
 header {
   position: fixed;
