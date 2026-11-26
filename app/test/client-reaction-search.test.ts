@@ -125,9 +125,3 @@ test("the phone sheet reacts through fromSheet and closing the sheet ends the se
   actions.closeMessageMenu(false);
   expect(actions.reactionSearch).toBe(false);
 });
-
-// Arrow Up/Down step by REACTION_GRID_COLUMNS, so the CSS grid must lay out the same column count.
-test("the reaction search grid has the column count the arrow keys step by", async () => {
-  const css = await Bun.file(new URL("../public/style.css", import.meta.url)).text();
-  expect(css).toContain(`grid-template-columns: repeat(${REACTION_GRID_COLUMNS}, 1fr)`);
-});

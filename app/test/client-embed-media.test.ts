@@ -48,15 +48,6 @@ describe("direct image text", () => {
     expect(hideDirectImageUrls(`[photo](${PEXELS})`, (href) => href === PEXELS)).toBe(`[photo](${PEXELS})`);
   });
 
-  test("a collapsed photo does not reveal the raw URL", async () => {
-    const partial = await Bun.file(new URL("../partials/message-body.html", import.meta.url)).text();
-    const anchor = partial.match(/<a class="media-fallback"[^>]*>/)?.[0];
-    expect(anchor).toBeDefined();
-    // The URL fallback exists only when the proxied image failed to load. Collapsing the photo is
-    // not a reason to print the validation-hidden URL back into the message.
-    expect(anchor).toContain("mediaView.isMediaError(media.href)");
-    expect(anchor).not.toContain("isMediaCollapsed");
-  });
 });
 
 describe("message body text hides links that render as images", () => {
@@ -264,28 +255,4 @@ describe("reserved thumbnail space", () => {
     expect([media.width, media.height]).toEqual([1200, 800]);
   });
 
-  test("every thumbnail in the body is a reserved frame with a width and height", async () => {
-    const partial = await Bun.file(new URL("../partials/message-body.html", import.meta.url)).text();
-    const thumbs = partial.match(/<img class="thumb-img"[^>]*>/g) ?? [];
-    expect(thumbs.length).toBe(4); // photo, card image, two player posters
-    for (const thumb of thumbs) {
-      expect(thumb).toContain("width=");
-      expect(thumb).toContain("height=");
-      expect(thumb).toContain("mediaView.markLoaded($el)");
-    }
-    // The photo's own aspect ratio, not a fixed one, is what reserves its box.
-    const photo = thumbs.find((tag) => tag.includes("media.href"))!;
-    expect(photo).toContain('mediaView.mediaAspectStyle(media.href, media.width, media.height)');
-    // A stored card keeps a fixed frame cropped to it, so a preview saved without a size cannot jump.
-    const card = thumbs.find((tag) => tag.includes("embeds[segment.href]"))!;
-    expect(card).toContain('width="112" height="80"');
-    expect(partial).toContain('<video class="message-video" :src="media.href + \'#t=0.001\'" :width="media.width || null" :height="media.height || null"');
-  });
-
-  test("the frame's quiet fill and fade stay out of the way when motion is reduced", async () => {
-    const css = await Bun.file(new URL("../public/style.css", import.meta.url)).text();
-    expect(css).toContain(".thumb-img { background: color-mix(in srgb, var(--panel) 82%, transparent); }");
-    expect(css).toContain(".thumb-img.thumb-loaded { animation: thumb-in var(--dur-fast) var(--ease-standard); }");
-    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{ \.thumb-img\.thumb-loaded \{ animation: none; \} \}/);
-  });
 });

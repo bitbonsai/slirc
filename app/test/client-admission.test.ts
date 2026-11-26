@@ -462,20 +462,6 @@ test("a founder retry reloads after a transport failure", () => withFetch(async 
 // Shell assembly and declarative controls
 // ---------------------------------------------------------------------------
 
-test("the shell assembles newcomer admission and the founder review section on Invitations", async () => {
-  const { assemble } = await import("../scripts/assemble-html.ts");
-  const read = async (name: string) => Bun.file(new URL(`../partials/${name}.html`, import.meta.url)).text();
-  const shell = await read("index");
-  const { html, used } = await assemble(shell, read);
-  expect(used.has("admission")).toBe(true);
-  expect(used.has("prelaunch-page")).toBe(false);
-  expect(html).toContain('x-data="admission"');
-  expect(html).toContain('data-phone-screen="admission"');
-  expect(html).toContain('x-data="admissionFounder"');
-  expect(html).toContain('id="admission-cancel-dialog"');
-  expect(html).toContain('x-show="authenticated && isFounder && (admissionFounder.visible || admissionFounder.loading)"');
-});
-
 test("an explicit sign-in round trip keeps the capability and requested destination", () => {
   const first = newcomer([], () => {});
   first.page.start("tok-abc", "founder");

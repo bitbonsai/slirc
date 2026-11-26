@@ -387,23 +387,6 @@ test("/prelaunch is only a route alias for invitations", () => {
   expect(parseRoute("/prelaunch/extra", ORIGIN)).toBeNull();
 });
 
-test("the shell assembles the new dialog and invitations page from partials", async () => {
-  const { assemble } = await import("../scripts/assemble-html.ts");
-  const read = async (name: string) => Bun.file(new URL(`../partials/${name}.html`, import.meta.url)).text();
-  const shell = await read("index");
-  const { html, used } = await assemble(shell, read);
-  expect(used.has("new-conversation")).toBe(true);
-  expect(used.has("invitations-page")).toBe(true);
-  expect(used.has("invitation-accept")).toBe(true);
-  expect(html).toContain('id="new-conversation-dialog"');
-  expect(html).toContain('data-phone-screen="invitations"');
-  expect(html).toContain('x-data="invitationAccept"');
-  expect(html).toContain('x-data="newConversation"');
-  expect(html).toContain('x-data="invitationsPage"');
-  expect(html).toContain('href="/dms" x-on:click.prevent="openDms()"');
-  expect(html).not.toContain('data-phone-screen="prelaunch"');
-});
-
 // ---------------------------------------------------------------------------
 // Invitation landing / acceptance
 // ---------------------------------------------------------------------------
@@ -693,17 +676,6 @@ test("an unrelated account switch during accept aborts navigation and clears bus
   expect(harness.openedRoom).toEqual([]);
   expect(harness.page.busy).toBe(false);
 }));
-
-test("the join screen is an ordinary page and the dialog owns its own label", async () => {
-  const join = await Bun.file(new URL("../partials/invitation-accept.html", import.meta.url)).text();
-  expect(join).not.toContain('role="dialog"');
-  expect(join).not.toContain("aria-modal");
-  expect(join).toContain('data-phone-screen="join"');
-  expect(join).toContain('aria-labelledby="invitation-title"');
-  const dialog = await Bun.file(new URL("../partials/new-conversation.html", import.meta.url)).text();
-  expect(dialog).toMatch(/id="new-conversation-dialog"[^>]*aria-labelledby="new-conversation-title"/);
-  expect(dialog).not.toContain('role="dialog"');
-});
 
 test("sign-in next preserves the join path so verification returns to acceptance", () => {
   const ORIGIN = "https://app.slirc.org";

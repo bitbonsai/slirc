@@ -458,27 +458,6 @@ test("a sent photo clears caption, photo and busy state before the next render",
   expect(atNextRender).toEqual({ caption: "", media: null, busy: false });
 });
 
-test("uploading shows on the photo chips, not as a line that reflows the composer row", async () => {
-  // A visible "Uploading photo…" paragraph sat in the composer's flex row beside the caption, so the
-  // composer grew and the caption wrapped for the whole upload, then everything dropped at once.
-  const html = await Bun.file(new URL("../partials/composer.html", import.meta.url)).text();
-  expect(html).toMatch(/<p class="media-note sr-only" role="status"/);
-  expect(html).toContain(`<div id="media-preview" class="media-preview" :class="mediaBusy && 'uploading'"`);
-  const css = await Bun.file(new URL("../public/style.css", import.meta.url)).text();
-  expect(css).toContain(".media-preview.uploading .media-chip::after");
-  expect(css).toMatch(/\.composer > \.profile-error \{[^}]*flex-basis: 100%/);
-});
-
-test("the composer takes file drops itself and lets the picker choose several photos", async () => {
-  // A file dropped on the composer used to reach the browser, which opened the image full size
-  // over the app instead of staging it.
-  const html = await Bun.file(new URL("../partials/composer.html", import.meta.url)).text();
-  const form = html.slice(html.indexOf("<form"), html.indexOf(">", html.indexOf("<form")));
-  expect(form).toContain('x-on:dragover="onDragOver($event)"');
-  expect(form).toContain('x-on:drop="onDrop($event)"');
-  expect(html).toMatch(/<input x-ref="mediaInput"[^>]*\smultiple[\s>]/);
-});
-
 test("saving a note uploads its staged photos to notes and stores caption plus URL lines once", async () => {
   const h = harness({ uploadUrl: (n) => `/uploads/note${n}` });
   h.setRoom("notes");

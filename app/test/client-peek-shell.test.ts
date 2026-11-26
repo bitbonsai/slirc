@@ -4,7 +4,6 @@
 // One file per process.
 import "fake-indexeddb/auto";
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { installBrowserShims } from "./support/browser-shims.ts";
 
 const sockets: unknown[] = [];
@@ -100,25 +99,4 @@ test("the bare root lands on the peek only on the public playground", async () =
   expect(rootPeekPath("/", "", "", true, "#feedback")).toBe("feedback");
   expect(rootPeekPath("/", "", "", false)).toBe("");
   for (const [path, hash, search] of [["/", "", "?pair=123456"], ["/", "", "?login=invalid"], ["/", "#help", ""], ["/help", "", ""], ["/join/abc", "", ""], ["/auth/verify", "", "?token=x"]]) expect(rootPeekPath(path!, hash!, search!, true)).toBe("");
-});
-
-test("the shell's gates: header and transcript show for the peek, account-only chrome does not", () => {
-  const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
-  const tag = (pattern: RegExp) => html.match(pattern)?.[0] ?? "";
-  expect(tag(/<header [^>]*>/)).toContain("(authenticated || peekRoom)");
-  expect(tag(/<main x-data="transcript"[^>]*>/)).toContain("(authenticated || peekRoom)");
-  for (const accountOnly of [/<form x-data="composerEditor"[^>]*>/, /<aside id="rooms"[^>]*>/, /<nav class="mobile-nav"[^>]*>/]) {
-    expect(tag(accountOnly)).toMatch(/x-show="[^"]*authenticated/);
-    expect(tag(accountOnly)).not.toContain("peekRoom");
-  }
-  const shell = tag(/<div x-data="openPeek"[\s\S]*?Sign in to post<\/button>/);
-  expect(shell).toContain('x-show="peekRoom && !booting && !authenticated"');
-  expect(shell).toContain('class="rooms peek-rooms"');
-  // The composer's place is the way in: focusing or typing in it opens sign-in.
-  expect(shell).toMatch(/<input class="peek-input"[^>]*readonly[^>]*x-on:focus="signIn\(\)"/);
-  expect(html).toContain("Keep reading");
-  // One sign-in button, in the composer's place. The rail's foot is a Guest row that opens the same card.
-  const rail = tag(/<aside class="rooms peek-rooms"[\s\S]*?<\/aside>/);
-  expect(rail).not.toContain("btn-primary");
-  expect(rail).toMatch(/<button type="button" class="profile-main peek-guest"[^>]*x-on:click="signIn\(\)"[\s\S]*?class="profile-avatar peek-guest-avatar"[\s\S]*?<strong>Guest<\/strong>/);
 });

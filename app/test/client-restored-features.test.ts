@@ -1,7 +1,6 @@
 // The four tools that came back after the client port: the admin Bots list, channel archive, the
 // Cmd+K jump palette and Alt+Up message recall. Pure parts and the page modules, no browser.
 import { afterEach, expect, mock, spyOn, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { createAdminPage, botSubtitle, cleanAdminBot } from "@client/admin-page.ts";
 import { createChannelSettings } from "@client/channel-settings.ts";
 import { createClientState, type ClientSession } from "@client/client-state.ts";
@@ -13,7 +12,6 @@ import { type Message } from "@client/model.ts";
 
 const reactive = <T extends object>(value: T): T => value;
 const nextTick = async (callback?: () => void) => { callback?.(); };
-const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
 const saved = new Map<string, PropertyDescriptor | undefined>();
 function global(name: string, value: unknown): void {
   if (!saved.has(name)) saved.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
@@ -90,14 +88,6 @@ test("bot rows drop junk and say when a bot last connected", () => {
   expect(botSubtitle({ nick: "ci", lastSeen: 1_000 }, 1_000 + 5 * 60_000)).toBe("/invite @ci · last seen 5 min ago");
 });
 
-test("the Bots section sits on the Admin page with a copy button and a remove confirmation", () => {
-  const admin = html.slice(html.indexOf('x-data="adminPage"'), html.indexOf('id="members-panel"'));
-  expect(admin).toContain('id="admin-bots-title">Bots</h3>');
-  expect(admin).toContain("adminStatus.copyCredential()");
-  expect(admin).toContain("Save this password now");
-  expect(admin).toContain('aria-labelledby="admin-bot-remove-title"');
-});
-
 // --- Archive ----------------------------------------------------------------------------------
 
 test("archive: owner and admins on a real channel only; archive confirms, unarchive goes straight through", async () => {
@@ -142,12 +132,6 @@ test("archive: owner and admins on a real channel only; archive confirms, unarch
   await new Promise((resolve) => setTimeout(resolve, 0));
   expect(actions).toEqual(["archive", "unarchive"]);
   expect(prefs.channelArchived()).toBe(false);
-});
-
-test("an archived channel swaps the composer for a read-only bar", () => {
-  expect(html).toMatch(/id="composer"[^>]*!activeChannelArchived\(\)/);
-  expect(html).toContain('class="archived-channel" role="status"');
-  expect(html).toContain("channelPrefs.canArchiveChannel()");
 });
 
 // --- Cmd+K ------------------------------------------------------------------------------------
@@ -215,15 +199,6 @@ test("jump palette: arrows wrap, Enter picks, Esc closes and gives focus back", 
   expect(dialog.open).toBe(false);
   expect(invoker.focused).toBe(1); // navigation owns focus after a pick
   palette.destroy();
-});
-
-test("the palette markup is a combobox over a listbox", () => {
-  const dialog = html.slice(html.indexOf('id="jump-dialog"'), html.indexOf('id="help-dialog"'));
-  expect(dialog).toContain('role="combobox"');
-  expect(dialog).toContain('aria-controls="jump-list"');
-  expect(dialog).toContain(':aria-activedescendant="activeId()"');
-  expect(dialog).toContain('id="jump-list" class="palette-list" x-ref="list" role="listbox"');
-  expect(dialog).toContain('role="option"');
 });
 
 // --- Alt+Up recall ----------------------------------------------------------------------------

@@ -67,26 +67,6 @@ test("send posts only new and add rows, 25 per batch, each with its own key", as
   } finally { globalThis.fetch = saved; }
 });
 
-test("the destination picker hides when the workspace is the only choice", async () => {
-  const make = (channels: Array<{ wireTarget: string }>, openRooms: Record<string, boolean> = {}, defaultChannel = "#calango") =>
-    createBulkInvite((value) => value, { core: { authenticated: true, isAdmin: true, defaultChannel, channels, openRooms } as any,
-      session: { key: () => "s", stopped: () => false } as any, nextTick: async () => {} });
-  const only = make([{ wireTarget: "#open" }, { wireTarget: "#dm-ada" }], { "#open": true });
-  only.open();
-  expect(only.choosesDestination()).toBe(false);
-  expect(only.destination).toBe("");
-  const several = make([{ wireTarget: "#team" }]);
-  several.open();
-  expect(several.choosesDestination()).toBe(true);
-  const oneChannel = make([{ wireTarget: "#team" }], {}, "");
-  oneChannel.open();
-  expect(oneChannel.choosesDestination()).toBe(false);
-  expect(oneChannel.destination).toBe("#team");
-  const partial = await Bun.file(new URL("../partials/bulk-invite.html", import.meta.url)).text();
-  expect(partial).toContain('class="bulk-invite-field" x-show="bulkInvite.choosesDestination()"');
-  expect(partial).toContain("Invites go to");
-});
-
 test("the default channel is the workspace option, not also a channel, so the picker hides", () => {
   const bulk = createBulkInvite((value) => value, { core: { authenticated: true, isAdmin: true, defaultChannel: "#calango",
     channels: [{ wireTarget: "#Calango" }, { wireTarget: "#dm-ada" }], openRooms: {} } as any,

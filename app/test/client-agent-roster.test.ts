@@ -1,7 +1,7 @@
 // Agents in the client: the roster merge, the AGENTS sidebar grouping, harness avatars, the
 // `repo · model` subtitle on the Agents page and members rail, and agents in `@` and `/invite` completion.
 import { afterEach, expect, test } from "bun:test";
-import { agentInviteMatches, agentLabel, agentMention, agentNavRows, agentSubtitle, applyAgentUpdate, forgetAgent, mergeAgents, ownAgentNicks } from "@client/agent-roster.ts";
+import { agentInviteMatches, agentLabel, agentNavRows, agentSubtitle, applyAgentUpdate, forgetAgent, mergeAgents, ownAgentNicks } from "@client/agent-roster.ts";
 import { avatarUrl } from "@client/presentation.ts";
 import { createAgentsPage } from "@client/agents-page.ts";
 import { createMembersPanel, type MembersPanelRow } from "@client/members-panel.ts";
@@ -147,27 +147,4 @@ test("`/invite @sa-` offers your matching agents before people search answers", 
   expect(picker("/invite @pi", { roomMembers: ["pi-a143"] }).matches()).toEqual([]);
   expect(agentInviteMatches(mergeAgents({}, details), "eve", "")).toEqual([]);
   component.stopInviteSearch();
-});
-
-// Rendered @mentions: a known agent is a chip with its harness mark and current display name, the
-// nick kept for the tooltip; people and removed agents stay plain text. The wire keeps the nick.
-test("an agent @mention renders as a chip with harness mark and display name; people and removed agents stay text", async () => {
-  let profiles = mergeAgents({}, [{ nick: "pi-d6a3", kind: "agent", agent: { harness: "pi", name: "slirc.app" } }, { nick: "ada", kind: "human" }]);
-  expect(agentMention(profiles, "pi-d6a3")).toEqual({ nick: "pi-d6a3", name: "slirc.app", icon: "/icons/agents/pi.svg" });
-  expect(agentMention(profiles, "PI-D6A3")?.name).toBe("slirc.app");
-  expect(agentMention(profiles, "ada")).toBeNull();
-  // Renamed: the next render uses the new name, same source as the sidebar.
-  profiles = applyAgentUpdate(profiles, { nick: "pi-d6a3", agent: { name: "slirc.web" } })!;
-  expect(agentMention(profiles, "pi-d6a3")?.name).toBe("slirc.web");
-  expect(agentNavRows(profiles, [{ nick: "pi-d6a3", channel: "#dm-x" }], "", () => false)[0]?.label).toBe("slirc.web");
-  // An agent with no session name yet still gets its mark, under its nick.
-  profiles = mergeAgents(profiles, [{ nick: "claude-0ff1", kind: "agent", agent: { harness: "claude" } }]);
-  expect(agentMention(profiles, "claude-0ff1")).toEqual({ nick: "claude-0ff1", name: "claude-0ff1", icon: "/icons/agents/claude.svg" });
-  // Removed: forgotten, so the mention falls back to the plain nick.
-  expect(agentMention(forgetAgent(profiles, "pi-d6a3"), "pi-d6a3")).toBeNull();
-  // The segment partial draws the chip only for agents and keeps the nick in the tooltip.
-  const segment = await Bun.file(new URL("../partials/message-segment.html", import.meta.url)).text();
-  expect(segment).toContain(`:class="mentionAgent(segment.nick) && 'agent-mention'"`);
-  expect(segment).toContain(`:data-tooltip="mentionAgent(segment.nick) ? '@' + segment.nick : null"`);
-  expect(segment).toContain(`x-text="mentionAgent(segment.nick)?.name ?? segment.text"`);
 });

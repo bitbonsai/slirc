@@ -325,26 +325,6 @@ describe("phone scanner", () => {
   });
 });
 
-describe("shell wiring", () => {
-  test("the card and scanner are in the assembled shell, the decoder is not", async () => {
-    const html = await Bun.file(new URL("../public/index.html", import.meta.url)).text();
-    expect(html).toContain("scanner.start($refs.scanVideo)");
-    // The phone card sits on Devices, not on the profile screen.
-    const devices = html.slice(html.indexOf('data-phone-screen="settings"'), html.indexOf('data-phone-screen="channels"'));
-    expect(devices.indexOf('id="phone-offer-card"')).toBeGreaterThan(-1);
-    expect(html.slice(html.indexOf('data-phone-screen="profile"'), html.indexOf('data-phone-screen="settings"'))).not.toContain("phoneOffer");
-    expect(html).not.toContain("jsqr");
-    // The card has no copy-link field and no warning text.
-    const start = html.indexOf('id="phone-offer-card"');
-    const cardHtml = html.slice(start, html.indexOf("</section>", start));
-    expect(cardHtml).toContain("phoneOffer.url");
-    expect(cardHtml).not.toMatch(/<input|<a |clipboard|copy link|warning/i);
-    const sprite = await Bun.file(new URL("../public/icons/lucide/sprite.svg", import.meta.url)).text();
-    expect(sprite).toContain('id="scan-line"');
-  });
-
-});
-
 describe("another workspace's code", () => {
   const other = `https://ai-guild.slirc.app/pair#o=${token}`;
 

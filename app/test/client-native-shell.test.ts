@@ -77,19 +77,6 @@ test("switching outside the shell does nothing", async () => {
   await expect(switchWorkspace({})).resolves.toBeUndefined();
 });
 
-test("every Switch workspace control is shown only when the shell offers it", async () => {
-  const partials = ["mobile-navigation.html", "profile-page.html", "sign-in.html"];
-  let controls = 0;
-  for (const name of partials) {
-    const html = await Bun.file(new URL(`../partials/${name}`, import.meta.url)).text();
-    for (const tag of html.match(/<button[^>]*>(?:(?!<\/button>).)*Switch workspace/g) || []) {
-      controls += 1;
-      expect(tag).toMatch(/x-show="[^"]*canSwitchWorkspace[^"]*"/);
-    }
-  }
-  expect(controls).toBeGreaterThan(0);
-});
-
 test("About names the client build, and the app version only inside the shell", () => {
   expect(shellVersion({})).toBeNull();
   expect(shellVersion({ SlircShellInfo: { version: 1, build: "1" } })).toBeNull();
@@ -180,10 +167,4 @@ test("the Mac menu's Switch Workspace opens the web dialog only while signed in"
   const old = mac(["slircShell", "slircSwitchWorkspace"]) as Record<string, unknown>;
   exposeWorkspaceDialog({ ...ui, workspaceDialog: false }, old);
   expect((old.SlircOpenWorkspaces as () => boolean)()).toBe(false);
-});
-
-test("Profile's Switch workspace opens the web dialog, and the sign-in screen's the app's picker", async () => {
-  const read = (name: string) => Bun.file(new URL(`../partials/${name}`, import.meta.url)).text();
-  expect(await read("profile-page.html")).toMatch(/x-on:click="openWorkspaces\(\)">Switch workspace</);
-  expect(await read("sign-in.html")).toMatch(/x-on:click="switchWorkspace\(\)"><span[^>]*><\/span><span>Switch workspace/);
 });

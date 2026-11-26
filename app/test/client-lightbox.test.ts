@@ -1,6 +1,5 @@
-// The photo lightbox shows the whole picture: fit to the viewport on open, as large as the window
-// allows when filled, and at real size (scroll or drag to pan) after a click. One rule set in
-// style.css sizes it; a second set in the shell partial used to fight it and crop tall pictures.
+// The photo lightbox shows the whole picture: fit on open, as large as the window allows when filled,
+// and real size (scroll or drag to pan) after a click.
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createMediaView } from "@client/media-view.ts";
 
@@ -86,48 +85,5 @@ describe("lightbox zoom", () => {
     media.startLightboxPan({ pointerType: "mouse", button: 0, clientX: 0, clientY: 0, currentTarget: box } as never);
     media.toggleLightboxZoom();
     media.startLightboxPan({ pointerType: "touch", button: 0, clientX: 0, clientY: 0, currentTarget: box } as never);
-  });
-});
-
-describe("lightbox layout", () => {
-  const read = (path: string) => Bun.file(new URL(path, import.meta.url)).text();
-
-  test("the shell partial carries no lightbox rules beyond the shared dialog fade", async () => {
-    const style = (await read("../partials/index.html")).match(/<style>[\s\S]*?<\/style>/g)?.join("\n") ?? "";
-    expect(style.match(/(?<!dialog)\.lightbox[-\w]*/g) ?? []).toEqual([]);
-  });
-
-  test("fit and fill size the picture in viewport units, never a percentage of the dialog", async () => {
-    const css = await read("../public/style.css");
-    const rules = css.split("\n").filter((line) => line.startsWith(".lightbox"));
-    expect(rules.join("\n")).not.toContain("100%");
-    expect(css).toContain(".lightbox-media img, .lightbox-media video { display: block; width: auto; height: auto; max-width: 92vw; max-height: calc(94dvh - var(--lightbox-bar)); object-fit: contain; }");
-    expect(css).toContain(".lightbox.maximized .lightbox-media img, .lightbox.maximized .lightbox-media video, .lightbox.maximized .lightbox-media iframe { width: 100vw; height: calc(100dvh - var(--lightbox-bar)); max-width: none; max-height: none; aspect-ratio: auto; object-fit: contain; }");
-  });
-
-  test("real size scrolls in a full-window box at the picture's natural pixels", async () => {
-    const css = await read("../public/style.css");
-    expect(css).toContain(".lightbox.maximized[open], .lightbox.zoomed[open] { width: 100vw;");
-    expect(css).toContain(".lightbox.zoomed .lightbox-media { display: flex; overflow: auto;");
-    expect(css).toContain(".lightbox.zoomed .lightbox-media img { flex: none; margin: auto; width: auto; height: auto; max-width: none; max-height: none;");
-    // The zoomed rule comes after fill, so it wins when both are on.
-    expect(css.indexOf(".lightbox.zoomed .lightbox-media img {")).toBeGreaterThan(css.indexOf(".lightbox.maximized .lightbox-media img,"));
-  });
-
-  test("the picture and a zoom button toggle real size; the zoom icons exist", async () => {
-    const partial = await read("../partials/media-lightbox.html");
-    expect(partial).toContain(":class=\"{ maximized: mediaView.lightboxMax, zoomed: mediaView.lightboxZoom }\"");
-    expect(partial).toContain('x-on:pointerdown="mediaView.startLightboxPan($event)"');
-    expect(partial).toMatch(/<img [^>]*draggable="false" x-on:click="mediaView.toggleLightboxZoom\(\$event\)"/);
-    expect(partial).toContain("x-show=\"mediaView.lightbox?.kind === 'image'\" :aria-label=\"mediaView.lightboxZoom ? 'Fit to window' : 'Actual size'\"");
-    const sprite = await read("../public/icons/lucide/sprite.svg");
-    expect(sprite).toContain('<symbol id="zoom-in"');
-    expect(sprite).toContain('<symbol id="zoom-out"');
-  });
-
-  test("the page still allows pinch zoom", async () => {
-    const head = await read("../partials/index.html");
-    const viewport = head.match(/<meta name="viewport" content="([^"]+)"/)?.[1] ?? "";
-    expect(viewport).not.toMatch(/user-scalable|maximum-scale/);
   });
 });

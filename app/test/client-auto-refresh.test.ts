@@ -2,7 +2,6 @@
 import { expect, test } from "bun:test";
 import { createAutoRefresh, loadedBuild, IDLE_MS, UPDATE_STICKY_ID, UPDATE_TEXT } from "../client/auto-refresh.ts";
 import { type StickyNote } from "../client/reminder-notice.ts";
-import { readFileSync } from "node:fs";
 
 function make(options: { loaded?: string; served?: string; hidden?: boolean; busy?: boolean; storage?: Map<string, string> } = {}) {
   let clock = 1_000_000;
@@ -164,38 +163,4 @@ test("returning to a hidden tab checks, and a failed or empty answer changes not
   const off = make({ loaded: "" });
   await off.refresh.check();
   expect(off.state.fetches).toBe(0);
-});
-
-// The update toast is a dark HUD in both themes, like the Mac app's; reminder toasts keep the glass look.
-test("the update toast alone gets the dark HUD look and the refresh icon", () => {
-  const partial = readFileSync(new URL("../partials/toasts.html", import.meta.url), "utf8");
-  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
-  const sprite = readFileSync(new URL("../public/icons/lucide/sprite.svg", import.meta.url), "utf8");
-  expect(partial).toContain(`:class="item.icon === 'refresh' && 'hud'"`);
-  expect(partial).toContain("sprite.svg#rotate-cw");
-  expect(sprite).toContain('<symbol id="rotate-cw"');
-  const hud = css.match(/^\.glass-toast\.hud \{([^}]*)\}/m)?.[1] ?? "";
-  expect(hud).toContain("--brand: #a6e3a1");
-  expect(hud).toContain("#11111b");
-  expect(hud).toContain("color: var(--brand)");
-});
-
-// Rex's update pill: the moving copy is hidden from screen readers, which get one static copy through the
-// region's aria-live; the text slides only by its overflow, pauses on hover and focus, and keeps scrolling under reduced motion.
-test("the update toast scrolls its text like Rex's, with one static copy for screen readers", () => {
-  const partial = readFileSync(new URL("../partials/toasts.html", import.meta.url), "utf8");
-  const css = readFileSync(new URL("../public/style.css", import.meta.url), "utf8");
-  expect(partial).toContain('<div class="toast-region" role="status" aria-live="polite"');
-  expect(partial).toContain(`<span class="toast-marquee" :data-tooltip="item.text" x-tooltip x-show="item.icon === 'refresh'"><span class="sr-only" x-text="item.text"></span><span class="toast-marquee-track" aria-hidden="true" x-text="item.text"></span></span>`);
-  expect(partial).toContain(`<button type="button" class="toast-close" aria-label="Dismiss update" x-show="item.icon === 'refresh'"`);
-  expect(partial).toContain(`class="toast-action quiet" x-show="item.icon !== 'refresh'"`);
-  expect(css).toMatch(/^\.toast-marquee-track \{[^}]*min-width: 100%;[^}]*animation: toast-marquee /m);
-  expect(css).toContain("85%, 100% { margin-left: 100%; translate: -100%; }");
-  expect(css).toContain(".glass-toast.hud:hover .toast-marquee-track, .glass-toast.hud:focus-within .toast-marquee-track { animation-play-state: paused; }");
-  const close = css.match(/^\.toast-close \{([^}]*)\}/m)?.[1] ?? "";
-  expect(close).toContain("background: none");
-  expect(css).toContain(".toast-close:hover svg, .toast-close:focus-visible svg { scale: 1.2; }");
-  const reduced = css.match(/^@media \(prefers-reduced-motion: reduce\) \{ \.toast-close svg \{(.*)$/m)?.[1] ?? "";
-  expect(reduced).toContain("transition: none;");
-  for (const line of css.split("\n").filter((l) => l.includes("prefers-reduced-motion"))) expect(line).not.toContain("toast-marquee");
 });

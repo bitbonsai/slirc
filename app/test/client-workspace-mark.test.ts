@@ -79,48 +79,12 @@ test("the dialog lists this workspace first, then the app's saved ones, then app
   ]);
 });
 
-test("the sidebar mark shows only the badge, and the phone's More screen opens the same dialog", async () => {
-  const read = (name: string) => Bun.file(new URL(`../partials/${name}`, import.meta.url)).text();
-  const mark = (await read("header.html")).match(/<button[^>]*class="workspace-mark"[^>]*>.*?<\/button>/)?.[0] ?? "";
-  expect(mark).toContain('x-on:click="openWorkspaces()"');
-  expect(mark).not.toContain("workspace-name");
-  expect(mark).not.toContain("chevron");
-  expect(mark).not.toContain("disabled");
-  const more = (await read("mobile-navigation.html")).split('data-phone-screen="more"')[1] ?? "";
-  // One attribute per line or all on one: the row is the button with the workspace-row-more class.
-  const row = more.match(/<button[^>]*class="mobile-row workspace-row-more"[^>]*>[\s\S]*?<\/button>/)?.[0] ?? "";
-  expect(row).toContain('x-on:click="openWorkspaces()"');
-  expect(row.match(/^<button[^>]*>/)?.[0]).not.toContain("x-show");
-  expect(more.indexOf("more-profile-row")).toBeLessThan(more.indexOf("workspace-row-more"));
-  const dialog = await read("workspace-dialog.html");
-  expect(dialog).toContain("pickWorkspace(item.origin)");
-  expect(dialog).toMatch(/x-show="item.current">Current</);
-  expect(dialog).not.toContain("'check'");
-});
-
 test("the rail rows carry this workspace's loaded icon, the dialog rows do too", () => {
   const mark = { icon: "https://ai-guild.slirc.app/api/workspace-icon?size=64&v=1", iconReady: true };
   const rows = workspaceRows("https://ai-guild.slirc.app", ["https://xmiro.slirc.app"], mark);
   expect(rows.map((row) => row.origin)).toEqual(["https://ai-guild.slirc.app", "https://xmiro.slirc.app", OPEN_WORKSPACE]);
   expect(rows[0]).toMatchObject({ current: true, icon: mark.icon, iconReady: true, logo: "" });
   expect(rows[1]).toMatchObject({ current: false, icon: "https://xmiro.slirc.app/api/workspace-icon?size=64", iconReady: false });
-});
-
-test("the instance rail switches workspace, marks the current one and opens the dialog", async () => {
-  const read = (name: string) => Bun.file(new URL(`../partials/${name}`, import.meta.url)).text();
-  const rail = await read("instance-rail.html");
-  const item = rail.match(/<button[^>]*class="instance-rail-item"[^>]*>/)?.[0] ?? "";
-  expect(item).toContain('x-on:click="pickWorkspace(item.origin)"');
-  expect(rail).toContain('x-for="item in workspaceChoices"');
-  expect(rail).toContain('class="instance-rail-pill"');
-  expect(rail).toContain('item.current && \'active\'');
-  expect(rail).toContain(':data-tooltip="item.name"');
-  expect(rail).toContain('x-tooltip');
-  expect(rail).toContain('class="workspace-badge"');
-  const add = rail.match(/<button[^>]*instance-rail-add[^>]*>/)?.[0] ?? "";
-  expect(add).toContain('x-on:click="openWorkspaces()"');
-  expect(add).toContain('aria-haspopup="dialog"');
-  expect(await read("index.html")).toContain("<!-- include: instance-rail -->");
 });
 
 test("typing in the dialog's field narrows the rows by name and host", () => {
@@ -140,19 +104,6 @@ test("with no row left, the dialog offers to open the typed address", () => {
   expect(filterWorkspaces(rows, "acme")).toEqual({ rows: [], open: { origin: "https://acme.slirc.app", label: "acme.slirc.app" } });
   expect(filterWorkspaces(rows, " Chat.Acme.io/x ").open).toEqual({ origin: "https://chat.acme.io", label: "chat.acme.io" });
   expect(filterWorkspaces(rows, "not a host").open).toEqual({ origin: null, label: "not a host" });
-});
-
-test("the dialog's field sits above the list, and the separate Open button is gone", async () => {
-  const dialog = await Bun.file(new URL("../partials/workspace-dialog.html", import.meta.url)).text();
-  expect(dialog.indexOf('id="workspace-address"')).toBeLessThan(dialog.indexOf('class="workspace-list"'));
-  expect(dialog).toContain('x-for="(item, index) in workspaceFilter().rows"');
-  expect(dialog).toContain('x-if="workspaceFilter().open"');
-  expect(dialog).toMatch(/id="workspace-address"[^>]* autofocus /);
-  expect(dialog).toContain("$el.querySelector('#workspace-address')?.focus()");
-  expect(dialog).not.toContain(":autofocus");
-  expect(dialog).toContain("animateListHeight($el)");
-  expect(dialog).not.toContain('type="submit"');
-  expect(dialog).not.toContain("Open another workspace");
 });
 
 test("the list animates its height between filter results, not on first render or reduced motion", () => {

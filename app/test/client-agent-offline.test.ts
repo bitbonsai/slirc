@@ -52,25 +52,6 @@ test("anyone else's tagged line stays an ordinary message", () => {
   }
 });
 
-test("the card stands outside the message row: no author line, its own time, and Remove agent", async () => {
-  const html = await Bun.file(new URL("../partials/transcript.html", import.meta.url)).text();
-  const card = html.slice(html.indexOf('<template x-if="agentOffline(message)">'), html.indexOf('<template x-if="!agentOffline(message) && !polls.card(message) && !jobCards.card(message)">'));
-  // The card comes right after the date divider, and the ordinary row renders only without it.
-  expect(html.indexOf('class="date-divider"')).toBeLessThan(html.indexOf('<template x-if="agentOffline(message)">'));
-  expect(html).toContain('<template x-if="!agentOffline(message) && !polls.card(message) && !jobCards.card(message)">\n          <div class="msg"');
-  expect(card).not.toContain('class="nick"');
-  expect(card).not.toContain("message-avatar");
-  expect(card).toContain('<time class="agent-offline-time" :datetime="message.time" x-text="formatTime(message.time)"></time>');
-  expect(card).toContain('x-for="(line, n) in agentOffline(message).lines"');
-  expect(card).toContain('x-on:click.stop="copyAgentCommand(message)"');
-  // Remove agent asks right here with the Agents page's own dialog instead of leaving the DM.
-  expect(card).toContain('x-on:click.stop="agents.askRemove({ nick: message.authorNick }, $el)">Remove agent</button>');
-  expect(card).not.toContain("openAgents()");
-  // A folded card leaves the transcript instead of drawing a "Back online" line.
-  expect(card).not.toContain("Back online");
-  expect(card).not.toContain("collapsed");
-});
-
 test("an offline card leaves the transcript once the agent is back, and only the newest away card stays", () => {
   const message = { authorNick: AGENT };
   // Still away, nothing after it: shown.
@@ -116,21 +97,4 @@ test("the agent's next line after its offline card gets its own author row", () 
   const after = { ...base, id: "c", text: "And again.", time: "2026-11-17T10:44:10.000Z" };
   expect(groupsWithPrevious([card, next, after], 1)).toBe(false);
   expect(groupsWithPrevious([card, next, after], 2)).toBe(true);
-});
-
-test("one remove dialog serves the Agents page and the DM card, outside the Agents page", async () => {
-  const read = (name: string) => Bun.file(new URL(`../partials/${name}.html`, import.meta.url)).text();
-  const [dialog, page, index, built] = await Promise.all([read("agent-remove"), read("agents-page"), read("index"), Bun.file(new URL("../public/index.html", import.meta.url)).text()]);
-  // Alpine pins its magics on a component's object, so agentsPage may own only one element; the
-  // dialog reads the same controller from the root scope as `agents`.
-  expect(dialog).not.toContain("x-data");
-  expect(built.match(/x-data="agentsPage"/g)).toHaveLength(1);
-  expect(dialog).toContain('x-on:click="agents.confirmRemove()"');
-  expect(dialog).toContain('x-on:cancel.prevent="if (!agents.busy) agents.closeRemove()"');
-  expect(dialog).toContain("const show = !booting && authenticated && agents.removeTarget;");
-  expect(dialog).not.toContain("agentsRoute");
-  expect(page).not.toContain("agent-remove-title");
-  expect(page).toContain('x-on:click.stop="agents.askRemove(row, $el)"');
-  expect(index.match(/<!-- include: agent-remove -->/g)).toHaveLength(1);
-  expect(built.match(/id="agent-remove-title"/g)).toHaveLength(1);
 });

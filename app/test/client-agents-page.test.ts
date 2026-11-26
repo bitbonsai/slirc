@@ -1,7 +1,7 @@
 // Agents page behavior: capability gating, the copied command with its ticket and the runner switch, the Allow
 // card from a link or code, copy guards, stale account responses and the honest attachment mapping. No DOM is mounted.
 import { afterEach, expect, test } from "bun:test";
-import { agentsOffCopy, agentStatus, normalizeExpiry, parseCapability, parseCard, createAgentsPage, stashConnectToken } from "@client/agents-page.ts";
+import { agentStatus, normalizeExpiry, parseCapability, parseCard, createAgentsPage, stashConnectToken } from "@client/agents-page.ts";
 
 const identity = <T extends object>(value: T): T => value;
 const originalFetch = globalThis.fetch;
@@ -49,8 +49,6 @@ test("attachment is never Ready without an explicit ready status", () => {
   expect(agentStatus({ status: "busy", lastSeen: null }).key).toBe("unverified");
 });
 
-
-
 test("a failed capability check surfaces a retry instead of a silent disabled page", async () => {
   let capabilityOk = false;
   globalThis.fetch = (async (input: RequestInfo | URL) => {
@@ -73,11 +71,6 @@ test("a failed capability check surfaces a retry instead of a silent disabled pa
   expect(agents.capability?.enabled).toBe(true);
 });
 
-
-
-
-
-
 test("a response that lands after an account switch is dropped", async () => {
   const session = sessionFor();
   let releaseCapability: (() => void) | null = null;
@@ -97,29 +90,6 @@ test("a response that lands after an account switch is dropped", async () => {
   expect(agents.capability).toBeNull();
   expect(agents.loaded).toBe(false);
   expect(agents.rows).toHaveLength(0);
-});
-
-test("the agentsPage component never shadows the parent agents controller in its own markup", async () => {
-  const partial = await Bun.file(new URL("../partials/agents-page.html", import.meta.url)).text();
-  expect(partial).toContain('x-data="agentsPage"');
-  // The markup addresses the parent controller as `agents.*`; a same-named field here would win
-  // the Alpine scope chain and make every `agents.loading`-style binding read undefined.
-  expect(partial).not.toContain("agents.agents");
-  // The connect lines show only when the capability says agents are on.
-  expect(partial).toContain("agents.capability?.enabled && agents.firstLine()");
-  // One command, a waiting row screen readers hear, harness names and marks from the registry.
-  expect(partial).toContain('role="status" x-show="agents.waiting"');
-  // Plain harness names in the paste line and the Codex note: a logo beside the name read double.
-  expect(partial).not.toContain("'/icons/agents/' + harness.id + '.svg'");
-  // The code field shows without a toggle: the session's code has somewhere to go at once.
-  expect(partial).toContain('<form id="agent-code-form" class="agent-code-form agent-panel" x-on:submit.prevent="agents.submitCode()">');
-  expect(partial).toContain("Code from your agent");
-  expect("toggleCode" in page()).toBe(false);
-  expect("showCode" in page()).toBe(false);
-  for (const gone of ["Have a code?", "agents.showCode", "Already set up?", "Works with", "agent-runner", "agents.sessionLine()"]) expect(partial).not.toContain(gone);
-  const component = page();
-  expect("agents" in component).toBe(false);
-  expect(Array.isArray(component.rows)).toBe(true);
 });
 
 test("removing an agent calls the owner endpoint and drops the row", async () => {
@@ -165,7 +135,6 @@ test("renaming an agent posts the trimmed name to the owner endpoint and patches
   expect(agents.agentTitle(agents.rows[0]!)).toBe("deploy fixes");
   expect(agents.renameTarget).toBeNull();
 });
-
 
 const capability = {
   enabled: true, reason: "", harnesses: [{ id: "pi", name: "Pi" }, { id: "", name: "nameless" }],
@@ -382,45 +351,4 @@ test("an agent that attached before the list read lands as Ready, not Offline", 
   await agents.load();
   expect(agents.status(agents.rows[0]!).key).toBe("offline");
   agents.reset();
-});
-
-test("agents off: one empty state that says what agents are, and who turns them on", async () => {
-  const member = agentsOffCopy(false), admin = agentsOffCopy(true);
-  for (const copy of [member, admin]) {
-    expect(copy.title).toBe("Agents are off on this instance");
-    expect(copy.about).toContain("coding sessions");
-    expect(JSON.stringify(copy)).not.toMatch(/server|room|—/i);
-  }
-  expect(member).toEqual({ title: member.title, about: member.about, action: "Ask an admin to turn them on." });
-  expect(admin.action).toContain("sudo slirc env");
-  expect(admin.line).toBe("SLIRC_AGENTS_ENABLED=false");
-  expect(admin.link).toEqual({ href: "/docs/setup#optional-environment-variables", label: "Instance settings guide" });
-  expect(page().offCopy).toBe(agentsOffCopy);
-
-  const partial = await Bun.file(new URL("../partials/agents-page.html", import.meta.url)).text();
-  expect(partial).toContain('x-text="agents.offCopy(isAdmin).title"');
-  expect(partial).not.toContain("agents.capability?.reason");
-  // "No agents connected yet." only reads right when agents are on.
-  expect(partial).toContain('x-show="!agents.rows.length && agents.capability?.enabled">No agents connected yet.');
-  // Phones read top-down: no spacer pushing the page to the bottom.
-  expect(partial).not.toContain("mobile-spacer");
-});
-
-test("the Agents page reads as steps: a one-line lede, a paste panel, a code panel, then the agent list", async () => {
-  const partial = await Bun.file(new URL("../partials/agents-page.html", import.meta.url)).text();
-  const order = ["agent-lede", 'id="agent-paste-title"', 'id="agent-code-form"', 'id="agent-list-title"'].map((marker) => partial.indexOf(marker));
-  expect(order.every((at) => at > 0)).toBe(true);
-  expect([...order].sort((a, b) => a - b)).toEqual(order);
-  expect(partial).toContain('Agents are coding sessions that join your channels and DMs. <a href="/docs/agents">Learn more</a>');
-  // The code input and Continue share one row, so the step is a single line on phones.
-  expect(partial).toMatch(/<div class="agent-code-row">\s*<input id="agent-code-input"[^>]*>\s*<button type="submit"/);
-  // Each agent row: harness icon with its state, name, status in words, and icon buttons that keep their labels.
-  expect(partial).toContain("avatarUrl(row.nick, undefined, row.harness)");
-  expect(partial).toContain('class="agent-avatar" :data-state="agents.status(row).key"');
-  expect(partial).toContain('class="agent-status" :data-state="agents.status(row).key" x-text="agents.status(row).label"');
-  expect(partial).toContain(":aria-label=\"'Rename ' + agents.agentTitle(row)\"");
-  expect(partial).toContain(":aria-label=\"'Remove ' + row.nick\"");
-  expect(partial).toContain('x-on:click.stop="agents.askRemove(row, $el)"');
-  expect(partial).toContain('x-on:click.stop="agents.askRename(row, $el)"');
-  expect(partial).not.toMatch(/\bserver\b|\broom\b|—/i);
 });

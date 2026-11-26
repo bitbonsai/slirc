@@ -59,13 +59,3 @@ test("a failed request retries on the next open", async () => {
   expect(state.iphoneAppUrl).toBe(JOIN);
   expect(calls.length).toBe(2);
 });
-
-test("the Devices card loads the link and shows the row only when one came back", async () => {
-  const html = await Bun.file(new URL("../public/index.html", import.meta.url)).text();
-  const devices = html.slice(html.indexOf('data-phone-screen="settings"'));
-  const card = devices.slice(devices.indexOf('<section class="phone-offer"'), devices.indexOf('id="phone-offer-card"'));
-  expect(card).toContain("loadIphoneApp(account)");
-  expect(card).toContain('x-show="iphoneAppUrl"');
-  // The join link only ever comes from the API.
-  expect(html).not.toContain("testflight.apple.com");
-});

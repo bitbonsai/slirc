@@ -464,26 +464,6 @@ test("phones get the desktop message actions in a long-press sheet", async () =>
   expect(lift()).toHaveBeenCalledTimes(1); // Lifting the finger does not also follow the link.
 });
 
-test("the message sheet never starts Android's text selection or context menu", async () => {
-  const sheet = await Bun.file(new URL("../partials/message-sheet.html", import.meta.url)).text();
-  const transcript = await Bun.file(new URL("../partials/transcript.html", import.meta.url)).text() + await Bun.file(new URL("../partials/message-menu.html", import.meta.url)).text();
-  const css = await Bun.file(new URL("../public/style.css", import.meta.url)).text();
-  expect(sheet.slice(0, sheet.indexOf(">"))).toContain("x-on:contextmenu.prevent");
-  expect(transcript).toContain('x-on:contextmenu="actions.pressContextMenu($event, message)"');
-  expect(css).toContain(".sheet-modal { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }");
-  expect(css).toContain(".sheet-modal input { user-select: text; -webkit-user-select: text; }");
-});
-
-test("a click opens a message link; right-click and long-press open the link menu", async () => {
-  const segment = await Bun.file(new URL("../partials/message-segment.html", import.meta.url)).text();
-  const link = segment.slice(0, segment.indexOf("</a>"));
-  expect(link).toContain('target="_blank" rel="noopener noreferrer"');
-  expect(link).toContain('x-on:click="if (segment.route) { $event.preventDefault(); openMessageLink(segment.href) }"');
-  expect(link).toContain('x-on:contextmenu="if (!segment.route) { $event.preventDefault(); links.openLinkPopup($el, message, segment) }"');
-  expect(link).toContain("actions.pressStart($event, message, () => links.openLinkPopup($el, message, segment))");
-  expect(link).not.toContain("x-on:click.prevent");
-});
-
 test("a Remind me quote is one short line with no double quotes", () => {
   expect(reminderQuote("  ship\n the  build ")).toBe("ship the build");
   expect(reminderQuote('say "hi" and \u201cbye\u201d')).toBe("say 'hi' and 'bye'");

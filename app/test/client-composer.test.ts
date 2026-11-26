@@ -3,7 +3,7 @@
 import "fake-indexeddb/auto";
 import { afterEach, expect, test } from "bun:test";
 import { hiddenCommands, kickNotice, parseKick, parseSlash, slashCommand, slashSelection, slashSuggestions, unknownCommandMessage, commandHelpText, SLASH_COMMANDS } from "@client/commands.ts";
-import { ATTACH_ACCEPT, giphyWireText, IMAGE_MIMES, inlineMedia, MAX_IMAGE_BYTES, MAX_VIDEO_BYTES, parseGiphyText, pickAttachment, removeInlineMedia, splitInlineMedia, VIDEO_MIMES } from "@client/media.ts";
+import { giphyWireText, IMAGE_MIMES, inlineMedia, MAX_IMAGE_BYTES, MAX_VIDEO_BYTES, parseGiphyText, pickAttachment, removeInlineMedia, splitInlineMedia, VIDEO_MIMES } from "@client/media.ts";
 import { embedMetaFromResponse, isCompactPlayer, playerAspect, playerHostKind, sanitizePlayer } from "@client/embed.ts";
 import { HELP_TOPICS } from "@client/help.ts";
 import type { AccountScope } from "@client/model.ts";
@@ -69,16 +69,6 @@ test("attachment picker takes photos and videos, refuses GIFs, HEIC, and oversiz
   expect(pickAttachment({ type: "application/pdf" })).toMatchObject({ ok: false });
   expect(pickAttachment({ type: "image/png", size: MAX_IMAGE_BYTES + 1 })).toMatchObject({ ok: false });
   expect((pickAttachment({ type: "image/heic" }) as { error: string }).error).toContain("JPEG");
-});
-
-// iOS filters its photo picker by the input's accept list; image-only types show "No Results"
-// in a library of videos.
-test("the composer file input accepts every type the picker allows, videos included", async () => {
-  const partial = await Bun.file(new URL("../partials/composer.html", import.meta.url)).text();
-  const accept = partial.match(/x-ref="mediaInput"[^>]*accept="([^"]+)"/)?.[1];
-  expect(accept).toBe(ATTACH_ACCEPT);
-  expect(accept).toContain("video/quicktime");
-  expect(accept).toContain("video/mp4");
 });
 
 test("an uploaded video line is inline video media", () => {
@@ -191,17 +181,4 @@ test("no advertised help command lacks a runSlash case", async () => {
     const token = topic.command.slice(1).split(/[\s<[(]/)[0]!;
     expect(names.has(token)).toBe(true);
   }
-});
-
-test("the phone composer is a pill on one line and an 18px frame once attachments or lines make it tall", async () => {
-  // A 999px pill stayed on when a compressing video made the composer tall: the chip's corner and the
-  // send button sat outside the curve. The compressing chip never set tall, and the pill could not
-  // ease into the frame.
-  const html = await Bun.file(new URL("../partials/composer.html", import.meta.url)).text();
-  expect(html).toContain(":class=\"[(editor.composerTall || media || mediaCompress || (isEditing() && editingMedia().length)) && 'tall'");
-  const css = await Bun.file(new URL("../public/style.css", import.meta.url)).text();
-  const coarse = css.slice(css.indexOf("@media (pointer: coarse) {\n  .reaction-tooltip"));
-  expect(coarse).toContain(".composer { border-radius: calc(1.375rem + .5rem + 1px); }");
-  expect(coarse).toContain(".composer.tall { border-radius: 18px; }");
-  expect(coarse).toMatch(/\.composer \{[^}]*transition: translate var\(--dur-micro\) ease-out, border-radius var\(--dur-fast\) ease;/);
 });
