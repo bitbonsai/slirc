@@ -82,6 +82,10 @@ import { createClientState, type ClientSession } from "@client/client-state.ts";
 import { createView } from "@client/view.ts";
 import { LINK_MISSING } from "@client/core/routing.ts";
 import { createRuntimeState } from "@client/core/runtime-state.ts";
+import { createWorkspaceDialog } from "@client/features/workspace-dialog.ts";
+import { createReactions } from "@client/features/reactions.ts";
+import { createIrcResetNotes } from "@client/features/irc-reset-notes.ts";
+import { createAgentNotices } from "@client/features/agent-notices.ts";
 import { createRouting } from "@client/core/routing.ts";
 import { createRoomMembers } from "@client/features/room-members.ts";
 import { createConnection } from "@client/core/connection.ts";
@@ -251,6 +255,10 @@ export function createClient(Alpine: any) {
   const { signedInHint, preopenSocket, dropEarlySocket, reconnect, pullRefresh, resetReconnectBackoff, scheduleReconnect, openSocket, closeSocket } = createConnection({ state: rs, ui, url, presence: () => presence, typing: () => typing, connectionNotice: () => connectionNotice, connect: (...args) => connect(...args), wireSend: (...args) => wireSend(...args), refreshPresence: (...args) => refreshPresence(...args), clearRoomMembers: (...args) => clearRoomMembers(...args) });
   const { clearRoomMembers, loadRoomMembers, refreshPresence } = createRoomMembers({ state: rs, ui, members: () => members, presence: () => presence });
   const { cancelPhoneAnimation, applyNav, ownDm, openNotes, notesRows, showNotes, linkThread, selectConversation, channelDeleted, leaveRemovedAgent, openRoom, openHome, goBack, canGoBack, canGoForward, goForward, openDms, openMore, openProfile, openSettings, openChannels, openInvitations, openIrc, openAgents, openAdmin, toggleThreads, openThreadParent, activeConversation, currentParentWire, threadNest, isExpanded, pickChannel, openHelpDialog, toggleRooms } = createRouting({ state: rs, ui, isDesktop, nav, notes, transcript: () => transcript, mediaView: () => mediaView, typing: () => typing, actions: () => actions, menus: () => menus, links: () => links, reminderNotice: () => reminderNotice, giphy: () => giphy, editor: () => editor, openPopup: () => openPopup, welcome: () => welcome, pages: () => ({ settings, irc, agents, adminStatus, invitationsPage, admissionFounder, invitationAccept, admission, library }), nextTick: (...args) => nextTick(...args), hint: (...args) => hint(...args), dmPeerNick: (...args) => dmPeerNick(...args), pendingIdForNick: (...args) => pendingIdForNick(...args), openReplyThread: (...args) => openReplyThread(...args), clearDraftFocus: (...args) => clearDraftFocus(...args), abandonPendingThread: (...args) => abandonPendingThread(...args), closeReplyThread: (...args) => closeReplyThread(...args), cancelEdit: (...args) => cancelEdit(...args), focusLoadedDraft: (...args) => focusLoadedDraft(...args), draftWriter: (...args) => draftWriter(...args), loadRoomMembers: (...args) => loadRoomMembers(...args), restoreMediaDraft: (...args) => restoreMediaDraft(...args), revokeMedia: (...args) => revokeMedia(...args), maybeFocusComposer: (...args) => maybeFocusComposer(...args), scheduleMarkRead: (...args) => scheduleMarkRead(...args), connect: (...args) => connect(...args), applyChrome: (...args) => applyChrome(...args) });
+  const { agentRequestLabel, agentRefreshes, refreshForAgent, offlineView, offlineFolded, copyAgentCommand } = createAgentNotices({ state: rs, ui, presence: () => presence, connect: (...args) => connect(...args) });
+  const { showIrcResetNotes, ircResetOpen, ircResetDismiss } = createIrcResetNotes({ ui, openIrc: (...args) => openIrc(...args), openAdmin: (...args) => openAdmin(...args) });
+  const { reactionsReady, chooseReaction } = createReactions({ state: rs, ui, actions: () => actions, activeConversation: (...args) => activeConversation(...args), hint: (...args) => hint(...args) });
+  const { refreshWorkspaceChoices, pickWorkspace } = createWorkspaceDialog({ ui, signal: lifecycle.signal });
   Object.assign(ui, {
     commandPaletteStyle: () => commandPaletteStyle(ui.isDesktop),
     giphyPanelStyle: () => giphyPanelStyle(ui.isDesktop),
@@ -647,79 +655,6 @@ export function createClient(Alpine: any) {
     }
   }
 
-  function agentRequestLabel(message: Message): string {
-    if (!message.serverId || message.deleted || message.state !== "confirmed" || foldIdentifier(message.authorAccount) !== foldIdentifier(ui.account)) return "";
-    const conversation = rs.directories.get(message.conversationId);
-    if (conversation?.kind !== "dm") return "";
-    const direct = ui.directs.find((row: { channel: string }) => foldIdentifier(row.channel) === foldIdentifier(conversation.wireTarget));
-    const agent = direct && agentFor(ui.agentProfiles, direct.nick);
-    if (!agent || foldIdentifier(agent.owner) !== foldIdentifier(ui.account)) return "";
-    return ui.agentRequests.find((row: { channel: string; messageId: string }) =>
-      foldIdentifier(row.channel) === foldIdentifier(conversation.wireTarget) && row.messageId === message.serverId)?.state || "";
-  }
-
-  // A live event about an agent this tab has never heard of (a fresh pairing) refreshes /auth/me
-  // once, so its DM and profile show up without a reload.
-  const agentRefreshes = new Set<string>();
-  function refreshForAgent(nick: string): void {
-    const key = foldIdentifier(nick);
-    if (isAgentNick(ui.agentProfiles, nick) || agentRefreshes.has(key)) return;
-    agentRefreshes.add(key);
-    void connect();
-  }
-
-  // After the derived-password migration, people with password IRC clients, and admins with
-  // managed bots, keep a sticky note until they make a new password or dismiss it.
-  const IRC_RESET_NOTES = {
-    "irc-reset-clients": { kind: "clients", text: "Your IRC password changed. Open IRC clients and copy the new one.", open: () => openIrc() },
-    "irc-reset-bots": { kind: "bots", text: "Your bots' IRC passwords changed. Open Admin and press New password for each bot.", open: () => openAdmin() },
-  } as const;
-  type IrcResetId = keyof typeof IRC_RESET_NOTES;
-  // Opened on this page: the note stays away until the next load, while the flag waits for a new password.
-  const ircResetOpened = new Set<string>();
-  function showIrcResetNotes(): void {
-    const ids = (Object.keys(IRC_RESET_NOTES) as IrcResetId[]).filter((id) => ui.ircReset[IRC_RESET_NOTES[id].kind] && !ircResetOpened.has(id));
-    ui.stickies = [...ids.map((id) => ({ id, text: IRC_RESET_NOTES[id].text, action: "Open", conversationId: "" })),
-      ...ui.stickies.filter((item) => !(item.id in IRC_RESET_NOTES))];
-  }
-  function ircResetOpen(id: string): boolean {
-    if (!(id in IRC_RESET_NOTES)) return false;
-    ircResetOpened.add(id);
-    ui.stickies = ui.stickies.filter((item) => item.id !== id);
-    IRC_RESET_NOTES[id as IrcResetId].open();
-    return true;
-  }
-  function ircResetDismiss(id: string): boolean {
-    if (!(id in IRC_RESET_NOTES)) return false;
-    const kind = IRC_RESET_NOTES[id as IrcResetId].kind;
-    ui.stickies = ui.stickies.filter((item) => item.id !== id);
-    ui.ircReset = { ...ui.ircReset, [kind]: false };
-    void fetch("/api/irc/reset-notice", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind }) }).catch(() => {});
-    return true;
-  }
-  const offlineCard = (message: Message) => agentOfflineCard(message, ui.direct ? String(ui.channel ?? "") : null, (nick) => isAgentNick(ui.agentProfiles, nick));
-  // An agent's offline notice as a card, or null for every other line. A folded card (the agent
-  // came back since) is left out of the transcript by offlineFolded. See agent-offline.ts.
-  function offlineView(message: Message): AgentOfflineCard | null {
-    return offlineCard(message);
-  }
-  function offlineFolded(message: Message): boolean {
-    if (!offlineCard(message)) return false;
-    const list = ui.messages as Message[];
-    const at = list.findIndex((item) => item.id === message.id);
-    const later = (at < 0 ? [] : list.slice(at + 1)).map((item) => ({ authorNick: item.authorNick, isCard: !!offlineCard(item) }));
-    return agentOfflineFolded(message, later, presence.agents[foldIdentifier(message.authorNick)] === true);
-  }
-
-  // The resume command from an agent's offline card. The check mark shows for 1.5 s on that card.
-  async function copyAgentCommand(message: Message): Promise<void> {
-    const command = offlineCard(message)?.command;
-    if (!command) return;
-    try { await navigator.clipboard.writeText(command); } catch { return; }
-    ui.copiedAgentCommand = message.id;
-    setTimeout(() => { if (ui.copiedAgentCommand === message.id) ui.copiedAgentCommand = ""; }, 1_500);
-  }
-
   // A thread started before an edit still belongs to the edited message.
   function threadForMessage(message: Message): ThreadGrant | undefined {
     const parent = currentParentWire();
@@ -741,38 +676,6 @@ export function createClient(Alpine: any) {
       return;
     }
     openReplyThread(message);
-  }
-
-  function reactionsReady(): boolean {
-    // Alpine tracks reactive reads. Read phase, readyVersion, capsNote, the open conversation and
-    // the message projection before the non-reactive capsOk/sync/socket guards, or a short-circuit
-    // leaves the persistent picker buttons disabled after the open room turns ready.
-    const phase = ui.phase;
-    const tracked = [ui.readyVersion, ui.capsNote, ui.currentConversationId, ui.messages];
-    void tracked;
-    // Signed-out peek: chips stay pressable so a tap asks to sign in instead of doing nothing.
-    if (!ui.authenticated && ui.peekRoom) return true;
-    return phase === "live" && rs.capsOk && !!rs.roomId && (rs.sync?.isReady(rs.roomId) ?? false) && rs.socket?.readyState === WebSocket.OPEN;
-  }
-
-  // Online-first: send the TAGMSG on the live connection, report a refusal, and never paint a
-  // count this tab did not receive back from the server. The committed event is the truth.
-  function chooseReaction(message: Message, emoji: string): void {
-    const item = activeConversation();
-    const target = item?.wireTarget;
-    actions.closeReactionPicker();
-    if (!item || !target || !message || !message.serverId || message.state !== "confirmed") return;
-    if (!reactionsReady()) { hint("Reactions need a live connection."); return; }
-    const selected = reactionChips(ui.reactions, message.serverId).some((chip) => chip.emoji === emoji && chip.mine);
-    try {
-      // Taking a reaction back also clears it from the messages this one edited, where it may live.
-      for (const id of selected ? [message.serverId, ...(message.chain ?? [])] : [message.serverId]) {
-        rs.socket!.send(`${reactionTagMessage(target, id, emoji, selected)}\r\n`);
-      }
-      actions.stamp(`${message.serverId}:${emoji}`);
-    } catch (error) {
-      ui.sendError = error instanceof Error ? error.message : "Could not react.";
-    }
   }
 
   function resetAccountUi(): void {
@@ -1305,26 +1208,6 @@ export function createClient(Alpine: any) {
   window.addEventListener("slirc:giphy-send", (event) => {
     void giphy.chooseGiphy((event as CustomEvent<{ preview?: unknown; url?: unknown; title?: unknown }>).detail as { preview: string; url: string; title: string });
   }, { signal: lifecycle.signal });
-
-  // The rail and the dialog list the same rows: this workspace first, then the saved ones. A
-  // browser keeps its own list; the Mac and iOS apps hand theirs over.
-  function refreshWorkspaceChoices(): void {
-    ui.workspaceChoices = workspaceRows(location.origin, [], ui.workspace);
-    if (!canSwitchWorkspace()) { ui.workspaceChoices = workspaceRows(location.origin, savedWorkspaces(), ui.workspace); return; }
-    void shellWorkspaces().then((saved) => { if (saved.length) ui.workspaceChoices = workspaceRows(location.origin, saved, ui.workspace); });
-  }
-
-  // A row in the workspace dialog. The app, or the browser, replaces this page with the workspace.
-  function pickWorkspace(origin: string): void {
-    if (origin === location.origin) { ui.workspaceDialog = false; return; }
-    ui.workspaceBusy = true;
-    const link = canSwitchWorkspace() ? undefined : workspaceLink(origin);
-    void openWorkspace(origin, undefined, link).catch(() => {}).finally(() => { ui.workspaceBusy = false; ui.workspaceDialog = false; });
-  }
-
-  // Switch Workspace in the Mac app's menu opens the dialog while signed in, and its own picker otherwise.
-  const hideWorkspaceDialog = exposeWorkspaceDialog(ui);
-  lifecycle.signal.addEventListener("abort", hideWorkspaceDialog, { once: true });
 
   Object.assign(ui, {
     // Sidebar shortcut: straight to Devices with a code showing.
