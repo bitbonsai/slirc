@@ -155,8 +155,7 @@ html.booting .auth-card .login-logo { opacity: 0; transform: perspective(900px) 
 html.booting body > :not(.boot-screen):not(.auth-modal) { visibility: hidden; }
 html.booting .boot-screen { opacity: 1; visibility: visible; transition-delay: 0s; }
 /* boot:end */
-/* Current shell boots directly; keep the legacy document's pulse/handoff unchanged.
-   Keep the finite animation independent of .booting so readiness cannot snap it back during exit. */
+/* The shell boots directly. Keep the finite animation independent of .booting so readiness cannot snap it back during exit. */
 body[data-client-root] > .boot-screen { transition: opacity var(--dur-boot-exit) ease-out, visibility 0s linear var(--dur-boot-exit); }
 html.booting body[data-client-root] > .boot-screen { transition: none; }
 body[data-client-root] > .boot-screen img { animation: none; will-change: auto; }
@@ -411,7 +410,7 @@ html[data-transition="tab"]::view-transition-old(mobile-nav), html[data-transiti
 .room-topic.expanded { white-space: normal; overflow-wrap: anywhere; }
 .channel-menu-topic { display: none; }
 /* Quiet connection line in the header (instant.md: connection is background state, never a
-   blocking screen). Only rendered at all while disconnected (app.js's x-show on #status). */
+   blocking screen). Only rendered at all while disconnected (the x-show on #status in the header partial). */
 header .status { display: flex; align-items: center; gap: .4rem; color: var(--muted); font-size: var(--text-xs); }
 /* Connecting stays at full strength in the brand green while connecting-dim fades the chat behind it. */
 header .status:not(.err) { color: var(--brand); font-weight: 600; }
@@ -814,7 +813,7 @@ img[src^="data:image/svg+xml"] { scale: .9; object-fit: contain !important; bord
 .chat::-webkit-scrollbar, .giphy-results::-webkit-scrollbar { display: none; }
 /* Conversation hugs the composer like a phone messenger; older messages scroll up. */
 #messages { min-height: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
-/* Smooth arrivals (scrollToBottom in app.js): the list is held where it was and eases up to rest. */
+/* Smooth arrivals (scrollToBottom in client/transcript.ts): the list is held where it was and eases up to rest. */
 #messages.sliding { transition: translate var(--dur-base) cubic-bezier(.2, .7, .2, 1); }
 @media (prefers-reduced-motion: reduce) { #messages.sliding { transition: none; } }
 .message-entry { display: contents; }

@@ -75,11 +75,9 @@ const sessionCookie = {
   path: "/",
   maxAge: sessionMaxAge,
 };
-// Same shape as slirc_session, minus httpOnly: restoreSession (app.js) reads this from
-// document.cookie before the /auth/me round trip lands, to check the disk cache it is about to
-// apply actually belongs to the signed-in account and not whoever used this device before them
-// (see .plans/instant.md stage 1 review: shared-device cache leak). Never holds a secret, only
-// the account nick, so it is safe to read from JS.
+// Same shape as slirc_session, minus httpOnly, so script can read it. It never holds a secret,
+// only the account nick. The old boot document used it to check a disk cache belonged to the
+// signed-in account; no client code reads it now.
 const acctCookie = { ...sessionCookie, httpOnly: false };
 
 function hash(value: string) {
