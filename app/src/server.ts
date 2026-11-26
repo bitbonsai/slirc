@@ -34,7 +34,7 @@ import { setUserTimeZone, validTimeZone } from "./reminders.ts";
 import { admissionForToken, admissionList, approveApplication, beginRedemption, cancelAdmission, finalizeRedemption, recordAdmissionDelivery, redeemedAdmission, reissueAdmission, waitlistApplications, waitlistConfigured } from "./admissions.ts";
 import { addCertificate, listCertificates, normalizeCertificateFingerprint, removeCertificate } from "./irc-certificates.ts";
 import { announceLines, canClose as canClosePoll, checkPoll, closePoll, createPoll, isClosed as pollClosed, openPoll, pollById, pollView, setVotes, tallyLines, voteIn, votes, type Poll } from "./polls.ts";
-import { agentCanReadChannel, asciiFold, channelInfo, defaultChannel, threadsFor, threadsOf, closeDirectConversation, deleteChannelTree, directConversation, directConversations, discoverableHuman, humanDiscovery, isMember, isOpenChannel, isValidNext, joinWorkspaceChannel, leaveChannel, memberChannels, normalized, openChannels, reopenDirectConversation, sharedContacts, threadChildren, visibleChannels } from "./rooms.ts";
+import { agentCanReadChannel, asciiFold, channelInfo, defaultChannel, closeDirectConversation, deleteChannelTree, directConversation, directConversations, discoverableHuman, humanDiscovery, isMember, isOpenChannel, isValidNext, joinWorkspaceChannel, leaveChannel, memberChannels, normalized, openChannels, reopenDirectConversation, sharedContacts, threadChildren, visibleChannels } from "./rooms.ts";
 import { canonicalMailbox, acceptEmailInvite, acceptEmailInviteById, beginConversationOperation, cancelEmailInvite, completeConversationOperation, createEmailInvite, emailInviteAllowance, emailInviteByToken, emailInviteLimit, inviteById, listEmailInvites, normalizeEmail, pendingEmailInvite, claimEmailInviteResend, finishEmailInviteResend, recordEmailInviteDelivery, reserveEmailInvites, settleEmailInvite } from "./email-invites.ts";
 import { AdmissionAttemptStaleError, accountByEmail, accountByNick, allAccounts, rotateIrcPassword, cleanDisplayName, displayNameError, ergo, ircChannelExists, isRemovedEmail, markRemoved, markVerified, provisionAccount, provisionAdmissionIdentity, reserveAdmissionIdentity, validEmail, type Account } from "./accounts.ts";
 import { helperSay, pollTag, queueHelperCatchUp, reminderOutcome, scheduleReminder, setPollChangeListener, tallyTag } from "./helper-bot.ts";
@@ -50,7 +50,7 @@ import { observeReplyLine, replyThreadsFor } from "./reply-threads.ts";
 import { closeSessionSockets, handleRelayUpgrade, relayWebsocketHandlers } from "./relay.ts";
 import { directImageEmbed, parseOg } from "./og.ts";
 import { fetchPublic, ResponseTooLarge } from "./safe-fetch.ts";
-import { configuredAppOrigin, createLimiter, isAllowedClientOrigin, peerKey, threadUrl, trustedProxies } from "./request-security.ts";
+import { configuredAppOrigin, createLimiter, isAllowedClientOrigin, peerKey, trustedProxies } from "./request-security.ts";
 import { addNote, deleteNote, editNote, listNotes, noteBody } from "./notes.ts";
 import { postNote } from "./update-notes.ts";
 import { bindProject, channelCandidates, formatGithubEvent, parseRepo, projectBinding, projectBindings, repoLabel, verifyGithubSignature } from "./github-projects.ts";
@@ -4150,11 +4150,7 @@ app.post("/api/messages/bot-edit", async (c) => {
   }
 });
 
-// Threads under a channel. IRC clients only ever see the #t- channel plus the announcement line; this table
-// exists so the PWA can nest threads under their parent and order them by activity.
-function canSeeChannel(nick: string, channel: string) {
-  return isOpenChannel(channel) || isMember(nick, channel);
-}
+// Old #t- threads: the `threads` table stays until a later migration drops it.
 // Child half of the thread read boundary used by rooms.ts: a workspace child is readable by parent
 // members, anything else (secret, direct, or a legacy child with no channels row) needs an explicit
 // child grant. Kept local so POST /api/threads cannot leak an existing private row on re-registration.
@@ -4171,41 +4167,8 @@ app.get("/api/reply-threads", (c) => {
   return c.json({ threads: replyThreadsFor(nick) });
 });
 
-// Bound the creation payload before it is parsed/allocated, and spend an account's provisioning
-// budget only when a real child is about to be created (an idempotent retry stays free).
-// Creation is retired: reply threads need no channel. GET and DELETE stay until the old channels are gone.
+// Creation is retired: reply threads need no channel.
 app.post("/api/threads", (c) => c.json({ error: "threads are now replies inside the conversation" }, 410));
-app.get("/api/channels/:channel/threads", (c) => {
-  const nick = currentUser(c);
-  const channel = normalized(`#${c.req.param("channel").replace(/^#+/, "")}`);
-  if (!nick) return c.json({ error: "not signed in" }, 401);
-  if (!canSeeChannel(nick, channel)) return c.json({ error: "channel membership required" }, 403);
-  c.header("Cache-Control", "no-store");
-  // Same read-side filter as /auth/me: a private/DM/legacy child is hidden even when the parent
-  // is open, matching the bot/parent authorization rules in `rooms.ts`.
-  return c.json({ channel, threads: threadsOf(channel, nick).map((thread) => ({ ...thread, url: threadUrl(thread.url) })) });
-});
-
-app.delete("/api/threads/:channel", async (c) => {
-  const nick = currentUser(c);
-  const account = nick && accountByNick(nick);
-  const channel = normalized(`#${c.req.param("channel").replace(/^#+/, "")}`);
-  const info = channelInfo(channel);
-  if (!account || !/^#t-[a-z0-9]{6}$/i.test(channel)) return c.json({ error: "thread not found" }, 404);
-  if (info ? info.owner !== account.nick && account.role !== "admin" : account.role !== "admin") return c.json({ error: "thread owner required" }, 403);
-  try {
-    await purgeChannelHistory(channel);
-    await unregisterChannel(channel);
-    db.transaction(() => {
-      db.query("DELETE FROM channel_members WHERE channel = ?").run(channel);
-      db.query("DELETE FROM channels WHERE channel = ?").run(channel);
-      db.query("DELETE FROM threads WHERE channel = ?").run(channel);
-    })();
-    return c.body(null, 204);
-  } catch (error) {
-    return appError(c, error, "Could not delete thread.");
-  }
-});
 
 app.delete("/api/channels/:channel/membership", async (c) => {
   const nick = currentUser(c);

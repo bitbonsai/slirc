@@ -4,7 +4,7 @@ import "fake-indexeddb/auto";
 import { afterEach, expect, test } from "bun:test";
 import { conversationId, reactionEventWins } from "@client/model.ts";
 
-const { adminDeletesOverIrc, canDeleteThread, toggleCollapsedParent, threadAnnouncementDisplayText, threadForRoot, threadsUnderParent, nestedThreads, filterThreadPalette, clampThreadIndex, expandedThreadParent, threadTitleFromText, threadRootTextDiffers, threadGrantFromResponse, threadSourceUrl, threadAnnouncementText, threadRootContextText, threadOperationId, isHiddenThreadAnnouncement, enqueueThreadContext, isDuplicateQueueError } = await import("@client/threads.ts");
+const { adminDeletesOverIrc, toggleCollapsedParent, threadAnnouncementDisplayText, threadForRoot, threadsUnderParent, nestedThreads, filterThreadPalette, clampThreadIndex, expandedThreadParent, threadTitleFromText, threadRootTextDiffers, threadGrantFromResponse, threadSourceUrl, threadAnnouncementText, threadRootContextText, threadOperationId, isHiddenThreadAnnouncement, enqueueThreadContext, isDuplicateQueueError } = await import("@client/threads.ts");
 const { queuedTextFor } = await import("@client/drafts.ts");
 const { displaySegments, textSegments } = await import("@client/render.ts");
 const { messageLinkLabel } = await import("@client/navigation.ts");
@@ -220,13 +220,7 @@ test("thread context text matches the ordinary IRC shape", () => {
   expect(threadOperationId("root", "#t-abc123")).toBe("thread-root:#t-abc123");
 });
 
-test("the thread starter or an admin may delete a thread", () => {
-  const thread = { createdBy: "Ahmed" };
-  expect(canDeleteThread(thread, "ahmed", false)).toBe(true);
-  expect(canDeleteThread(thread, "eve", false)).toBe(false);
-  expect(canDeleteThread(thread, "eve", true)).toBe(true);
-  expect(canDeleteThread({ createdBy: "" }, "", false)).toBe(false);
-  expect(canDeleteThread(undefined, "eve", true)).toBe(false);
+test("a thread grant keeps who created it", () => {
   const grant = threadGrantFromResponse({ channel: "#t-abc123", parent: "#dev-test", root: "m1", createdBy: "ahmed" }, "#dev-test", "dev-test");
   expect(grant?.createdBy).toBe("ahmed");
   expect(threadGrantFromResponse({ channel: "#t-abc123", parent: "#dev-test", root: "m1" }, "#dev-test", "dev-test")?.createdBy).toBe("");
