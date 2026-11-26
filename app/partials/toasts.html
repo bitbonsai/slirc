@@ -1,5 +1,5 @@
     <!-- Toasts live in the shell so they show on every screen; without a composer they sit at the bottom. -->
-    <div class="toast-region" role="status" aria-live="polite" x-cloak x-show="authenticated" :class="!(authenticated && !profileRoute && !settingsRoute && !channelsRoute && !invitationsRoute && !ircRoute && !agentsRoute && !adminRoute && (isDesktop || mobileNav === null)) && 'no-composer'"><template x-for="item in stickies.slice(0, 3)" :key="item.id">
+    <div class="toast-region" role="status" aria-live="polite" x-cloak x-show="authenticated" :class="!view.composerSpace && 'no-composer'"><template x-for="item in stickies.slice(0, 3)" :key="item.id">
       <div class="glass-toast sticky" :class="item.icon === 'refresh' && 'hud'">
         <svg class="toast-icon" viewBox="0 0 24 24" aria-hidden="true" x-show="item.icon !== 'refresh'"><use href="/icons/lucide/sprite.svg#bell"></use></svg>
         <svg class="toast-icon" viewBox="0 0 24 24" aria-hidden="true" x-show="item.icon === 'refresh'"><use href="/icons/lucide/sprite.svg#rotate-cw"></use></svg>

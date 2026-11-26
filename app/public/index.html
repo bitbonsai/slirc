@@ -197,7 +197,7 @@
     <button type="button" class="instance-rail-item instance-rail-add" aria-haspopup="dialog" aria-label="Add or manage workspaces" data-tooltip="Add a workspace" x-tooltip :aria-expanded="String(workspaceDialog)" x-on:click="openWorkspaces()"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('plus')"></span></button>
   </nav>
 
-  <header x-cloak x-show="!booting && (authenticated || peekRoom) && !joinRoute && (isDesktop || (mobileNav === null && !profileRoute && !settingsRoute && !channelsRoute && !invitationsRoute && !ircRoute && !agentsRoute && !adminRoute))">
+  <header x-cloak x-show="view.showsHeader">
     <button class="mobile-back" type="button" aria-label="Back" x-show="!isDesktop && authenticated" x-on:click="goBack()">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
     </button>
@@ -214,15 +214,15 @@
           <button type="button" class="history-btn" aria-label="Back" x-tooltip :disabled="!canGoBack()" x-on:click="goBack()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
           <button type="button" class="history-btn" aria-label="Forward" x-tooltip :disabled="!canGoForward()" x-on:click="goForward()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
         </div>
-        <button id="room-title" class="room-title" type="button" x-show="!profileRoute && !settingsRoute && !channelsRoute && !invitationsRoute && !ircRoute && !agentsRoute && !adminRoute" :disabled="isDesktop && ((!direct && !!activeThread) || notesOpen)" :aria-label="isDesktop ? (direct ? 'Open profile for ' + channel : (activeThread ? null : 'Open channel settings for ' + channel)) : (direct && !notesOpen ? 'Open profile for ' + channel + ' · ' + avatarStatusLabel(channel) : 'Open channels from ' + channel)" :data-tooltip="headerTooltip()" x-tooltip x-on:click="isDesktop ? (notesOpen ? null : direct ? people.openWhois(channel) : (activeThread ? null : channelPrefs.openChannelSettings(channel))) : (direct && !notesOpen ? people.openWhois(channel) : openHome())">
+        <button id="room-title" class="room-title" type="button" x-show="view.showsRoomTitle" :disabled="isDesktop && ((!direct && !!activeThread) || notesOpen)" :aria-label="isDesktop ? (direct ? 'Open profile for ' + channel : (activeThread ? null : 'Open channel settings for ' + channel)) : (direct && !notesOpen ? 'Open profile for ' + channel + ' · ' + avatarStatusLabel(channel) : 'Open channels from ' + channel)" :data-tooltip="headerTooltip()" x-tooltip x-on:click="isDesktop ? (notesOpen ? null : direct ? people.openWhois(channel) : (activeThread ? null : channelPrefs.openChannelSettings(channel))) : (direct && !notesOpen ? people.openWhois(channel) : openHome())">
           <span class="room-mark" x-show="notesOpen" aria-hidden="true"><span class="menu-icon" x-html="lucideIcon('notebook-pen')"></span></span>
           <span class="room-mark channel" x-show="!direct && !notesOpen" aria-hidden="true" :class="isOpenRoom(channel) && 'open'"><span class="lock-icon" x-show="!isOpenRoom(channel)"></span><span class="channel-hash" x-show="isOpenRoom(channel)">#</span></span>
           <template x-if="direct"><span class="room-mark peer-avatar avatar-status-host" aria-hidden="true" :data-status="avatarStatus(channel)"><span>@</span><img :src="avatarUrl(channel)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span></template>
           <span class="room-title-text"><span x-text="headerTitle()"></span><span class="room-subtitle" x-show="headerSubtitle()" x-text="headerSubtitle()"></span></span>
         </button>
-        <span class="room-title profile-title" x-show="profileRoute || settingsRoute || channelsRoute || invitationsRoute || ircRoute || agentsRoute || adminRoute">
-          <span class="room-mark" aria-hidden="true" x-html="adminRoute ? lucideIcon('user-star') : agentsRoute ? lucideIcon('bot') : channelsRoute ? lucideIcon('hash') : invitationsRoute ? lucideIcon('mail') : settingsRoute ? lucideIcon('smartphone') : ircRoute ? lucideIcon('terminal') : lucideIcon('user')"></span>
-          <span class="room-title-text"><span x-text="adminRoute ? 'Admin' : agentsRoute ? 'Agents' : channelsRoute ? 'Create channel' : invitationsRoute ? 'People' : settingsRoute ? 'Devices' : ircRoute ? 'IRC clients' : 'You'"></span></span>
+        <span class="room-title profile-title" x-show="view.onPage">
+          <span class="room-mark" aria-hidden="true" x-html="lucideIcon(view.pageIcon)"></span>
+          <span class="room-title-text"><span x-text="view.pageTitle"></span></span>
         </span>
       </div>
     </div>
@@ -292,7 +292,7 @@
     <button type="button" role="menuitem" x-on:click.stop="menus.copyChannelText('link')"><span class="menu-icon" x-html="lucideIcon('link')"></span>Link</button>
   </div>
 
-  <main x-data="transcript" id="chat" class="chat" x-ref="chat" x-cloak x-show="(authenticated || peekRoom) && !profileRoute && !settingsRoute && !channelsRoute && !invitationsRoute && !ircRoute && !agentsRoute && !adminRoute && (isDesktop || mobileNav === null) && !library.on" x-on:scroll.passive="transcript.onChatScroll()" x-on:touchmove.passive="transcript.noteInput()" x-on:wheel.passive="transcript.noteInput()" x-on:pointerdown="transcript.noteInput()" x-on:keydown.window="transcript.noteKey($event)" x-on:dragover="onDragOver($event)" x-on:dragleave="onDragLeave($event)" x-on:drop="onDrop($event)">
+  <main x-data="transcript" id="chat" class="chat" x-ref="chat" x-cloak x-show="view.showsTranscript" x-on:scroll.passive="transcript.onChatScroll()" x-on:touchmove.passive="transcript.noteInput()" x-on:wheel.passive="transcript.noteInput()" x-on:pointerdown="transcript.noteInput()" x-on:keydown.window="transcript.noteKey($event)" x-on:dragover="onDragOver($event)" x-on:dragleave="onDragLeave($event)" x-on:drop="onDrop($event)">
     <div class="pull-indicator" x-data="pullRefresh('chat')" :class="['is-' + pullState, pullArmed() && 'armed']" :style="pullStyle()"><img class="pull-logo" src="/logo.webp" alt="" /><span class="pull-label" role="status" x-text="pullLabel()"></span></div>
     <div class="drop-offer" x-cloak x-show="dragActive" aria-hidden="true"><p>Drop a photo to add it</p></div>
     <div class="notify-banner" x-cloak x-show="error || sendError || threadError || capsNote || sendReason || draftNote">
@@ -831,8 +831,8 @@
     </div>
   </main>
 
-  <p class="archived-channel" role="status" x-cloak x-show="authenticated && activeChannelArchived() && !profileRoute && !settingsRoute && !channelsRoute && !invitationsRoute && !ircRoute && !agentsRoute && !adminRoute && (isDesktop || mobileNav === null) && !library.on"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('archive')"></span> Archived channel. You can read it, but nobody can post.</p>
-  <form x-data="composerEditor" id="composer" class="composer" :class="[(editor.composerTall || media || mediaCompress || (isEditing() && editingMedia().length)) && 'tall', isEditing() && 'editing']" role="group" aria-label="Message composer" x-on:dragover="onDragOver($event)" x-on:dragleave="onDragLeave($event)" x-on:drop="onDrop($event)" x-cloak x-show="authenticated && !profileRoute && !settingsRoute && !channelsRoute && !invitationsRoute && !ircRoute && !agentsRoute && !adminRoute && (isDesktop || mobileNav === null) && !library.on && !activeChannelArchived()" x-on:submit.prevent="send()" x-on:transitionend.self="polls.plusOpen && placePlusMenu($refs.plusMenu, $refs.plus)">
+  <p class="archived-channel" role="status" x-cloak x-show="view.showsArchivedNotice"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('archive')"></span> Archived channel. You can read it, but nobody can post.</p>
+  <form x-data="composerEditor" id="composer" class="composer" :class="[(editor.composerTall || media || mediaCompress || (isEditing() && editingMedia().length)) && 'tall', isEditing() && 'editing']" role="group" aria-label="Message composer" x-on:dragover="onDragOver($event)" x-on:dragleave="onDragLeave($event)" x-on:drop="onDrop($event)" x-cloak x-show="view.showsComposer" x-on:submit.prevent="send()" x-on:transitionend.self="polls.plusOpen && placePlusMenu($refs.plusMenu, $refs.plus)">
     <p class="sr-only" role="status" aria-live="polite" x-text="typing.statusText()"></p>
     <div class="typing-row" x-cloak x-show="typing.accounts().length">
       <span class="typing-avatars">
@@ -1027,7 +1027,7 @@
     </section>
   </dialog>
     <!-- Toasts live in the shell so they show on every screen; without a composer they sit at the bottom. -->
-    <div class="toast-region" role="status" aria-live="polite" x-cloak x-show="authenticated" :class="!(authenticated && !profileRoute && !settingsRoute && !channelsRoute && !invitationsRoute && !ircRoute && !agentsRoute && !adminRoute && (isDesktop || mobileNav === null)) && 'no-composer'"><template x-for="item in stickies.slice(0, 3)" :key="item.id">
+    <div class="toast-region" role="status" aria-live="polite" x-cloak x-show="authenticated" :class="!view.composerSpace && 'no-composer'"><template x-for="item in stickies.slice(0, 3)" :key="item.id">
       <div class="glass-toast sticky" :class="item.icon === 'refresh' && 'hud'">
         <svg class="toast-icon" viewBox="0 0 24 24" aria-hidden="true" x-show="item.icon !== 'refresh'"><use href="/icons/lucide/sprite.svg#bell"></use></svg>
         <svg class="toast-icon" viewBox="0 0 24 24" aria-hidden="true" x-show="item.icon === 'refresh'"><use href="/icons/lucide/sprite.svg#rotate-cw"></use></svg>
