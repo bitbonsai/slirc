@@ -2142,7 +2142,7 @@ dialog.custom-modal.sheet-modal { padding: 0 0 var(--kb, 0px); }
 /* Channel search uses the shared palette glass and width, anchored under the header without dimming the transcript. */
 #channel-search-dialog { align-items: start; justify-items: center; padding-top: calc(var(--header-h) + .75rem); background: transparent; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
 #channel-search-dialog > section { margin: 0 auto; }
-.channel-search-palette { background: color-mix(in srgb, var(--panel) 92%, transparent); border-color: color-mix(in srgb, var(--brand) 70%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 16%, transparent), var(--shadow-lg); backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter); }
+.channel-search-palette { background: color-mix(in srgb, var(--panel) 92%, transparent); border-color: color-mix(in srgb, var(--brand) 70%, transparent); box-shadow: 0 0 1.5rem color-mix(in srgb, var(--brand) 20%, transparent), var(--shadow-lg); backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter); }
 .channel-search-body { overflow: hidden; transition: height var(--dur-base) var(--ease-standard); }
 @media (prefers-reduced-motion: reduce) { .channel-search-body { transition: none; } }
 .channel-search-head { display: flex; align-items: center; gap: .55rem; padding: 0 .65rem 0 1rem; border-bottom: 1px solid color-mix(in srgb, var(--line) 75%, transparent); }
@@ -2181,6 +2181,7 @@ dialog.custom-modal.sheet-modal { padding: 0 0 var(--kb, 0px); }
 .channel-search-older:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .channel-search-older:disabled, .channel-search-older[aria-disabled="true"] { opacity: var(--disabled-opacity); cursor: default; }
 :root[data-theme="light"] #channel-search-dialog { background: transparent; }
+:root[data-theme="light"] .channel-search-palette { box-shadow: 0 0 1.25rem color-mix(in srgb, var(--brand) 12%, transparent), var(--shadow-lg); }
 .notice-dismiss { margin-left: .5rem; }
 .notice-card:not(.delete-confirmation) .pair-actions { justify-content: center; }
 .notice-card.delete-confirmation { text-align: left; }
