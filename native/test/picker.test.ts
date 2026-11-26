@@ -512,10 +512,18 @@ describe("iOS load watch", () => {
 
   test("the client still marks its boot the way the watch reads it", async () => {
     const partial = await Bun.file(new URL("../../app/partials/index.html", import.meta.url)).text();
-    const runtime = await Bun.file(new URL("../../app/client/runtime.ts", import.meta.url)).text();
     expect(partial).toContain('<html lang="en" class="booting">');
     expect(partial).toContain("data-client-root");
-    expect(runtime).toContain('root.classList.toggle("booting", on);');
+    // The client adds the class when it starts and clears it when the boot is released.
+    const { createBoot } = await import("../../app/client/core/boot.ts");
+    const classes = new Set<string>();
+    const root = { classList: { add: (name: string) => classes.add(name), toggle: (name: string, on: boolean) => (on ? classes.add(name) : classes.delete(name)) } };
+    const ui = { booting: true } as Parameters<typeof createBoot>[0]["ui"];
+    const boot = createBoot({ ui, root: root as unknown as HTMLElement });
+    expect(classes.has("booting")).toBe(true);
+    boot.setBooting(false);
+    expect(classes.has("booting")).toBe(false);
+    expect(ui.booting).toBe(false);
   });
 
   test("the picker offers Try again and marks the failed card", async () => {
