@@ -80,6 +80,7 @@ import { createComposerEditor } from "@client/composer-editor.ts";
 import { createLinkActions } from "@client/link-actions.ts";
 import { createClientState, type ClientSession } from "@client/client-state.ts";
 import { createView } from "@client/view.ts";
+import { createRuntimeState } from "@client/core/runtime-state.ts";
 import { agentFor, agentHeader, agentLabel, agentMention, agentNavRows, applyAgentUpdate, forgetAgent, isAgentNick, mergeAgents } from "@client/agent-roster.ts";
 import { createReminderNotice, remindResult } from "@client/reminder-notice.ts";
 import { createAutoRefresh, loadedBuild } from "@client/auto-refresh.ts";
@@ -106,6 +107,7 @@ async function fetchJson(path: string): Promise<unknown> {
 }
 
 export function createClient(Alpine: any) {
+  const rs = createRuntimeState();
   // A workspace list carried from another workspace's dialog, before the router reads the fragment.
   takeCarriedWorkspaces();
   const instance = location.origin;
@@ -117,38 +119,23 @@ export function createClient(Alpine: any) {
   const COARSE = matchMedia("(pointer: coarse)").matches || document.cookie.includes("slirc_phone=1");
   const isDesktop = !COARSE;
 
-  let db: ClientDatabase | null = null;
   let projection: ConversationProjection | null = null;
   let unread: UnreadProjection | null = null;
   // Read markers the server pushed on this connection ("" for `*`), set synchronously so a first-sync
   // seed never jumps ahead of a server marker whose Dexie write is still in flight.
-  const serverMarkers = new Map<string, string>();
   let markReadTimer: ReturnType<typeof setTimeout> | null = null;
   const baseTitle = document.title;
   let appBadge = -1; // unknown until the first apply, so a stale OS badge from last session clears
-  let outbox: Outbox | null = null;
-  let sync: SyncEngine | null = null;
-  let bridge: RelayBridge | null = null;
-  let composer: Composer | null = null;
-  let socket: WebSocket | null = null;
-  let scope: AccountScope | null = null;
-  let roomId: string | null = null;
   let focusDraftConversationId: string | null = null;
-  let currentScope = "";
   // Immutable account id from the latest /auth/me, kept even when access is denied for zero
   // conversations. The join acceptance compares this instead of the mutable scope key.
-  let authenticatedAccountId = "";
-  let stopped = false; // block callbacks during teardown or after a real unload
-  let suspended = false; // BFCache freeze: socket closed, durable state kept for resume
   let painted = false;
   const paintWaiters: Array<() => void> = [];
-  const composerTextByConversation = new Map<string, string>();
   let reconnectTimer: number | null = null;
   // A dropped socket retries almost at once, then backs off. The delay resets only when a room goes
   // live, so a socket that opens and is refused still backs off instead of looping every 250 ms.
   const RECONNECT_FIRST_MS = 250;
   let reconnectDelay = RECONNECT_FIRST_MS;
-  let capsOk = true;
   let connectEpoch = 0;
   // The latest connect run, so a live event can wait for it instead of superseding it mid-flight.
   let connecting: Promise<void> = Promise.resolve();
@@ -169,7 +156,6 @@ export function createClient(Alpine: any) {
     earlySocket = null;
   }
   let renderEpoch = 0;
-  let signingOut = false;
 
   root.classList.add("booting");
 
@@ -238,24 +224,20 @@ export function createClient(Alpine: any) {
     navIntent += 1;
     nav.open(screen);
   };
-  const directories = new Map<string, AuthorizedConversation>();
   const dmPeerIds = new Map<string, string>();
   // A first-contact DM the server has not authorized yet, keyed by the account-scoped conversation
   // id. Declared before any navigation subscriber can run; pending is local enqueue permission
   // only and never enters `authorized`.
-  interface PendingDm { nick: string; accountId: string; state: "provisioning" | "failed"; error?: string }
-  const pendingDms = new Map<string, PendingDm>();
   const provisioning = new Map<string, Promise<void>>();
-  let authorized: AuthorizedConversation[] = [];
 
   const ui: any = Alpine.reactive(createClientState(isDesktop, COARSE));
   ui.view = createView(ui);
   const notes = createNotes(Alpine.reactive, { onChange: () => showNotes() });
   // The THREADS group in the sidebar: reply threads this person started or replied to.
   const replyThreads = createReplyThreadList(Alpine.reactive, {
-    db: () => db,
+    db: () => rs.db,
     conversationFor: (channel) => {
-      const item = authorized.find((entry) => entry.kind !== "thread" && foldIdentifier(entry.wireTarget) === foldIdentifier(channel));
+      const item = rs.authorized.find((entry) => entry.kind !== "thread" && foldIdentifier(entry.wireTarget) === foldIdentifier(channel));
       if (!item) return null;
       if (item.kind === "dm") {
         const nick = ui.directs.find((direct: { channel: string }) => foldIdentifier(direct.channel) === foldIdentifier(channel))?.nick;
@@ -265,7 +247,7 @@ export function createClient(Alpine: any) {
     },
     openRootId: () => ui.replyThreadRootId,
     show: (entry) => showReplyThread(entry),
-    linkTitle: (url) => ui.embeds[url]?.title || (scope ? cachedEmbeds(scope.accountId)[url]?.title : undefined),
+    linkTitle: (url) => ui.embeds[url]?.title || (rs.scope ? cachedEmbeds(rs.scope.accountId)[url]?.title : undefined),
   });
   ui.installBanner = installBannerVisible(installEnv(window as never));
   ui.canSwitchWorkspace = canSwitchWorkspace(window as never);
@@ -419,26 +401,26 @@ export function createClient(Alpine: any) {
 
   const signIn = createSignIn(Alpine.reactive, ui);
   const nextTick = (callback?: () => void) => Alpine.nextTick(callback);
-  const session: ClientSession = { scope: () => scope, key: () => currentScope, stopped: () => stopped, signingOut: () => signingOut };
+  const session: ClientSession = { scope: () => rs.scope, key: () => rs.currentScope, stopped: () => rs.stopped, signingOut: () => rs.signingOut };
   // A DM the last grant does not list (closed here, or just started by the other person) got a
   // message; refresh the grant so it appears and its history loads. Known DMs need nothing.
   // Phone pairing by QR: the desktop card that shows a one-time code, and the phone's scanner.
   const phoneOffer = createPhoneOffer(Alpine.reactive, { onPhone: () => { ui.hasPhone = true; } });
   const scanner = createQrScanner(Alpine.reactive, { origin: () => location.origin, onSignedIn: () => { void connect(); }, navigate: (url) => { void openWorkspaceLink(url, window as never); } });
   const agentBack = createAgentBackToast();
-  const pairing = createDevicePairing(Alpine.reactive, { core: ui, nextTick, session, suspended: () => suspended, viewEpoch: () => renderEpoch, email: () => signIn.email,
+  const pairing = createDevicePairing(Alpine.reactive, { core: ui, nextTick, session, suspended: () => rs.suspended, viewEpoch: () => renderEpoch, email: () => signIn.email,
     onOfferRedeemed: (data) => phoneOffer.redeemed(data),
     onNotes: () => { void notes.load(); },
     onReplyThreads: () => { void replyThreads.load(); },
     onPoll: (id) => polls.changed(id),
     onStreamReady: () => { polls.refreshAll(); void replyThreads.load(); },
-    onDirect: (channel) => { if (!authorized.some((item) => item.kind === "dm" && foldIdentifier(item.wireTarget) === foldIdentifier(channel))) void connect(); },
+    onDirect: (channel) => { if (!rs.authorized.some((item) => item.kind === "dm" && foldIdentifier(item.wireTarget) === foldIdentifier(channel))) void connect(); },
     // Another device (or person) changed this account's channels. Wait out a refresh already under
     // way, which may have read /auth/me before the change, then refresh only if the list disagrees.
     onChannels: (channel, member, deleted) => {
       if (deleted) { channelDeleted(channel); return; }
       void connecting.catch(() => {}).then(() => {
-        if (authorized.some((item) => item.kind !== "dm" && foldIdentifier(item.wireTarget) === foldIdentifier(channel)) !== member) void connect();
+        if (rs.authorized.some((item) => item.kind !== "dm" && foldIdentifier(item.wireTarget) === foldIdentifier(channel)) !== member) void connect();
       });
     },
     onAgentPresence: (nick, attached) => {
@@ -449,7 +431,7 @@ export function createClient(Alpine: any) {
     },
     onAgentPending: () => { if (ui.agentsRoute) void agents.load(); },
     onAgentConnectRequest: (data) => agents.showRequest(data),
-    onAgentRequests: (data) => { ui.agentRequests = data?.accountId === authenticatedAccountId ? data.requests : []; },
+    onAgentRequests: (data) => { ui.agentRequests = data?.accountId === rs.authenticatedAccountId ? data.requests : []; },
     onAgentRemoved: (nick) => {
       agents.dropRow(nick);
       presence.setAgentAttached(nick, false);
@@ -496,7 +478,7 @@ export function createClient(Alpine: any) {
     // Signed out on /open-chat, the peek payload carries the poll views itself (peek.ts).
     enabled: () => ui.helpers.includes("poll") || (!ui.authenticated && !!ui.peekRoom),
     me: () => ui.account,
-    wireFor: (conversationId) => roomWire(authorized.find((item) => item.conversationId === conversationId)) ?? (!ui.authenticated && ui.peekRoom && conversationId === ui.currentConversationId ? ui.peekRoom : null),
+    wireFor: (conversationId) => roomWire(rs.authorized.find((item) => item.conversationId === conversationId)) ?? (!ui.authenticated && ui.peekRoom && conversationId === ui.currentConversationId ? ui.peekRoom : null),
     composerChannel: () => ui.notesOpen || ui.activeThread ? null : roomWire(activeConversation()),
     nextTick,
   });
@@ -514,7 +496,7 @@ export function createClient(Alpine: any) {
   const bulkInvite = createBulkInvite(Alpine.reactive, { core: ui, session, nextTick });
   const destinationReachable = (result: { type?: string; channel?: string; nick?: string }): boolean => result.type === "direct"
     ? ui.directs.some((item: { nick: string }) => foldIdentifier(item.nick) === foldIdentifier(result.nick || ""))
-    : authorized.some((item) => item.kind !== "dm" && foldIdentifier(item.wireTarget) === foldIdentifier(result.channel || ""));
+    : rs.authorized.some((item) => item.kind !== "dm" && foldIdentifier(item.wireTarget) === foldIdentifier(result.channel || ""));
   const invitationAccept = createInvitationAccept(Alpine.reactive, {
     session,
     connect,
@@ -522,7 +504,7 @@ export function createClient(Alpine: any) {
     openRoom,
     goHome: () => openHome(),
     logout: () => logout(),
-    authenticatedAccountId: () => authenticatedAccountId,
+    authenticatedAccountId: () => rs.authenticatedAccountId,
     destinationReachable,
   });
   const admission = createAdmissionScreen(Alpine.reactive, {
@@ -533,7 +515,7 @@ export function createClient(Alpine: any) {
     openRoom,
     goHome: () => openHome(),
     logout: () => logout(),
-    authenticatedAccountId: () => authenticatedAccountId,
+    authenticatedAccountId: () => rs.authenticatedAccountId,
     destinationReachable,
   });
   const admissionFounder = createAdmissionFounder(Alpine.reactive, { core: ui, session });
@@ -559,19 +541,19 @@ export function createClient(Alpine: any) {
     reload: () => location.reload(),
     storage: (() => { try { return sessionStorage; } catch { return null; } })(),
   });
-  const reminderNotice = createReminderNotice({ core: ui, origin: instance, onScreen: (id) => id === roomId && conversationOnScreen(), open: (nick) => { void openDirect(nick); }, openLink: openMessageLink });
+  const reminderNotice = createReminderNotice({ core: ui, origin: instance, onScreen: (id) => id === rs.roomId && conversationOnScreen(), open: (nick) => { void openDirect(nick); }, openLink: openMessageLink });
   // Ephemeral IRCv3 typing state over the live connection. The send path reuses the same socket,
   // capability, ownership and readiness gates as the outbox; nothing here is persisted or queued.
   const typing = createTypingIndicators(Alpine.reactive, {
-    self: () => scope?.account ?? "",
-    isAuthorized: (id) => id === NOTES_CONVERSATION_ID || directories.has(id),
+    self: () => rs.scope?.account ?? "",
+    isAuthorized: (id) => id === NOTES_CONVERSATION_ID || rs.directories.has(id),
     current: () => ui.currentConversationId,
     label: (account) => agentLabel(ui.agentProfiles, account),
     send: (value) => {
-      if (stopped || signingOut || !ui.sendOwner) return;
-      if (!capsOk || !roomId || socket?.readyState !== WebSocket.OPEN) return;
-      if (!(sync?.isReady(roomId) ?? false)) return;
-      const item = authorized.find((entry) => entry.conversationId === roomId);
+      if (rs.stopped || rs.signingOut || !ui.sendOwner) return;
+      if (!rs.capsOk || !rs.roomId || rs.socket?.readyState !== WebSocket.OPEN) return;
+      if (!(rs.sync?.isReady(rs.roomId) ?? false)) return;
+      const item = rs.authorized.find((entry) => entry.conversationId === rs.roomId);
       if (item) wireSend(typingLine(item.wireTarget, value));
     },
   });
@@ -586,20 +568,20 @@ export function createClient(Alpine: any) {
     nextTick,
   });
   const channelPrefs = createChannelSettings(Alpine.reactive, { core: ui, nextTick, session, closeMenu: openPopup, onDeleted: (channel) => channelDeleted(channel) });
-  const directDelete = createDirectDelete(Alpine.reactive, { core: ui, nextTick, session, authorized: () => authorized, nav, connect, closeMenu: openPopup });
+  const directDelete = createDirectDelete(Alpine.reactive, { core: ui, nextTick, session, authorized: () => rs.authorized, nav, connect, closeMenu: openPopup });
   const presence = createPresence(Alpine.reactive, wireSend);
-  const people = createPeopleCard(Alpine.reactive, { core: ui, openPopup, sendWhois: (nick) => { if (socket?.readyState !== WebSocket.OPEN) return false; socket.send(`WHOIS ${nick}\r\n`); return true; }, activeChannel: () => activeConversation()?.wireTarget ?? "", openRoom, openDirect: (nick) => openDirect(nick, true), focusComposer: () => { void Alpine.nextTick(() => maybeFocusComposer(true)); }, conversations: () => authorized, directs: () => ui.directs, channelDetails: () => ui.channelDetails, threads: () => ui.threads });
+  const people = createPeopleCard(Alpine.reactive, { core: ui, openPopup, sendWhois: (nick) => { if (rs.socket?.readyState !== WebSocket.OPEN) return false; rs.socket.send(`WHOIS ${nick}\r\n`); return true; }, activeChannel: () => activeConversation()?.wireTarget ?? "", openRoom, openDirect: (nick) => openDirect(nick, true), focusComposer: () => { void Alpine.nextTick(() => maybeFocusComposer(true)); }, conversations: () => rs.authorized, directs: () => ui.directs, channelDetails: () => ui.channelDetails, threads: () => ui.threads });
   // Right members rail: reads the runtime's one authorized fetch and the existing presence controller.
   const members = createMembersPanel(Alpine.reactive, {
     core: ui,
     canShow: () => membersPanelVisible({
-      authenticated: ui.authenticated, stopped,
+      authenticated: ui.authenticated, stopped: rs.stopped,
       direct: ui.direct, threaded: !!ui.activeThread, channel: String(ui.channel ?? ""),
       route: ui.view.routed,
-      authorized: !!roomId && directories.has(roomId),
+      authorized: !!rs.roomId && rs.directories.has(rs.roomId),
       publicRoom: ui.openRooms[String(ui.channel ?? "")] === true,
     }),
-    request: () => loadRoomMembers(activeConversation(), roomId),
+    request: () => loadRoomMembers(activeConversation(), rs.roomId),
     status: (nick) => presence.status(nick),
     label: (nick) => presence.label(nick),
     avatarUrl: personAvatarUrl,
@@ -610,15 +592,15 @@ export function createClient(Alpine: any) {
   });
   const mediaView = createMediaView(Alpine.reactive, { core: ui, nextTick, openPopup, session, origin: instance,
     autoCollapsed: (message) => collapsesOlderGiphy({ channel: String(ui.channel ?? ""), coarse: COARSE, open: isOpenRoom(String(ui.channel ?? "")), direct: !!ui.direct, thread: !!ui.activeThread }) && isOlderGiphy(transcript.displayedMessages(), message) });
-  const transcript = createTranscript({ core: ui, nextTick, authorized: () => authorized, stopped: () => stopped, menuOpenId: () => actions.actionMessageId, linkOpen: () => !!links.linkPopup, closeLink: () => links.closeLinkPopup(false), onPinChange: (pinned) => { if (pinned) scheduleMarkRead(); }, hidden: (message) => polls.hidesTally(message) || offlineFolded(message), rememberEmbed: (url, meta) => { if (scope) rememberEmbed(scope.accountId, url, meta); } });
+  const transcript = createTranscript({ core: ui, nextTick, authorized: () => rs.authorized, stopped: () => rs.stopped, menuOpenId: () => actions.actionMessageId, linkOpen: () => !!links.linkPopup, closeLink: () => links.closeLinkPopup(false), onPinChange: (pinned) => { if (pinned) scheduleMarkRead(); }, hidden: (message) => polls.hidesTally(message) || offlineFolded(message), rememberEmbed: (url, meta) => { if (rs.scope) rememberEmbed(rs.scope.accountId, url, meta); } });
   const peek = createPeekView({ ui, polls, scrollToBottom: (force) => transcript.scrollToBottom(force), nextTick: (callback) => { void nextTick(callback); }, signedInBefore: () => signedInHint(), openRoom: (room) => nav.open({ kind: "room", room }, { replace: true }) });
   peek.start();
-  const giphy = createGiphyPicker(Alpine.reactive, { core: ui, session, openPopup, roomId: () => roomId, isAuthorized: (id) => id === NOTES_CONVERSATION_ID || directories.has(id), queueConversationText, saveNote: (text) => notes.add(text) });
+  const giphy = createGiphyPicker(Alpine.reactive, { core: ui, session, openPopup, roomId: () => rs.roomId, isAuthorized: (id) => id === NOTES_CONVERSATION_ID || rs.directories.has(id), queueConversationText, saveNote: (text) => notes.add(text) });
   const emoji = createEmojiPicker(Alpine.reactive, { core: ui, openPopup, nextTick, getCaret: () => {
     const input = document.querySelector<HTMLElement>("#input");
     return input ? editor.composerSelectionOffset(input) : ui.composer.length;
   }, insert: (row) => editor.chooseEmoji(row) });
-  const editor = createComposerEditor(Alpine.reactive, { core: ui, nextTick, draftComposer: () => ui.pendingThread ? null : composer, roomId: () => roomId, rememberText: (text) => { if (roomId && !ui.pendingThread) composerTextByConversation.set(roomId, text); }, updateDraftNavigation, send, cancelEdit, chooseCommand, closeGiphy: giphy.closeGiphy, moveGiphy: giphy.moveGiphy, giphy, onChatScroll: transcript.onChatScroll, scrollToBottom: transcript.scrollToBottom, coarse: COARSE, emoji, recallSent: (direction) => recallSent(direction), onActivity: (text) => { if (!ui.editingMessageId && !ui.pendingThread) typing.noteTyping(text); }, onBlur: () => typing.stopTyping(), answerAddPrompt: (key) => addPrompts.answer(ui.currentConversationId, key) });
+  const editor = createComposerEditor(Alpine.reactive, { core: ui, nextTick, draftComposer: () => ui.pendingThread ? null : rs.composer, roomId: () => rs.roomId, rememberText: (text) => { if (rs.roomId && !ui.pendingThread) rs.composerTextByConversation.set(rs.roomId, text); }, updateDraftNavigation, send, cancelEdit, chooseCommand, closeGiphy: giphy.closeGiphy, moveGiphy: giphy.moveGiphy, giphy, onChatScroll: transcript.onChatScroll, scrollToBottom: transcript.scrollToBottom, coarse: COARSE, emoji, recallSent: (direction) => recallSent(direction), onActivity: (text) => { if (!ui.editingMessageId && !ui.pendingThread) typing.noteTyping(text); }, onBlur: () => typing.stopTyping(), answerAddPrompt: (key) => addPrompts.answer(ui.currentConversationId, key) });
   const actions = createMessageActions(Alpine.reactive, { core: ui, nextTick, openPopup, canEdit, canDelete, startEdit, quoteMessage, openThreadForMessage, chooseReaction, focusComposer: () => editor.focusComposer(), deleteMessage: confirmDelete, focusAfterDelete: maybeFocusComposer,
     messageLink, setReminder: runRemind, customEmoji: () => emoji.custom });
   const links = createLinkActions(Alpine.reactive, { core: ui, nextTick, openPopup, canEdit, startEdit, setComposerSelection: editor.setComposerSelection, displayOffsetAtSource: editor.displayOffsetAtSource });
@@ -632,14 +614,14 @@ export function createClient(Alpine: any) {
     core: ui,
     routed: () => ui.view.routed,
     post: async (text) => {
-      if (!roomId) throw new Error("Messaging is not ready yet. Reconnect and try again.");
-      await queueConversationText(roomId, text);
+      if (!rs.roomId) throw new Error("Messaging is not ready yet. Reconnect and try again.");
+      await queueConversationText(rs.roomId, text);
     },
     nextTick,
     desktop: () => isDesktop,
     readMarker: async () => {
       const id = ui.currentConversationId;
-      const marker = db && id ? await db.readMarkers.get(id) : undefined;
+      const marker = rs.db && id ? await rs.db.readMarkers.get(id) : undefined;
       const time = marker ? Date.parse(marker.time) : NaN;
       return Number.isFinite(time) && time > 0 ? time : undefined;
     },
@@ -707,14 +689,14 @@ export function createClient(Alpine: any) {
   // Media staging/sending controller. Accessors keep it reading the live scope, so a navigate or
   // account switch between awaits is observed rather than captured stale.
   const mediaSender = createMediaSender({
-    scopeKey: () => (scope ? currentScope : null),
-    accountId: () => scope?.accountId ?? null,
-    authorAccount: () => scope?.account ?? null,
-    roomId: () => roomId,
-    database: () => db,
-    outbox: () => outbox,
-    isAuthorized: (id) => id === NOTES_CONVERSATION_ID || directories.has(id),
-    wireChannel: (id) => authorized.find((entry) => entry.conversationId === id)?.wireTarget,
+    scopeKey: () => (rs.scope ? rs.currentScope : null),
+    accountId: () => rs.scope?.accountId ?? null,
+    authorAccount: () => rs.scope?.account ?? null,
+    roomId: () => rs.roomId,
+    database: () => rs.db,
+    outbox: () => rs.outbox,
+    isAuthorized: (id) => id === NOTES_CONVERSATION_ID || rs.directories.has(id),
+    wireChannel: (id) => rs.authorized.find((entry) => entry.conversationId === id)?.wireTarget,
     media: () => ui.media,
     setMedia: (media) => { ui.media = media; },
     busy: () => ui.mediaBusy,
@@ -729,26 +711,26 @@ export function createClient(Alpine: any) {
     origin: () => location.origin,
     buildQueueText: ({ conversationId, author, text, draftRevision, mediaRevision, createdAt }) =>
       queuedTextFor(conversationId, author, { text: emojiText(text, emoji.custom), revision: draftRevision }, randomId(), createdAt, mediaRevision),
-    caption: () => ({ text: String(ui.composer ?? "").trim(), revision: composer?.revision ?? randomId() }),
+    caption: () => ({ text: String(ui.composer ?? "").trim(), revision: rs.composer?.revision ?? randomId() }),
     validateCaption: (text) => {
-      if (text.includes("\n") && !bridge?.enabled.has("draft/multiline")) throw new Error("This server cannot send a caption with a photo.");
+      if (text.includes("\n") && !rs.bridge?.enabled.has("draft/multiline")) throw new Error("This server cannot send a caption with a photo.");
       const check = validateMultiline(emojiText(text, emoji.custom).split("\n"));
       if (!check.ok) throw new Error(check.error ?? "Cannot send that caption.");
     },
     validateMessage: (text) => {
-      if (text.includes("\n") && !bridge?.enabled.has("draft/multiline")) throw new Error("This server cannot send several lines in one message.");
+      if (text.includes("\n") && !rs.bridge?.enabled.has("draft/multiline")) throw new Error("This server cannot send several lines in one message.");
       const check = validateMultiline(emojiText(text, emoji.custom).split("\n"));
       if (!check.ok) throw new Error(check.error ?? "Cannot send that message.");
     },
     clearCaption: (revision) => {
-      if (composer && composer.revision === revision) { composer.text = ""; composer.revision = null; ui.composer = ""; }
+      if (rs.composer && rs.composer.revision === revision) { rs.composer.text = ""; rs.composer.revision = null; ui.composer = ""; }
     },
     onSent: (conversationId) => {
       // Always clear the remembered draft for the recipient, even if the visible room moved on
       // mid-send; otherwise returning to the room resurrects an already-sent caption.
-      composerTextByConversation.set(conversationId, "");
+      rs.composerTextByConversation.set(conversationId, "");
       void refreshDrafts();
-      if (roomId !== conversationId) return;
+      if (rs.roomId !== conversationId) return;
       ui.draftNote = "";
       editor.resizeComposer();
       transcript.scrollToBottom(true);
@@ -761,7 +743,7 @@ export function createClient(Alpine: any) {
   // A desktop tab with no conversation in the route still needs a real room behind it: reloading
   // /profile leaves no back entry, so its fallback Home tab lands on an authorized room or DM.
   function defaultConversationId(): string | null {
-    return defaultConversationIdFor(authorized);
+    return defaultConversationIdFor(rs.authorized);
   }
   let phoneAnimation: Animation | null = null;
   function applyNav(state: { screen: Screen; index: number; length: number }): void {
@@ -809,7 +791,7 @@ export function createClient(Alpine: any) {
     // The admission screen never fetches on open; start() only reads the persisted attempt state.
     if (screen.kind === "admission") admission.start(screen.token, screen.destination);
     if (animation) void nextTick(() => requestAnimationFrame(() => {
-      if (phoneAnimation !== animation || stopped || ui.booting || !ui.authenticated || ui.navIndex !== state.index) { animation.cancel(); return; }
+      if (phoneAnimation !== animation || rs.stopped || ui.booting || !ui.authenticated || ui.navIndex !== state.index) { animation.cancel(); return; }
       animation.play();
     }));
     if (!ui.authenticated || screen.kind === "profile" || screen.kind === "settings" || screen.kind === "channels" || screen.kind === "invitations" || screen.kind === "join" || screen.kind === "admission" || screen.kind === "irc" || screen.kind === "agents" || screen.kind === "admin") return;
@@ -820,11 +802,11 @@ export function createClient(Alpine: any) {
     const direct = screen.kind === "dm" ? ui.directs.find((item: any) => foldIdentifier(item.nick) === foldIdentifier(screen.nick)) : null;
     const pendingId = screen.kind === "dm" ? pendingIdForNick(screen.nick) : null;
     const target = screen.kind === "room"
-      ? authorized.find((item) => item.kind !== "dm" && foldIdentifier(item.wireTarget) === foldIdentifier(screen.room))
-      : direct ? authorized.find((item) => item.kind === "dm" && item.wireTarget === direct.channel) : undefined;
+      ? rs.authorized.find((item) => item.kind !== "dm" && foldIdentifier(item.wireTarget) === foldIdentifier(screen.room))
+      : direct ? rs.authorized.find((item) => item.kind === "dm" && item.wireTarget === direct.channel) : undefined;
     const focusMessageId = screen.kind === "room" || screen.kind === "dm" ? screen.focusMessageId : undefined;
     // A link to a conversation this account cannot read says only that the message is not there.
-    if (focusMessageId && !target && !pendingId && authorized.length) hint(LINK_MISSING);
+    if (focusMessageId && !target && !pendingId && rs.authorized.length) hint(LINK_MISSING);
     selectConversation(target?.conversationId ?? pendingId ?? (isDesktop && screen.kind === "tab" ? defaultConversationId() : null), focusMessageId, linkThread(screen));
   }
   // Your own nick is not a DM: /dm/<you> (a link, or a tap on your own name) opens Notes.
@@ -873,7 +855,7 @@ export function createClient(Alpine: any) {
 
   function agentRequestLabel(message: Message): string {
     if (!message.serverId || message.deleted || message.state !== "confirmed" || foldIdentifier(message.authorAccount) !== foldIdentifier(ui.account)) return "";
-    const conversation = directories.get(message.conversationId);
+    const conversation = rs.directories.get(message.conversationId);
     if (conversation?.kind !== "dm") return "";
     const direct = ui.directs.find((row: { channel: string }) => foldIdentifier(row.channel) === foldIdentifier(conversation.wireTarget));
     const agent = direct && agentFor(ui.agentProfiles, direct.nick);
@@ -884,25 +866,25 @@ export function createClient(Alpine: any) {
 
   function canSend(): boolean {
     const hasContent = !!ui.composer.trim() || !!ui.media;
-    return hasContent && ui.sendEnabled && capsOk && !(composer?.committing ?? false) && !ui.mediaBusy && !ui.mediaCompress;
+    return hasContent && ui.sendEnabled && rs.capsOk && !(rs.composer?.committing ?? false) && !ui.mediaBusy && !ui.mediaCompress;
   }
 
   // Only follow a growing list when the reader was already at the bottom (or after their own send).
 
-  async function refreshDrafts(expectedDb = db): Promise<void> {
+  async function refreshDrafts(expectedDb = rs.db): Promise<void> {
     if (!expectedDb) { ui.drafts = []; return; }
     try {
       const drafts = await expectedDb.drafts.toArray();
-      if (db === expectedDb && !stopped) ui.drafts = draftNavigationItems(drafts, authorized, ui.directs, ui.threads,
-        [...pendingDms].map(([conversationId, entry]) => ({ conversationId, nick: entry.nick })));
+      if (rs.db === expectedDb && !rs.stopped) ui.drafts = draftNavigationItems(drafts, rs.authorized, ui.directs, ui.threads,
+        [...rs.pendingDms].map(([conversationId, entry]) => ({ conversationId, nick: entry.nick })));
     } catch { /* Keep last visible rows; a later edit or navigation retries the read. */ }
   }
 
   function updateDraftNavigation(draft: Draft): void {
     const drafts = ui.drafts.filter((item: Draft) => item.conversationId !== draft.conversationId);
     if (draft.text.trim()) drafts.push(draft);
-    ui.drafts = draftNavigationItems(drafts, authorized, ui.directs, ui.threads,
-      [...pendingDms].map(([conversationId, entry]) => ({ conversationId, nick: entry.nick })));
+    ui.drafts = draftNavigationItems(drafts, rs.authorized, ui.directs, ui.threads,
+      [...rs.pendingDms].map(([conversationId, entry]) => ({ conversationId, nick: entry.nick })));
   }
 
   function draftWriter(targetDb: ClientDatabase) {
@@ -918,7 +900,7 @@ export function createClient(Alpine: any) {
   }
 
   function conversationIdForDm(channel: string): string {
-    return authorized.find((entry) => entry.kind === "dm" && foldIdentifier(entry.wireTarget) === foldIdentifier(channel))?.conversationId ?? "";
+    return rs.authorized.find((entry) => entry.kind === "dm" && foldIdentifier(entry.wireTarget) === foldIdentifier(channel))?.conversationId ?? "";
   }
 
   function isGroupRoom(wireTarget: string): boolean {
@@ -947,8 +929,8 @@ export function createClient(Alpine: any) {
   }
 
   function saveChannelOrder(ids: readonly string[]): void {
-    if (!scope) return;
-    const key = `slirc2-channel-order:${scope.accountId}`;
+    if (!rs.scope) return;
+    const key = `slirc2-channel-order:${rs.scope.accountId}`;
     try { if (ids.length) localStorage.setItem(key, JSON.stringify(ids)); else localStorage.removeItem(key); } catch { /* unavailable storage keeps order for this session */ }
   }
 
@@ -1009,20 +991,20 @@ export function createClient(Alpine: any) {
   }
 
   function canSearchChannel(): boolean {
-    if (!ui.authenticated || stopped || library.on) return false;
+    if (!ui.authenticated || rs.stopped || library.on) return false;
     if (ui.view.routed) return false;
     if (!isDesktop && ui.mobileNav !== null) return false;
-    if (!roomId || ui.pendingDm) return false;
-    return roomId === NOTES_CONVERSATION_ID || directories.has(roomId);
+    if (!rs.roomId || ui.pendingDm) return false;
+    return rs.roomId === NOTES_CONVERSATION_ID || rs.directories.has(rs.roomId);
   }
 
   function openChannelSearch(): void {
-    if (!canSearchChannel() || !roomId) return;
-    const targetId = roomId;
+    if (!canSearchChannel() || !rs.roomId) return;
+    const targetId = rs.roomId;
     const isNotes = targetId === NOTES_CONVERSATION_ID;
     const label = isNotes ? "Notes" : (ui.roomLabel || String(ui.channel ?? ""));
-    const targetDb = db;
-    const targetSync = sync;
+    const targetDb = rs.db;
+    const targetSync = rs.sync;
     const previewTried = new Set<string>();
     openPopup();
     window.dispatchEvent(new CustomEvent("slirc:channel-search-open", {
@@ -1038,7 +1020,7 @@ export function createClient(Alpine: any) {
             kind,
             embeds: ui.embeds,
             threads: ui.threads,
-            conversations: authorized,
+            conversations: rs.authorized,
             greeting: ui.greeting,
             hidden: (message) => polls.hidesTally(message) || offlineFolded(message),
           });
@@ -1071,12 +1053,12 @@ export function createClient(Alpine: any) {
   // composer (you typed) or the conversation changed.
   let recall: (Recall & { conversationId: string; text: string }) | null = null;
   function recallSent(direction: -1 | 1): boolean {
-    if (!roomId || ui.editingMessageId || ui.pendingThread || ui.notesOpen || activeChannelArchived()) return false;
+    if (!rs.roomId || ui.editingMessageId || ui.pendingThread || ui.notesOpen || activeChannelArchived()) return false;
     const current = String(ui.composer ?? "");
-    const live = recall && recall.conversationId === roomId && recall.text === current ? recall : null;
+    const live = recall && recall.conversationId === rs.roomId && recall.text === current ? recall : null;
     const step = recallStep(sentTexts(ui.messages, String(ui.account ?? "")), live, direction, current);
     if (!step) return false;
-    recall = step.state ? { ...step.state, conversationId: roomId, text: step.text } : null;
+    recall = step.state ? { ...step.state, conversationId: rs.roomId, text: step.text } : null;
     replaceComposerText(step.text);
     return true;
   }
@@ -1100,7 +1082,7 @@ export function createClient(Alpine: any) {
 
   function starredItems(): { conversationId: string; kind: "room" | "dm"; wireTarget: string; label: string; nick?: string }[] {
     return ui.starred.flatMap((conversationId: string) => {
-      const item = authorized.find((entry) => entry.conversationId === conversationId);
+      const item = rs.authorized.find((entry) => entry.conversationId === conversationId);
       if (!item || (item.kind !== "room" && item.kind !== "dm")) return [];
       const direct = item.kind === "dm" ? ui.directs.find((entry: any) => foldIdentifier(entry.channel) === foldIdentifier(item.wireTarget)) : null;
       if (item.kind === "dm" && !direct) return [];
@@ -1112,15 +1094,15 @@ export function createClient(Alpine: any) {
     const next = ui.starred.includes(conversationId) ? ui.starred.filter((id: string) => id !== conversationId) : [...ui.starred, conversationId];
     ui.starred = next;
     menus.starMenuId = ""; menus.navMenu = null; menus.copyFlyout = null;
-    if (!scope) return;
-    const key = `slirc2-starred:${scope.accountId}`;
+    if (!rs.scope) return;
+    const key = `slirc2-starred:${rs.scope.accountId}`;
     try { if (next.length) localStorage.setItem(key, JSON.stringify(next)); else localStorage.removeItem(key); } catch { /* unavailable storage keeps state for this session */ }
   }
 
   function toggleMute(target: string): void {
     ui.mutedRooms = ui.mutedRooms.includes(target) ? ui.mutedRooms.filter((room: string) => room !== target) : [...ui.mutedRooms, target];
-    if (!scope) return;
-    try { localStorage.setItem(`slirc2-muted:${scope.accountId}`, JSON.stringify(ui.mutedRooms)); } catch { /* mute state lasts for this session */ }
+    if (!rs.scope) return;
+    try { localStorage.setItem(`slirc2-muted:${rs.scope.accountId}`, JSON.stringify(ui.mutedRooms)); } catch { /* mute state lasts for this session */ }
     applyUnreadChrome();
   }
 
@@ -1129,13 +1111,13 @@ export function createClient(Alpine: any) {
   // when the reader can see the newest message, then tells Ergo with MARKREAD so other sessions
   // follow. Without the cap, or when Ergo keeps no marker, counts stay per device.
   function mutedConversation(id: string): boolean {
-    const item = directories.get(id);
+    const item = rs.directories.get(id);
     if (!item) return false;
     if (item.kind === "dm") return ui.mutedRooms.includes(`dm:${id}`);
     if (item.kind === "thread") {
       // Threads have no mute of their own; they follow their channel or DM.
       const parent = ui.threads.find((entry: ThreadGrant) => entry.conversationId === id)?.parent;
-      const owner = parent ? authorized.find((entry) => entry.kind !== "thread" && foldIdentifier(entry.wireTarget) === foldIdentifier(parent)) : undefined;
+      const owner = parent ? rs.authorized.find((entry) => entry.kind !== "thread" && foldIdentifier(entry.wireTarget) === foldIdentifier(parent)) : undefined;
       return owner ? mutedConversation(owner.conversationId) : false;
     }
     return ui.mutedRooms.includes(item.wireTarget);
@@ -1148,7 +1130,7 @@ export function createClient(Alpine: any) {
 
   function unreadWhere(match: (item: AuthorizedConversation) => boolean): boolean {
     return Object.keys(ui.unread).some((id) => {
-      const item = directories.get(id);
+      const item = rs.directories.get(id);
       return !!item && match(item) && unreadCount(id) > 0;
     });
   }
@@ -1167,7 +1149,7 @@ export function createClient(Alpine: any) {
   }
 
   function applyUnreadChrome(): void {
-    const total = sidebarUnreadTotal(ui.unread, (id) => directories.has(id), unreadCount);
+    const total = sidebarUnreadTotal(ui.unread, (id) => rs.directories.has(id), unreadCount);
     document.title = total ? `(${badgeText(total)}) ${baseTitle}` : baseTitle;
     if (total === appBadge) return;
     appBadge = total;
@@ -1181,14 +1163,14 @@ export function createClient(Alpine: any) {
   }
 
   function sendMarkRead(target: string, time: string): void {
-    if (!capsOk || !bridge?.enabled.has("draft/read-marker")) return;
+    if (!rs.capsOk || !rs.bridge?.enabled.has("draft/read-marker")) return;
     wireSend(buildMarkReadCommand(target, time));
   }
 
   // Every trigger (new rows, selection, scroll to bottom, focus, readiness) funnels here; one check
   // runs a second after the first trigger, so a busy room sends at most one MARKREAD a second.
   function scheduleMarkRead(): void {
-    if (markReadTimer !== null || stopped || !db) return;
+    if (markReadTimer !== null || rs.stopped || !rs.db) return;
     markReadTimer = setTimeout(() => { markReadTimer = null; void markRead(); }, 1_000);
   }
 
@@ -1198,18 +1180,18 @@ export function createClient(Alpine: any) {
   }
 
   async function markRead(): Promise<void> {
-    const targetDb = db;
-    const id = roomId;
-    const item = id ? directories.get(id) : undefined;
-    if (!targetDb || !id || !item || stopped || signingOut) return;
+    const targetDb = rs.db;
+    const id = rs.roomId;
+    const item = id ? rs.directories.get(id) : undefined;
+    if (!targetDb || !id || !item || rs.stopped || rs.signingOut) return;
     try {
       const [newest, marker] = await Promise.all([newestServerTime(targetDb, id), targetDb.readMarkers.get(id)]);
-      if (db !== targetDb || roomId !== id || stopped) return;
+      if (rs.db !== targetDb || rs.roomId !== id || rs.stopped) return;
       if (!shouldMarkRead({
         visible: document.visibilityState === "visible", focused: document.hasFocus(), onScreen: conversationOnScreen(),
-        ready: sync?.isReady(id) ?? false, pinned: transcript.isPinned(), newest, marker: marker?.time,
+        ready: rs.sync?.isReady(id) ?? false, pinned: transcript.isPinned(), newest, marker: marker?.time,
       })) return;
-      if (await targetDb.advanceReadMarker(id, newest!) && db === targetDb) sendMarkRead(item.wireTarget, newest!);
+      if (await targetDb.advanceReadMarker(id, newest!) && rs.db === targetDb) sendMarkRead(item.wireTarget, newest!);
     } catch { /* counts stay; the next trigger retries */ }
   }
 
@@ -1217,12 +1199,12 @@ export function createClient(Alpine: any) {
   // the server up. `*` keeps the local marker; Ergo without always-on forgets markers between
   // connections, and wiping local state then would reset every count on this device.
   async function applyServerMarker(conversation: AuthorizedConversation, time: string): Promise<void> {
-    const targetDb = db;
+    const targetDb = rs.db;
     if (!targetDb || !time) return;
     try {
       if (await targetDb.advanceReadMarker(conversation.conversationId, time)) return;
       const local = await targetDb.readMarkers.get(conversation.conversationId);
-      if (db === targetDb && !stopped && local && Date.parse(local.time) > Date.parse(time)) sendMarkRead(conversation.wireTarget, local.time);
+      if (rs.db === targetDb && !rs.stopped && local && Date.parse(local.time) > Date.parse(time)) sendMarkRead(conversation.wireTarget, local.time);
     } catch { /* a malformed marker changes nothing */ }
   }
 
@@ -1230,16 +1212,16 @@ export function createClient(Alpine: any) {
   // not light up with all of history. An empty conversation starts at the epoch, locally only. Help's
   // unread welcome DM is the exception (firstReadMarker).
   async function seedReadMarker(conversation: AuthorizedConversation): Promise<void> {
-    const targetDb = db;
+    const targetDb = rs.db;
     const id = conversation.conversationId;
-    if (!targetDb || serverMarkers.get(id)) return;
+    if (!targetDb || rs.serverMarkers.get(id)) return;
     try {
       if (await targetDb.readMarkers.get(id)) return;
       const newest = await newestServerTime(targetDb, id);
-      if (db !== targetDb || stopped || serverMarkers.get(id)) return;
+      if (rs.db !== targetDb || rs.stopped || rs.serverMarkers.get(id)) return;
       const peer = conversation.kind === "dm" ? ui.directs.find((item: any) => foldIdentifier(item.channel) === foldIdentifier(conversation.wireTarget))?.nick : undefined;
       // Only tell Ergo when it said it has none; a silent rejoin gave no answer either way.
-      const first = firstReadMarker({ newest, peer, serverSaidNone: serverMarkers.get(id) === "" });
+      const first = firstReadMarker({ newest, peer, serverSaidNone: rs.serverMarkers.get(id) === "" });
       if (!await targetDb.advanceReadMarker(id, first.time)) return;
       if (first.tellServer && newest) sendMarkRead(conversation.wireTarget, newest);
     } catch { /* no marker means no count, never a wrong one */ }
@@ -1248,7 +1230,7 @@ export function createClient(Alpine: any) {
   function focusLoadedDraft(id: string): void {
     if (focusDraftConversationId !== id) return;
     void Alpine.nextTick(() => {
-      if (focusDraftConversationId !== id || roomId !== id) return;
+      if (focusDraftConversationId !== id || rs.roomId !== id) return;
       const input = document.querySelector<HTMLElement>("#input");
       if (!input || !input.getClientRects().length) return;
       editor.focusComposerAtEnd(input);
@@ -1257,31 +1239,31 @@ export function createClient(Alpine: any) {
   }
 
   function openDraft(id: string): void {
-    const conversation = authorized.find((item) => item.conversationId === id);
+    const conversation = rs.authorized.find((item) => item.conversationId === id);
     if (!conversation) return;
     focusDraftConversationId = id;
     if (conversation.kind === "dm") {
       const direct = ui.directs.find((item: any) => foldIdentifier(item.channel) === foldIdentifier(conversation.wireTarget));
       if (direct) void openDirect(direct.nick);
     } else openRoom(conversation.wireTarget);
-    if (roomId === id) focusLoadedDraft(id);
+    if (rs.roomId === id) focusLoadedDraft(id);
   }
 
   async function deleteDraft(id: string): Promise<void> {
-    const targetDb = db;
-    if (!targetDb || !directories.has(id)) return;
+    const targetDb = rs.db;
+    if (!targetDb || !rs.directories.has(id)) return;
     try {
-      if (roomId === id && composer) {
-        const targetComposer = composer;
+      if (rs.roomId === id && rs.composer) {
+        const targetComposer = rs.composer;
         if (!await targetComposer.discard()) return;
-        if (db !== targetDb || composer !== targetComposer) return;
+        if (rs.db !== targetDb || rs.composer !== targetComposer) return;
         ui.composer = "";
         editor.resizeComposer();
       } else await targetDb.drafts.delete(id);
-      composerTextByConversation.delete(id);
+      rs.composerTextByConversation.delete(id);
       await refreshDrafts(targetDb);
     } catch {
-      if (db === targetDb) ui.error = "Could not delete this draft. It is still saved.";
+      if (rs.db === targetDb) ui.error = "Could not delete this draft. It is still saved.";
     }
   }
 
@@ -1295,14 +1277,14 @@ export function createClient(Alpine: any) {
   let linkRun = 0;
   async function focusLinked(id: string, serverId: string, thread = false): Promise<void> {
     const run = ++linkRun;
-    const current = () => run === linkRun && roomId === id && !stopped;
-    const cached = await db?.messages.where("[conversationId+serverId]").equals([id, serverId]).first().catch(() => undefined);
+    const current = () => run === linkRun && rs.roomId === id && !rs.stopped;
+    const cached = await rs.db?.messages.where("[conversationId+serverId]").equals([id, serverId]).first().catch(() => undefined);
     let found = !!cached && cached.state === "confirmed" && !cached.deleted;
-    if (!found && authorized.some((entry) => entry.conversationId === id)) {
-      for (let wait = 0; wait < 75 && current() && !sync?.isReady(id); wait++) await sleep(200);
+    if (!found && rs.authorized.some((entry) => entry.conversationId === id)) {
+      for (let wait = 0; wait < 75 && current() && !rs.sync?.isReady(id); wait++) await sleep(200);
       let answer: boolean | null = null;
       for (let tries = 0; tries < 10 && current() && answer === null; tries++) {
-        answer = sync ? await sync.around(id, serverId) : null;
+        answer = rs.sync ? await rs.sync.around(id, serverId) : null;
         if (answer === null) await sleep(300);
       }
       found = answer === true;
@@ -1322,18 +1304,18 @@ export function createClient(Alpine: any) {
     linkRun += 1;
     if (focusDraftConversationId && focusDraftConversationId !== id) focusDraftConversationId = null;
     // Leaving a conversation ends our own typing there; the target is still the previous roomId.
-    if (roomId !== id) { typing.stopTyping(); abandonPendingThread(); closeReplyThread(); }
+    if (rs.roomId !== id) { typing.stopTyping(); abandonPendingThread(); closeReplyThread(); }
     ui.currentConversationId = id;
     transcript.cancelConversationTransition();
     actions.closeActions();
     menus.starMenuId = ""; menus.navMenu = null; menus.copyFlyout = null;
     links.closeLinkPopup(false);
-    const item = authorized.find((entry) => entry.conversationId === id);
-    const pending = id ? pendingDms.get(id) : undefined;
+    const item = rs.authorized.find((entry) => entry.conversationId === id);
+    const pending = id ? rs.pendingDms.get(id) : undefined;
     const thread = id ? ui.threads.find((entry: ThreadGrant) => entry.conversationId === id) : null;
     ui.threadParentOpen = thread?.parent ?? (item && item.kind !== "thread" ? item.wireTarget : "");
     // Leaving the message's conversation abandons the edit and restores the saved draft.
-    if (ui.editingMessageId && roomId !== id) cancelEdit();
+    if (ui.editingMessageId && rs.roomId !== id) cancelEdit();
     ui.threadError = "";
     // openScope may already have this composer's room selected before its visible identity is set.
     const direct = item?.kind === "dm" ? ui.directs.find((entry: any) => entry.channel === item.wireTarget) : null;
@@ -1348,17 +1330,17 @@ export function createClient(Alpine: any) {
     ui.pendingDmError = pending?.error ?? "";
     // A channel with the links helper may open on its Links view.
     library.sync();
-    if (roomId === id && composer) { if (focusMessageId) void focusLinked(id!, focusMessageId, focusThread); focusLoadedDraft(id!); return; }
-    transcript.prepare(roomId, id, !ui.booting && ui.authenticated);
-    if (roomId && composer) composerTextByConversation.set(roomId, composer.text);
-    roomId = id;
+    if (rs.roomId === id && rs.composer) { if (focusMessageId) void focusLinked(id!, focusMessageId, focusThread); focusLoadedDraft(id!); return; }
+    transcript.prepare(rs.roomId, id, !ui.booting && ui.authenticated);
+    if (rs.roomId && rs.composer) rs.composerTextByConversation.set(rs.roomId, rs.composer.text);
+    rs.roomId = id;
     reminderNotice.viewed(id);
     projection?.select(id, focusMessageId);
-    const selectedDb = db;
-    composer = id && selectedDb ? new Composer(id, draftWriter(selectedDb)) : null;
-    const selectedComposer = composer;
+    const selectedDb = rs.db;
+    rs.composer = id && selectedDb ? new Composer(id, draftWriter(selectedDb)) : null;
+    const selectedComposer = rs.composer;
     if (selectedComposer) selectedComposer.onNote = (note) => {
-      if (db === selectedDb && composer === selectedComposer && !stopped) ui.draftNote = note;
+      if (rs.db === selectedDb && rs.composer === selectedComposer && !rs.stopped) ui.draftNote = note;
     };
     ui.composer = ""; ui.messages = []; ui.sendError = "";
     showNotes();
@@ -1373,14 +1355,14 @@ export function createClient(Alpine: any) {
     // Restore this conversation's staged photo from Dexie (or clear the previous one).
     if (id && selectedDb) void restoreMediaDraft(id);
     else { revokeMedia(ui.media); ui.media = null; }
-    if (composer && composerTextByConversation.has(id!)) {
-      const text = composerTextByConversation.get(id!)!;
-      if (text) composer.edit(text);
+    if (rs.composer && rs.composerTextByConversation.has(id!)) {
+      const text = rs.composerTextByConversation.get(id!)!;
+      if (text) rs.composer.edit(text);
       ui.composer = text;
       focusLoadedDraft(id!);
     } else if (selectedComposer && selectedDb) {
       void selectedDb.drafts.get(id!).then((draft) => {
-        if (roomId !== id || composer !== selectedComposer || db !== selectedDb || selectedComposer.revision !== null) return;
+        if (rs.roomId !== id || rs.composer !== selectedComposer || rs.db !== selectedDb || selectedComposer.revision !== null) return;
         selectedComposer.load(draft); ui.composer = selectedComposer.text; editor.resizeComposer(); focusLoadedDraft(id!);
       });
     }
@@ -1388,17 +1370,17 @@ export function createClient(Alpine: any) {
     // navigation invalidates this via transcript.version(), and the guards keep dialogs, Profile and
     // phone focus untouched.
     const focusVersion = transcript.version();
-    void Alpine.nextTick(() => { if (ui.isDesktop && focusVersion === transcript.version() && roomId === id) maybeFocusComposer(true); });
+    void Alpine.nextTick(() => { if (ui.isDesktop && focusVersion === transcript.version() && rs.roomId === id) maybeFocusComposer(true); });
     scheduleMarkRead();
   }
 
   // A deleted channel leaves the grant on the next refresh. Whoever had it open lands on the
   // default channel (or the first one left) with a short notice; everyone else just loses the row.
   function channelDeleted(channel: string): void {
-    const wasOpen = authorized.some((item) => item.conversationId === roomId && item.kind !== "dm" && foldIdentifier(item.wireTarget) === foldIdentifier(channel));
+    const wasOpen = rs.authorized.some((item) => item.conversationId === rs.roomId && item.kind !== "dm" && foldIdentifier(item.wireTarget) === foldIdentifier(channel));
     void connecting.catch(() => {}).then(() => connect()).then(() => {
-      if (stopped || !wasOpen) return;
-      const rooms = authorized.filter((item) => item.kind === "room");
+      if (rs.stopped || !wasOpen) return;
+      const rooms = rs.authorized.filter((item) => item.kind === "room");
       const landing = rooms.find((item) => foldIdentifier(item.wireTarget) === foldIdentifier(ui.defaultChannel)) ?? rooms[0];
       if (landing) openRoom(landing.wireTarget);
       hint(`${channel} was deleted.`);
@@ -1412,7 +1394,7 @@ export function createClient(Alpine: any) {
     const screen = nav.$state.get().screen;
     const inThread = screen.kind === "room" && !!direct && ui.threads.some((thread: ThreadGrant) => foldIdentifier(thread.channel) === foldIdentifier(screen.room) && foldIdentifier(thread.parent) === foldIdentifier(direct.channel));
     if (!(screen.kind === "dm" && foldIdentifier(screen.nick) === foldIdentifier(nick)) && !inThread) return;
-    const rooms = authorized.filter((item) => item.kind === "room" && !item.wireTarget.startsWith("#t-"));
+    const rooms = rs.authorized.filter((item) => item.kind === "room" && !item.wireTarget.startsWith("#t-"));
     const landing = rooms.find((item) => foldIdentifier(item.wireTarget) === foldIdentifier(ui.defaultChannel)) ?? rooms[0];
     navIntent += 1;
     nav.open({ kind: "room", room: landing?.wireTarget ?? DEV_CHANNEL });
@@ -1420,7 +1402,7 @@ export function createClient(Alpine: any) {
   }
 
   function openRoom(room: string = DEV_CHANNEL): void {
-    const item = authorized.find((entry) => entry.kind !== "dm" && foldIdentifier(entry.wireTarget) === foldIdentifier(room));
+    const item = rs.authorized.find((entry) => entry.kind !== "dm" && foldIdentifier(entry.wireTarget) === foldIdentifier(room));
     if (item) { navIntent += 1; nav.open({ kind: "room", room: item.wireTarget }); }
   }
   // --- Optimistic first-contact DMs -------------------------------------------------------------
@@ -1435,7 +1417,7 @@ export function createClient(Alpine: any) {
   }
 
   function pendingIdForNick(nick: string): string | null {
-    for (const [id, entry] of pendingDms) if (foldIdentifier(entry.nick) === foldIdentifier(nick)) return id;
+    for (const [id, entry] of rs.pendingDms) if (foldIdentifier(entry.nick) === foldIdentifier(nick)) return id;
     return null;
   }
 
@@ -1443,8 +1425,8 @@ export function createClient(Alpine: any) {
   // never shown twice during the hand-off from pending to authorized.
   function pendingDirectRows(): { nick: string; channel: string; conversationId: string; pending: true }[] {
     const rows: { nick: string; channel: string; conversationId: string; pending: true }[] = [];
-    for (const [id, entry] of pendingDms) {
-      if (directories.has(id)) { pendingDms.delete(id); continue; }
+    for (const [id, entry] of rs.pendingDms) {
+      if (rs.directories.has(id)) { rs.pendingDms.delete(id); continue; }
       rows.push({ nick: entry.nick, channel: "", conversationId: id, pending: true });
     }
     return rows;
@@ -1454,20 +1436,20 @@ export function createClient(Alpine: any) {
   // so the row visibly moves instead of lingering for the whole provisioning round trip.
   function contactList(): string[] {
     void ui.pendingDmVersion;
-    const moved = new Set([...pendingDms.values()].map((entry) => foldIdentifier(entry.nick)));
+    const moved = new Set([...rs.pendingDms.values()].map((entry) => foldIdentifier(entry.nick)));
     return ui.contacts.filter((nick: string) => !moved.has(foldIdentifier(nick)) && !isAgentNick(ui.agentProfiles, nick));
   }
 
   // Local write permission, deliberately separate from network delivery authority. A pending
   // conversation accepts a durable enqueue; only sync readiness lets the outbox transmit it.
   function isLocallyEnqueueable(id: string): boolean {
-    return directories.has(id) || pendingDms.has(id);
+    return rs.directories.has(id) || rs.pendingDms.has(id);
   }
 
   function refreshPendingUi(): void {
-    for (const id of [...pendingDms.keys()]) if (directories.has(id)) pendingDms.delete(id);
+    for (const id of [...rs.pendingDms.keys()]) if (rs.directories.has(id)) rs.pendingDms.delete(id);
     ui.pendingDmVersion += 1;
-    const entry = roomId ? pendingDms.get(roomId) : undefined;
+    const entry = rs.roomId ? rs.pendingDms.get(rs.roomId) : undefined;
     ui.pendingDm = !!entry;
     ui.pendingDmState = entry?.state ?? "";
     ui.pendingDmError = entry?.error ?? "";
@@ -1477,8 +1459,8 @@ export function createClient(Alpine: any) {
     const accountId = peerAccountIdFor(nick);
     if (!accountId) return null;
     const id = conversationId("dm", accountId);
-    if (directories.has(id)) return null;
-    if (!pendingDms.has(id)) pendingDms.set(id, { nick, accountId, state: "provisioning" });
+    if (rs.directories.has(id)) return null;
+    if (!rs.pendingDms.has(id)) rs.pendingDms.set(id, { nick, accountId, state: "provisioning" });
     refreshPendingUi();
     return id;
   }
@@ -1488,17 +1470,17 @@ export function createClient(Alpine: any) {
     const contacts = new Set((ui.contacts as string[]).map(foldIdentifier));
     try {
       const [drafts, operations] = await Promise.all([targetDb.drafts.toArray(), targetDb.operations.toArray()]);
-      if (db !== targetDb || stopped || !scope || currentScope !== scopeKey(targetDb.scope)) return;
+      if (rs.db !== targetDb || rs.stopped || !rs.scope || rs.currentScope !== scopeKey(targetDb.scope)) return;
       const candidates = new Set([...drafts.filter((draft) => !!draft.text.trim()).map((draft) => draft.conversationId),
         ...operations.filter((operation) => operation.kind === "text" && operation.state !== "confirmed").map((operation) => operation.conversationId)]);
       for (const id of candidates) {
-        if (directories.has(id)) continue;
+        if (rs.directories.has(id)) continue;
         let parsed: unknown;
         try { parsed = JSON.parse(id); } catch { continue; }
         if (!Array.isArray(parsed) || parsed.length !== 2 || parsed[0] !== "dm" || typeof parsed[1] !== "string") continue;
         const nick = nickById.get(parsed[1]);
         if (!nick || !contacts.has(foldIdentifier(nick))) continue;
-        if (!pendingDms.has(id)) pendingDms.set(id, { nick, accountId: parsed[1], state: "provisioning" });
+        if (!rs.pendingDms.has(id)) rs.pendingDms.set(id, { nick, accountId: parsed[1], state: "provisioning" });
       }
       refreshPendingUi();
       await refreshDrafts(targetDb);
@@ -1506,8 +1488,8 @@ export function createClient(Alpine: any) {
   }
 
   function retryPendingDirect(): void {
-    const id = roomId;
-    const entry = id ? pendingDms.get(id) : undefined;
+    const id = rs.roomId;
+    const entry = id ? rs.pendingDms.get(id) : undefined;
     if (!id || !entry || entry.state !== "failed") return;
     entry.state = "provisioning"; entry.error = undefined;
     refreshPendingUi();
@@ -1526,21 +1508,21 @@ export function createClient(Alpine: any) {
   }
 
   async function runProvisionDirect(nick: string, id: string): Promise<void> {
-    const requestingScope = currentScope;
+    const requestingScope = rs.currentScope;
     ui.directBusy = ui.directBusy || nick;
     try {
       const response = await fetch(`/api/dms/${encodeURIComponent(nick)}`, { method: "POST", credentials: "same-origin" });
       const body = await response.json().catch(() => ({}));
-      if (currentScope !== requestingScope || stopped) return;
+      if (rs.currentScope !== requestingScope || rs.stopped) return;
       if (!response.ok) throw new Error(body.error || `Could not open DM (${response.status})`);
       await connect();
-      if (currentScope !== requestingScope || stopped) return;
+      if (rs.currentScope !== requestingScope || rs.stopped) return;
       const available = ui.directs.find((item: { nick: string }) => foldIdentifier(item.nick) === foldIdentifier(nick));
       if (!available) throw new Error("The server did not authorize this direct message.");
-      pendingDms.delete(id);
+      rs.pendingDms.delete(id);
     } catch (error) {
-      if (currentScope !== requestingScope || stopped) return;
-      const entry = pendingDms.get(id);
+      if (rs.currentScope !== requestingScope || rs.stopped) return;
+      const entry = rs.pendingDms.get(id);
       if (entry) { entry.state = "failed"; entry.error = error instanceof Error ? error.message : "Could not open DM."; }
     } finally {
       if (ui.directBusy === nick) ui.directBusy = "";
@@ -1556,7 +1538,7 @@ export function createClient(Alpine: any) {
     // Only a direct the server still authorizes may short-circuit. A local row whose conversation
     // is absent from the last authoritative set is stale (e.g. just deleted) and must not be
     // reopened from cache; fall through to a fresh POST plus reconnect.
-    if (direct && cachedDirectIsAuthorized(direct, authorized)) { navIntent += 1; nav.open({ kind: "dm", nick: direct.nick }); return; }
+    if (direct && cachedDirectIsAuthorized(direct, rs.authorized)) { navIntent += 1; nav.open({ kind: "dm", nick: direct.nick }); return; }
     const known = !!direct || ui.contacts.some((contact: string) => foldIdentifier(contact) === foldIdentifier(nick));
     if (!known && !deliberate) return;
     // A pending first-contact DM is already open-able; navigate to it and only restart a failed try.
@@ -1564,7 +1546,7 @@ export function createClient(Alpine: any) {
     if (existing) {
       navIntent += 1;
       nav.open({ kind: "dm", nick });
-      const entry = pendingDms.get(existing)!;
+      const entry = rs.pendingDms.get(existing)!;
       if (entry.state === "failed") {
         entry.state = "provisioning"; entry.error = undefined;
         refreshPendingUi();
@@ -1588,25 +1570,25 @@ export function createClient(Alpine: any) {
     }
     if (ui.directBusy) return;
     const intent = ++navIntent;
-    const requestingScope = currentScope;
+    const requestingScope = rs.currentScope;
     ui.directBusy = nick; ui.error = "";
     try {
       const response = await fetch(`/api/dms/${encodeURIComponent(nick)}`, { method: "POST", credentials: "same-origin" });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || `Could not open DM (${response.status})`);
-      if (currentScope !== requestingScope || stopped) return;
+      if (rs.currentScope !== requestingScope || rs.stopped) return;
       // Refresh the authoritative list even when a newer navigation already superseded this open,
       // so the Contact moves to DMs after success instead of lingering until reload. connect()
       // re-selects the current route, so it never yanks a reader who navigated away.
       await connect();
-      if (currentScope !== requestingScope || stopped) return;
+      if (rs.currentScope !== requestingScope || rs.stopped) return;
       const available = ui.directs.find((item: { nick: string }) => foldIdentifier(item.nick) === foldIdentifier(nick));
       if (!available) throw new Error("The server did not authorize this direct message.");
       // A newer navigation (another conversation, a back/forward) keeps the reader where they are.
       if (navIntent !== intent) return;
       nav.open({ kind: "dm", nick: available.nick });
     } catch (error) {
-      if (navIntent === intent && currentScope === requestingScope && !stopped) ui.error = error instanceof Error ? error.message : "Could not open DM.";
+      if (navIntent === intent && rs.currentScope === requestingScope && !rs.stopped) ui.error = error instanceof Error ? error.message : "Could not open DM.";
     } finally { if (ui.directBusy === nick) ui.directBusy = ""; }
   }
   // People for the `@` picker: current room members first, then contacts. Only rooms have members;
@@ -1632,10 +1614,10 @@ export function createClient(Alpine: any) {
 
   function loadRoomMembers(item: AuthorizedConversation | undefined, id: string | null): void {
     // No account scope yet (pre-connect reactivity): never fetch into an unauthenticated window.
-    if (!currentScope) { clearRoomMembers(); refreshPresence(); return; }
+    if (!rs.currentScope) { clearRoomMembers(); refreshPresence(); return; }
     if (!item || item.kind !== "room") { clearRoomMembers(); refreshPresence(); return; }
     const wire = item.wireTarget;
-    const requestingScope = currentScope;
+    const requestingScope = rs.currentScope;
     clearRoomMembers();
     const requestEpoch = memberEpoch;
     ui.roomMembersLoading = true;
@@ -1645,7 +1627,7 @@ export function createClient(Alpine: any) {
       .then(({ ok, status, body }) => {
         if (!memberResponseApplies(
           { conversationId: id, scope: requestingScope, generation: requestEpoch },
-          { conversationId: roomId, scope: currentScope, generation: memberEpoch, stopped, authorized: !!roomId && directories.has(roomId) },
+          { conversationId: rs.roomId, scope: rs.currentScope, generation: memberEpoch, stopped: rs.stopped, authorized: !!rs.roomId && rs.directories.has(rs.roomId) },
         )) return;
         if (!ok) throw new Error(typeof body?.error === "string" ? body.error : `Could not load members (${status}).`);
         const rows: unknown[] = Array.isArray(body?.members) ? body.members : [];
@@ -1672,7 +1654,7 @@ export function createClient(Alpine: any) {
       .catch((error) => {
         if (!memberResponseApplies(
           { conversationId: id, scope: requestingScope, generation: requestEpoch },
-          { conversationId: roomId, scope: currentScope, generation: memberEpoch, stopped, authorized: !!roomId && directories.has(roomId) },
+          { conversationId: rs.roomId, scope: rs.currentScope, generation: memberEpoch, stopped: rs.stopped, authorized: !!rs.roomId && rs.directories.has(rs.roomId) },
         )) return;
         ui.roomMembersLoading = false;
         ui.roomMembersError = error instanceof Error && error.name === "TimeoutError" ? "Members took too long to load." : error instanceof Error ? error.message : "Could not load members.";
@@ -1798,7 +1780,7 @@ export function createClient(Alpine: any) {
   }
 
   function activeConversation(): AuthorizedConversation | undefined {
-    return authorized.find((item) => item.conversationId === roomId);
+    return rs.authorized.find((item) => item.conversationId === rs.roomId);
   }
 
   // The parent whose threads are allowed to sit open in the rail. A selected thread keeps its
@@ -1898,7 +1880,7 @@ export function createClient(Alpine: any) {
 
   // A row in the THREADS group: show its channel or DM, then the thread over it.
   function showReplyThread(entry: ReplyThreadItem): void {
-    const item = authorized.find((candidate) => candidate.kind !== "thread" && foldIdentifier(candidate.wireTarget) === foldIdentifier(entry.channel));
+    const item = rs.authorized.find((candidate) => candidate.kind !== "thread" && foldIdentifier(candidate.wireTarget) === foldIdentifier(entry.channel));
     if (!item) return;
     if (ui.currentConversationId !== item.conversationId) {
       if (item.kind === "dm" && entry.nick) void openDirect(entry.nick); else openRoom(item.wireTarget);
@@ -1951,7 +1933,7 @@ export function createClient(Alpine: any) {
   async function sendReplyThread(): Promise<void> {
     const root = activeReplyThreadRoot();
     const rootId = root?.serverId ?? ui.replyThreadRootId;
-    if (!rootId || !roomId || !outbox || !scope) return;
+    if (!rootId || !rs.roomId || !rs.outbox || !rs.scope) return;
     const raw = String(ui.replyThreadDraft ?? "").trim();
     if (!raw) return;
     const wireText = emojiText(raw, emoji.custom);
@@ -1960,14 +1942,14 @@ export function createClient(Alpine: any) {
       ui.replyThreadError = check.error ?? "Cannot send that reply.";
       return;
     }
-    if (raw.includes("\n") && !bridge?.enabled.has("draft/multiline")) {
+    if (raw.includes("\n") && !rs.bridge?.enabled.has("draft/multiline")) {
       ui.replyThreadError = "This server cannot send multiline messages.";
       return;
     }
     ui.replyThreadError = "";
     const broadcast = !!ui.replyThreadBroadcast;
     try {
-      await queueConversationText(roomId, raw, { replyTo: rootId, broadcast });
+      await queueConversationText(rs.roomId, raw, { replyTo: rootId, broadcast });
       ui.replyThreadDraft = "";
       ui.replyThreadBroadcast = false;
       void Alpine.nextTick(() => {
@@ -1985,12 +1967,12 @@ export function createClient(Alpine: any) {
     const pending = ui.pendingThread;
     if (!pending) return;
     ui.pendingThread = null;
-    if (roomId !== pending.conversationId) return;
+    if (rs.roomId !== pending.conversationId) return;
     ui.roomLabel = pending.roomLabel;
     const text = pendingThreadFallbackText(pending.savedText, String(ui.composer ?? ""));
     ui.composer = text;
-    if (text !== pending.savedText) composer?.edit(text);
-    composerTextByConversation.set(roomId, text);
+    if (text !== pending.savedText) rs.composer?.edit(text);
+    rs.composerTextByConversation.set(pending.conversationId, text);
     editor.resizeComposer();
   }
 
@@ -2003,7 +1985,7 @@ export function createClient(Alpine: any) {
     void tracked;
     // Signed-out peek: chips stay pressable so a tap asks to sign in instead of doing nothing.
     if (!ui.authenticated && ui.peekRoom) return true;
-    return phase === "live" && capsOk && !!roomId && (sync?.isReady(roomId) ?? false) && socket?.readyState === WebSocket.OPEN;
+    return phase === "live" && rs.capsOk && !!rs.roomId && (rs.sync?.isReady(rs.roomId) ?? false) && rs.socket?.readyState === WebSocket.OPEN;
   }
 
   // Online-first: send the TAGMSG on the live connection, report a refusal, and never paint a
@@ -2018,7 +2000,7 @@ export function createClient(Alpine: any) {
     try {
       // Taking a reaction back also clears it from the messages this one edited, where it may live.
       for (const id of selected ? [message.serverId, ...(message.chain ?? [])] : [message.serverId]) {
-        socket!.send(`${reactionTagMessage(target, id, emoji, selected)}\r\n`);
+        rs.socket!.send(`${reactionTagMessage(target, id, emoji, selected)}\r\n`);
       }
       actions.stamp(`${message.serverId}:${emoji}`);
     } catch (error) {
@@ -2039,7 +2021,7 @@ export function createClient(Alpine: any) {
     document.dispatchEvent(new CustomEvent("slirc:theme-account", { detail: { accountId: "" } }));
     transcript.cancelConversationTransition();
     // A pending first-contact DM belongs to the account that opened it; never carry it across.
-    pendingDms.clear(); provisioning.clear(); ui.pendingDm = false; ui.pendingDmState = ""; ui.pendingDmError = "";
+    rs.pendingDms.clear(); provisioning.clear(); ui.pendingDm = false; ui.pendingDmState = ""; ui.pendingDmError = "";
     ui.authenticated = false;
     ui.workspaceChoices = [];
     ui.profileRoute = false;
@@ -2100,24 +2082,24 @@ export function createClient(Alpine: any) {
   }
 
   async function logout(): Promise<void> {
-    if (signingOut) return;
-    signingOut = true;
+    if (rs.signingOut) return;
+    rs.signingOut = true;
     let pending = 0;
     let drafts = 0;
     try {
-      if (db) [pending, drafts] = await Promise.all([
-        db.operations.filter((operation) => operation.state !== "confirmed").count(),
-        db.drafts.filter((draft) => !!draft.text.trim()).count(),
+      if (rs.db) [pending, drafts] = await Promise.all([
+        rs.db.operations.filter((operation) => operation.state !== "confirmed").count(),
+        rs.db.drafts.filter((draft) => !!draft.text.trim()).count(),
       ]);
     } catch {
       ui.error = "Could not check local drafts and messages. They are still here; try again.";
-      signingOut = false;
-      if (!socket || socket.readyState === WebSocket.CLOSED) void connect();
+      rs.signingOut = false;
+      if (!rs.socket || rs.socket.readyState === WebSocket.CLOSED) void connect();
       return;
     }
-    if (requiresLogoutConfirmation(drafts, pending, String(ui.composer || ""), composerTextByConversation.values()) && !window.confirm("Sign out and remove drafts from every room and unconfirmed messages? Messages may not have reached the server.")) {
-      signingOut = false;
-      if (!socket || socket.readyState === WebSocket.CLOSED) void connect();
+    if (requiresLogoutConfirmation(drafts, pending, String(ui.composer || ""), rs.composerTextByConversation.values()) && !window.confirm("Sign out and remove drafts from every room and unconfirmed messages? Messages may not have reached the server.")) {
+      rs.signingOut = false;
+      if (!rs.socket || rs.socket.readyState === WebSocket.CLOSED) void connect();
       return;
     }
     try {
@@ -2125,32 +2107,32 @@ export function createClient(Alpine: any) {
       if (!response.ok) throw new Error(`Sign-out failed (${response.status})`);
     } catch {
       ui.error = "Could not sign out. Your messages and draft are still here. Try again when connected.";
-      signingOut = false;
-      if (!socket || socket.readyState === WebSocket.CLOSED) void connect();
+      rs.signingOut = false;
+      if (!rs.socket || rs.socket.readyState === WebSocket.CLOSED) void connect();
       return;
     }
     transcript.cancelConversationTransition();
-    stopped = true;
+    rs.stopped = true;
     renderEpoch += 1;
     pairing.clearPairRequest();
-    try { await outbox?.onDisconnected(); } catch { /* teardown still closes the sender */ }
+    try { await rs.outbox?.onDisconnected(); } catch { /* teardown still closes the sender */ }
     closeSocket();
     pairing.stop();
-    outbox?.stop();
+    rs.outbox?.stop();
     projection?.dispose();
     unread?.dispose(); unread = null; cancelMarkRead();
-    const dead = db;
-    db = null;
-    sync = null;
-    outbox = null;
+    const dead = rs.db;
+    rs.db = null;
+    rs.sync = null;
+    rs.outbox = null;
     projection = null;
-    composer = null;
-    scope = null;
-    roomId = null;
+    rs.composer = null;
+    rs.scope = null;
+    rs.roomId = null;
     focusDraftConversationId = null;
-    currentScope = "";
-    authenticatedAccountId = "";
-    composerTextByConversation.clear(); transcript.reset();
+    rs.currentScope = "";
+    rs.authenticatedAccountId = "";
+    rs.composerTextByConversation.clear(); transcript.reset();
     resetAccountUi();
     setBooting(false);
     ui.phase = "signin";
@@ -2161,8 +2143,8 @@ export function createClient(Alpine: any) {
       catch { ui.note = "Signed out, but local cache could not be cleared."; }
     }
     // closeSocket invalidated the old connect epoch; the signed-out page can pair again.
-    stopped = false;
-    signingOut = false;
+    rs.stopped = false;
+    rs.signingOut = false;
     applyChrome();
     signedOut(window as never);
   }
@@ -2188,7 +2170,7 @@ export function createClient(Alpine: any) {
   // ("/gi|phy ", "@remi|nd "), and this way it finds nothing to change.
   function replaceComposerText(text: string): void {
     ui.composer = text;
-    if (!ui.pendingThread) composer?.edit(text);
+    if (!ui.pendingThread) rs.composer?.edit(text);
     editor.syncComposerEditor();
     editor.resizeComposer();
     const input = document.querySelector<HTMLElement>("#input");
@@ -2202,7 +2184,7 @@ export function createClient(Alpine: any) {
       return;
     }
     ui.composer = "";
-    composer?.edit("");
+    rs.composer?.edit("");
     void runSlash({ name: command.name, argument: "" });
   }
 
@@ -2237,8 +2219,8 @@ export function createClient(Alpine: any) {
         return;
       case "me":
         if (!input.argument) { hint("What should the action say? Try /me waves."); return; }
-        if (!roomId) { hint("Open a conversation first."); return; }
-        try { await queueConversationText(roomId, `\x01ACTION ${input.argument}\x01`); }
+        if (!rs.roomId) { hint("Open a conversation first."); return; }
+        try { await queueConversationText(rs.roomId, `\x01ACTION ${input.argument}\x01`); }
         catch (error) { ui.sendError = error instanceof Error ? error.message : "Could not send that action."; }
         return;
       case "msg":
@@ -2262,7 +2244,7 @@ export function createClient(Alpine: any) {
         return;
       case "link": {
         const url = addressIn(input.argument);
-        const target = authorized.find((entry) => entry.kind === "room" && entry.wireTarget.toLowerCase() === ui.linksHome);
+        const target = rs.authorized.find((entry) => entry.kind === "room" && entry.wireTarget.toLowerCase() === ui.linksHome);
         if (!ui.linksHome || !ui.helpers.includes("links")) { hint(unknownCommandMessage(input.name)); return; }
         if (!url) { hint("Which link? Try /link https://example.com/article."); return; }
         if (!target) { hint(`Join ${ui.linksHome} to save links there.`); return; }
@@ -2272,7 +2254,7 @@ export function createClient(Alpine: any) {
       }
       case "links": {
         if (!ui.linksHome || !ui.helpers.includes("links")) { hint(unknownCommandMessage(input.name)); return; }
-        if (!authorized.some((entry) => entry.kind === "room" && entry.wireTarget.toLowerCase() === ui.linksHome)) { hint(`Join ${ui.linksHome} to search links.`); return; }
+        if (!rs.authorized.some((entry) => entry.kind === "room" && entry.wireTarget.toLowerCase() === ui.linksHome)) { hint(`Join ${ui.linksHome} to search links.`); return; }
         library.openWith(input.argument);
         openRoom(ui.linksHome);
         return;
@@ -2294,7 +2276,7 @@ export function createClient(Alpine: any) {
         // poll the helper would refuse opens the dialog, and the usual note offers to add @poll when
         // it isn't in the channel yet.
         ui.composer = `@poll ${input.argument}`;
-        composer?.edit(ui.composer);
+        rs.composer?.edit(ui.composer);
         await send();
         return;
       }
@@ -2334,7 +2316,7 @@ export function createClient(Alpine: any) {
       ui.sendError = "Could not reach the server to kick that person.";
       return;
     }
-    if (roomId === item.conversationId) loadRoomMembers(item, roomId);
+    if (rs.roomId === item.conversationId) loadRoomMembers(item, rs.roomId);
     try { await queueConversationText(item.conversationId, `\x01ACTION ${kickNotice(nick, item.wireTarget, reason)}\x01`); }
     catch { hint(`Removed ${nick} from ${item.wireTarget}.`); }
   }
@@ -2342,9 +2324,9 @@ export function createClient(Alpine: any) {
   // Queue plain text to a captured conversation through the durable outbox. Used by the commands
   // and Giphy paths, which are not tied to the visible composer draft.
   async function queueConversationText(conversationId: string, text: string, options?: { replyTo?: string; broadcast?: boolean }): Promise<void> {
-    if (!outbox || !scope) throw new Error("Messaging is not ready yet. Reconnect and try again.");
-    const queued = queuedTextFor(conversationId, scope.account, { text: emojiText(text, emoji.custom), revision: randomId() }, randomId(), Date.now(), undefined, undefined, options?.replyTo, options?.broadcast);
-    await outbox.enqueueText(queued);
+    if (!rs.outbox || !rs.scope) throw new Error("Messaging is not ready yet. Reconnect and try again.");
+    const queued = queuedTextFor(conversationId, rs.scope.account, { text: emojiText(text, emoji.custom), revision: randomId() }, randomId(), Date.now(), undefined, undefined, options?.replyTo, options?.broadcast);
+    await rs.outbox.enqueueText(queued);
   }
 
   // `/remind` sets the reminder through the app and shows remind's confirmation as a notice here.
@@ -2420,14 +2402,14 @@ export function createClient(Alpine: any) {
     await openThreadForMessage(root);
     if (!reply.trim()) return;
     const thread = threadForRoot(ui.threads, parent, root.serverId);
-    const conversation = thread && authorized.find((entry) => entry.conversationId === thread.conversationId);
+    const conversation = thread && rs.authorized.find((entry) => entry.conversationId === thread.conversationId);
     if (conversation) {
       try { await queueConversationText(conversation.conversationId, reply.trim()); }
       catch { ui.sendError = "Could not save that thread reply. It is still in your box."; }
       return;
     }
-    if (root.serverId && roomId) {
-      try { await queueConversationText(roomId, reply.trim(), { replyTo: root.serverId }); }
+    if (root.serverId && rs.roomId) {
+      try { await queueConversationText(rs.roomId, reply.trim(), { replyTo: root.serverId }); }
       catch { ui.sendError = "Could not save that thread reply. It is still in your box."; }
     }
   }
@@ -2447,7 +2429,7 @@ export function createClient(Alpine: any) {
     }
     if (!direct) { ui.sendError = `Could not open a direct message with @${nick}.`; return; }
     if (!text) return;
-    const conversation = authorized.find((item) => item.kind === "dm" && item.wireTarget === direct.channel);
+    const conversation = rs.authorized.find((item) => item.kind === "dm" && item.wireTarget === direct.channel);
     if (!conversation) { ui.sendError = `@${nick} is not reachable right now.`; return; }
     ui.sendError = "";
     try {
@@ -2518,10 +2500,10 @@ export function createClient(Alpine: any) {
   }
 
   async function restoreMediaDraft(id: string): Promise<void> {
-    const selectedDb = db;
+    const selectedDb = rs.db;
     if (!selectedDb) return;
     const draft = await selectedDb.mediaDrafts.get(id);
-    if (db !== selectedDb || roomId !== id || stopped) return;
+    if (rs.db !== selectedDb || rs.roomId !== id || rs.stopped) return;
     if (!draft) return; // nothing to restore; never clear a newer in-memory stage
     // A photo staged while the read was in flight wins.
     if (ui.media) return;
@@ -2530,7 +2512,7 @@ export function createClient(Alpine: any) {
   }
 
   function reconnect(): void {
-    if (stopped || signingOut || suspended) return;
+    if (rs.stopped || rs.signingOut || rs.suspended) return;
     ui.note = "Reconnecting…";
     reconnectDelay = RECONNECT_FIRST_MS;
     closeSocket();
@@ -2549,7 +2531,7 @@ export function createClient(Alpine: any) {
     pongWaiters.get(token)?.();
   }
   function pingServer(ms: number): Promise<boolean> {
-    if (socket?.readyState !== WebSocket.OPEN || !sync?.isAuthenticated()) return Promise.resolve(false);
+    if (rs.socket?.readyState !== WebSocket.OPEN || !rs.sync?.isAuthenticated()) return Promise.resolve(false);
     const token = `slirc-pull-${++pingSeq}`;
     return new Promise((resolve) => {
       const timer = setTimeout(() => { pongWaiters.delete(token); resolve(false); }, ms);
@@ -2560,23 +2542,23 @@ export function createClient(Alpine: any) {
   async function waitLive(ms: number, conversation: string | null): Promise<boolean> {
     const end = Date.now() + ms;
     while (Date.now() < end) {
-      if (stopped || signingOut) return false;
-      if (ui.phase === "live" && socket?.readyState === WebSocket.OPEN && sync?.isAuthenticated() && (!conversation || sync.isReady(conversation))) return true;
+      if (rs.stopped || rs.signingOut) return false;
+      if (ui.phase === "live" && rs.socket?.readyState === WebSocket.OPEN && rs.sync?.isAuthenticated() && (!conversation || rs.sync.isReady(conversation))) return true;
       await new Promise((resolve) => setTimeout(resolve, 150));
     }
     return false;
   }
   async function pullRefresh(): Promise<"current" | "offline" | "failed"> {
-    if (stopped || signingOut || suspended || !ui.authenticated) return "failed";
+    if (rs.stopped || rs.signingOut || rs.suspended || !ui.authenticated) return "failed";
     if (navigator.onLine === false) return "offline";
-    const open = ui.mobileNav === null && roomId && authorized.some((item) => item.conversationId === roomId) ? roomId : null;
+    const open = ui.mobileNav === null && rs.roomId && rs.authorized.some((item) => item.conversationId === rs.roomId) ? rs.roomId : null;
     if (!(await pingServer(4_000))) {
       reconnect();
       if (await waitLive(10_000, open)) return "current";
       return navigator.onLine === false ? "offline" : "failed";
     }
-    if (!open || !sync) return "current";
-    const caught = await Promise.race([sync.catchUp([open]), new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 8_000))]);
+    if (!open || !rs.sync) return "current";
+    const caught = await Promise.race([rs.sync.catchUp([open]), new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 8_000))]);
     return caught ? "current" : "failed";
   }
 
@@ -2625,15 +2607,15 @@ export function createClient(Alpine: any) {
       try { await notes.remove(message.serverId!); } catch (error) { ui.sendError = error instanceof Error ? error.message : "Could not delete the note."; }
       return;
     }
-    if (!message || !outbox || !scope) return;
+    if (!message || !rs.outbox || !rs.scope) return;
     // Frozen ownership/target checks; the row itself stays until the server REDACT lands.
-    if (!canDelete(message) || !authorized.some((entry) => entry.conversationId === message.conversationId)) {
+    if (!canDelete(message) || !rs.authorized.some((entry) => entry.conversationId === message.conversationId)) {
       hint("That message can no longer be deleted.");
       return;
     }
     const operation: Operation = { ...redactOperation(message, isOwn(message) ? "deleted by author" : "deleted by admin"), kind: deleteKind(message) };
     try {
-      await outbox.enqueueRedact(operation);
+      await rs.outbox.enqueueRedact(operation);
     } catch {
       ui.sendError = "Could not queue the delete. The message is still here.";
     }
@@ -2641,16 +2623,16 @@ export function createClient(Alpine: any) {
 
   async function retryRedact(message: Message): Promise<void> {
     const entry = redactFor(message);
-    if (!entry || !outbox || !scope || !canDelete(message)) return;
+    if (!entry || !rs.outbox || !rs.scope || !canDelete(message)) return;
     try {
       if (entry.state === "uncertain") {
-        await outbox.resendUncertain(entry.operationId, { duplicateRiskAccepted: true });
+        await rs.outbox.resendUncertain(entry.operationId, { duplicateRiskAccepted: true });
       } else if (entry.state === "failed") {
-        const previous = db ? await db.operations.get(entry.operationId) : undefined;
+        const previous = rs.db ? await rs.db.operations.get(entry.operationId) : undefined;
         // Someone else's message retries through the server's moderation route, which also covers an
         // admin whose IRC operator grant has not landed yet.
         const operation: Operation = { ...redactOperation(message, previous?.reason ?? "deleted by author"), kind: isOwn(message) ? "redact" : "admin-redact" };
-        await outbox.enqueueRedact(operation);
+        await rs.outbox.enqueueRedact(operation);
       }
     } catch {
       ui.sendError = "Could not retry the delete.";
@@ -2665,10 +2647,10 @@ export function createClient(Alpine: any) {
     const id = thread.conversationId;
     if (!ui.threads.some((item: ThreadGrant) => item.conversationId === id)) return;
     ui.threads = ui.threads.filter((item: ThreadGrant) => item.conversationId !== id);
-    authorized = authorized.filter((item) => item.conversationId !== id);
-    directories.delete(id);
-    sync?.ensure(authorized);
-    if (roomId !== id) return;
+    rs.authorized = rs.authorized.filter((item) => item.conversationId !== id);
+    rs.directories.delete(id);
+    rs.sync?.ensure(rs.authorized);
+    if (rs.roomId !== id) return;
     const direct = ui.directs.find((entry: any) => foldIdentifier(entry.channel) === foldIdentifier(thread.parent));
     navIntent += 1;
     nav.open(direct ? { kind: "dm", nick: direct.nick } : { kind: "room", room: thread.parent });
@@ -2703,7 +2685,7 @@ export function createClient(Alpine: any) {
   // admin's delete goes through the server's moderation route.
   function deleteKind(message: Message): "redact" | "admin-redact" {
     if (isOwn(message)) return "redact";
-    const conversation = authorized.find((entry) => entry.conversationId === message.conversationId);
+    const conversation = rs.authorized.find((entry) => entry.conversationId === message.conversationId);
     return adminDeletesOverIrc(conversation, ui.threads) ? "redact" : "admin-redact";
   }
 
@@ -2716,8 +2698,8 @@ export function createClient(Alpine: any) {
     const current = String(ui.composer ?? "");
     const next = current.startsWith(quote) ? current : quote + current;
     ui.composer = next;
-    if (roomId) composerTextByConversation.set(roomId, next);
-    composer?.edit(next);
+    if (rs.roomId) rs.composerTextByConversation.set(rs.roomId, next);
+    rs.composer?.edit(next);
     editor.resizeComposer();
     editor.focusComposer();
   }
@@ -2727,7 +2709,7 @@ export function createClient(Alpine: any) {
     if (ui.editingMessageId && ui.editServerId !== message.serverId) cancelEdit();
     // Freeze the target and remember the draft this edit replaces so Escape can put it back.
     ui.editSavedText = String(ui.composer ?? "");
-    ui.editSavedRevision = composer?.revision ?? null;
+    ui.editSavedRevision = rs.composer?.revision ?? null;
     const split = splitInlineMedia(message.text, instance);
     ui.editAttachments = split.attachments;
     ui.editingMessageId = message.id;
@@ -2743,7 +2725,7 @@ export function createClient(Alpine: any) {
   function endEdit(restoreSaved: boolean): void {
     if (restoreSaved) {
       ui.composer = ui.editSavedText;
-      if (composer) { composer.text = ui.editSavedText; composer.revision = ui.editSavedRevision; }
+      if (rs.composer) { rs.composer.text = ui.editSavedText; rs.composer.revision = ui.editSavedRevision; }
     }
     ui.editingMessageId = "";
     ui.editAttachments = [];
@@ -2761,13 +2743,13 @@ export function createClient(Alpine: any) {
 
   async function saveEdit(): Promise<boolean> {
     if (ui.editConversationId === NOTES_CONVERSATION_ID) return saveNoteEdit();
-    if (!outbox || !scope || !db) return false;
+    if (!rs.outbox || !rs.scope || !rs.db) return false;
     const targetId = ui.editConversationId;
     const targetServerId = ui.editServerId;
-    const targetAccount = scope.account;
-    const targetScopeKey = currentScope;
-    const targetDb = db;
-    const targetOutbox = outbox;
+    const targetAccount = rs.scope.account;
+    const targetScopeKey = rs.currentScope;
+    const targetDb = rs.db;
+    const targetOutbox = rs.outbox;
     if (!targetId || !targetServerId) return false;
     ui.composer = closeUnclosedCodeFence(String(ui.composer ?? ""));
     const body = String(ui.composer).trim();
@@ -2778,7 +2760,7 @@ export function createClient(Alpine: any) {
     // room/account may have changed while the user typed.
     const message = ui.messages.find((item: Message) => item.serverId === targetServerId);
     const asBot = !!message && isBotEdit(message);
-    if (!directories.has(targetId) || !message || !(canEditMessage(message, targetAccount) || asBot)) {
+    if (!rs.directories.has(targetId) || !message || !(canEditMessage(message, targetAccount) || asBot)) {
       hint("That message can no longer be edited.");
       return false;
     }
@@ -2792,7 +2774,7 @@ export function createClient(Alpine: any) {
       ui.sendError = "Could not save the edit. Your text is still here.";
       return false;
     }
-    if (db !== targetDb || currentScope !== targetScopeKey || scope?.account !== targetAccount) return false;
+    if (rs.db !== targetDb || rs.currentScope !== targetScopeKey || rs.scope?.account !== targetAccount) return false;
     // Restore the pre-edit draft so saving an edit never discards it.
     endEdit(true);
     editor.resizeComposer();
@@ -2803,14 +2785,14 @@ export function createClient(Alpine: any) {
   // An admin's edit of a bot message goes out from the bot's account on the server. The replacement
   // and the original's REDACT then reach every client over IRC like any other edit.
   async function saveBotEdit(message: Message, text: string): Promise<boolean> {
-    const conversation = authorized.find((entry) => entry.conversationId === message.conversationId);
-    if (!scope || !conversation) { hint("That message can no longer be edited."); return false; }
+    const conversation = rs.authorized.find((entry) => entry.conversationId === message.conversationId);
+    if (!rs.scope || !conversation) { hint("That message can no longer be edited."); return false; }
     try {
       const response = await fetch("/api/messages/bot-edit", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json", "X-Slirc-Edit": "1" },
-        body: JSON.stringify({ channel: conversation.wireTarget, msgid: message.serverId, bot: message.authorAccount || message.authorNick, text, accountId: scope.accountId }),
+        body: JSON.stringify({ channel: conversation.wireTarget, msgid: message.serverId, bot: message.authorAccount || message.authorNick, text, accountId: rs.scope.accountId }),
       });
       const body = await response.json().catch(() => ({})) as { ok?: unknown; error?: unknown };
       if (!response.ok || body.ok !== true) {
@@ -2844,8 +2826,8 @@ export function createClient(Alpine: any) {
   // A note never reaches IRC: no outbox, and the only slash command is /giphy, whose pick is saved
   // as a note. Any other slash text is kept as written. The draft clears only once saved.
   async function sendNote(): Promise<void> {
-    const targetComposer = composer;
-    const targetDb = db;
+    const targetComposer = rs.composer;
+    const targetDb = rs.db;
     if (!targetComposer || (!String(ui.composer ?? "").trim() && !ui.media)) return;
     const slash = ui.media ? null : parseSlash(String(ui.composer ?? ""));
     if (slash?.name === "giphy") {
@@ -2870,9 +2852,9 @@ export function createClient(Alpine: any) {
       if (ui.notesOpen) ui.sendError = error instanceof Error ? error.message : "Could not save the note. It stays in the box.";
       return false;
     });
-    if (!saved || composer !== targetComposer) return;
+    if (!saved || rs.composer !== targetComposer) return;
     ui.composer = targetComposer.text;
-    composerTextByConversation.set(NOTES_CONVERSATION_ID, targetComposer.text);
+    rs.composerTextByConversation.set(NOTES_CONVERSATION_ID, targetComposer.text);
     ui.draftNote = "";
     editor.resizeComposer();
     transcript.scrollToBottom(true);
@@ -2892,7 +2874,7 @@ export function createClient(Alpine: any) {
     if (slash) {
       // Running a command consumes the draft, exactly as pressing Enter on a message does.
       ui.composer = "";
-      composer?.edit("");
+      rs.composer?.edit("");
       editor.resizeComposer();
       await runSlash(slash);
       return;
@@ -2904,7 +2886,7 @@ export function createClient(Alpine: any) {
       const request = remindAsk[1]!.trim();
       if (!request) { hint("When should I remind you? Try @remind in 20m stretch."); return; }
       ui.composer = "";
-      composer?.edit("");
+      rs.composer?.edit("");
       editor.resizeComposer();
       await runRemind(request);
       return;
@@ -2914,7 +2896,7 @@ export function createClient(Alpine: any) {
     const voteRoom = activeConversation();
     if (pollVote && ui.helpers.includes("poll") && voteRoom?.kind === "room") {
       ui.composer = "";
-      composer?.edit("");
+      rs.composer?.edit("");
       editor.resizeComposer();
       await runPollVote(voteRoom.wireTarget, Number(pollVote[1]));
       return;
@@ -2924,7 +2906,7 @@ export function createClient(Alpine: any) {
     const pollFix = ui.helpers.includes("poll") && polls.canCreate() ? pollPrefill(String(ui.composer ?? "")) : null;
     if (pollFix) {
       ui.composer = "";
-      composer?.edit("");
+      rs.composer?.edit("");
       editor.resizeComposer();
       polls.openDialog(document.querySelector("#input"), pollFix);
       return;
@@ -2933,18 +2915,18 @@ export function createClient(Alpine: any) {
     const closedText = closeUnclosedCodeFence(draftText);
     if (closedText !== draftText) {
       ui.composer = closedText;
-      composer?.edit(closedText);
-      if (roomId) composerTextByConversation.set(roomId, closedText);
-      if (composer && roomId) updateDraftNavigation({ conversationId: roomId, revision: composer.revision ?? "", text: closedText, updatedAt: Date.now() });
+      rs.composer?.edit(closedText);
+      if (rs.roomId) rs.composerTextByConversation.set(rs.roomId, closedText);
+      if (rs.composer && rs.roomId) updateDraftNavigation({ conversationId: rs.roomId, revision: rs.composer.revision ?? "", text: closedText, updatedAt: Date.now() });
     }
-    if (!outbox || !composer || !roomId || !scope) return;
+    if (!rs.outbox || !rs.composer || !rs.roomId || !rs.scope) return;
     if (ui.media) { await sendMedia(); return; }
-    const targetId = roomId;
-    const targetScope = scope;
-    const targetDb = db;
-    const targetScopeKey = currentScope;
-    const targetComposer = composer;
-    const targetOutbox = outbox;
+    const targetId = rs.roomId;
+    const targetScope = rs.scope;
+    const targetDb = rs.db;
+    const targetScopeKey = rs.currentScope;
+    const targetComposer = rs.composer;
+    const targetOutbox = rs.outbox;
     const rawText = String(ui.composer ?? "");
     // A quote/caption is multiline; validate it as such so it reaches the durable multiline path
     // instead of failing the single-line control-character check.
@@ -2954,7 +2936,7 @@ export function createClient(Alpine: any) {
       hint(check.error ?? "Cannot send that.");
       return;
     }
-    if (rawText.includes("\n") && !bridge?.enabled.has("draft/multiline")) {
+    if (rawText.includes("\n") && !rs.bridge?.enabled.has("draft/multiline")) {
       hint("This server cannot send multiline messages.");
       return;
     }
@@ -2962,26 +2944,26 @@ export function createClient(Alpine: any) {
     let committedRevision = "";
     const messageId = randomId();
     const sent = await targetComposer.commit(async (snapshot) => {
-      if (stopped || signingOut || db !== targetDb || scope !== targetScope || currentScope !== targetScopeKey || !isLocallyEnqueueable(targetId)) throw new SendRefusedError("conversation is no longer authorized");
+      if (rs.stopped || rs.signingOut || rs.db !== targetDb || rs.scope !== targetScope || rs.currentScope !== targetScopeKey || !isLocallyEnqueueable(targetId)) throw new SendRefusedError("conversation is no longer authorized");
       committedRevision = snapshot.revision;
       const queued = queuedTextFor(targetId, targetScope.account, { ...snapshot, text: emojiText(snapshot.text, emoji.custom) }, messageId, Date.now());
       await targetOutbox.enqueueText(queued);
       await refreshDrafts(targetDb);
     }).catch(() => {
-      if (roomId === targetId && db === targetDb && scope === targetScope && currentScope === targetScopeKey) ui.sendError = "Could not save your message. It stays in the box.";
+      if (rs.roomId === targetId && rs.db === targetDb && rs.scope === targetScope && rs.currentScope === targetScopeKey) ui.sendError = "Could not save your message. It stays in the box.";
       return false;
     });
-    if (db !== targetDb || scope !== targetScope || currentScope !== targetScopeKey) return;
-    composerTextByConversation.set(targetId, targetComposer.text);
+    if (rs.db !== targetDb || rs.scope !== targetScope || rs.currentScope !== targetScopeKey) return;
+    rs.composerTextByConversation.set(targetId, targetComposer.text);
     if (!sent) return;
     offerMentionPrompts(targetId, messageId, rawText);
-    if (roomId === targetId && composer && composer !== targetComposer && composer.revision === committedRevision) {
-      composer.text = ""; composer.revision = null; ui.composer = "";
-    } else if (composer === targetComposer && roomId === targetId) {
+    if (rs.roomId === targetId && rs.composer && rs.composer !== targetComposer && rs.composer.revision === committedRevision) {
+      rs.composer.text = ""; rs.composer.revision = null; ui.composer = "";
+    } else if (rs.composer === targetComposer && rs.roomId === targetId) {
       ui.composer = targetComposer.text;
     }
-    if (roomId === targetId) {
-      composerTextByConversation.set(targetId, composer?.text ?? "");
+    if (rs.roomId === targetId) {
+      rs.composerTextByConversation.set(targetId, rs.composer?.text ?? "");
       ui.draftNote = "";
       editor.resizeComposer();
       transcript.scrollToBottom(true);
@@ -2991,7 +2973,7 @@ export function createClient(Alpine: any) {
   // A helper mentioned where it isn't a member gets an inline Add under the message. Its own DM is
   // where it already listens, so that never asks. A person gets the same note, in channels only.
   function offerMentionPrompts(conversationId: string, messageId: string, text: string): void {
-    const item = authorized.find((entry) => entry.conversationId === conversationId);
+    const item = rs.authorized.find((entry) => entry.conversationId === conversationId);
     if (!item) return;
     const peer = item.kind === "dm" ? ui.directs.find((direct: { channel: string }) => direct.channel === item.wireTarget)?.nick ?? "" : "";
     const place = item.kind === "dm" ? "dm" : item.kind === "thread" ? "thread" : isGroupRoom(item.wireTarget) ? "group" : "channel";
@@ -3008,59 +2990,59 @@ export function createClient(Alpine: any) {
   }
 
   async function resend(operationId: string): Promise<void> {
-    if (!outbox || !ui.consent[operationId]) return;
+    if (!rs.outbox || !ui.consent[operationId]) return;
     try {
-      await outbox.resendUncertain(operationId, { duplicateRiskAccepted: true });
+      await rs.outbox.resendUncertain(operationId, { duplicateRiskAccepted: true });
     } catch (error) {
       ui.error = error instanceof Error ? error.message : "Could not resend.";
     }
   }
 
   async function cancel(operationId: string): Promise<void> {
-    if (!outbox) return;
-    await outbox.cancel(operationId).catch(() => {});
+    if (!rs.outbox) return;
+    await rs.outbox.cancel(operationId).catch(() => {});
   }
 
   const transport: OutboxTransport = {
     sendText(operation: Operation): void {
-      if (!socket || socket.readyState !== WebSocket.OPEN) throw new Error("socket not open");
-      if (!capsOk) throw new SendRefusedError("required IRC capabilities missing");
-      const target = wireTargetForOperation(operation, authorized);
+      if (!rs.socket || rs.socket.readyState !== WebSocket.OPEN) throw new Error("socket not open");
+      if (!rs.capsOk) throw new SendRefusedError("required IRC capabilities missing");
+      const target = wireTargetForOperation(operation, rs.authorized);
       if (!target) throw new SendRefusedError("conversation is no longer authorized");
       // The tag carries the client correlation id; for multiline the batch id must ride every
       // constituent PRIVMSG (serializeOperation), or Ergo stores the lines as separate messages.
-      for (const line of serializeOperation(operation, target, !!bridge?.enabled.has("draft/multiline"))) {
-        socket.send(`${line}\r\n`);
+      for (const line of serializeOperation(operation, target, !!rs.bridge?.enabled.has("draft/multiline"))) {
+        rs.socket.send(`${line}\r\n`);
       }
     },
     sendRedact(operation: Operation): void {
-      if (!socket || socket.readyState !== WebSocket.OPEN) throw new Error("socket not open");
-      if (!capsOk) throw new SendRefusedError("required IRC capabilities missing");
-      if (!bridge?.enabled.has("draft/message-redaction")) throw new SendRefusedError("message redaction not supported by this server");
+      if (!rs.socket || rs.socket.readyState !== WebSocket.OPEN) throw new Error("socket not open");
+      if (!rs.capsOk) throw new SendRefusedError("required IRC capabilities missing");
+      if (!rs.bridge?.enabled.has("draft/message-redaction")) throw new SendRefusedError("message redaction not supported by this server");
       if (!operation.redactId) throw new SendRefusedError("redact target missing");
-      const target = wireTargetForOperation(operation, authorized);
+      const target = wireTargetForOperation(operation, rs.authorized);
       if (!target) throw new SendRefusedError("conversation is no longer authorized");
-      socket.send(`@+slirc/cid=${operation.id} REDACT ${target} ${operation.redactId} :${operation.reason ?? ""}\r\n`);
+      rs.socket.send(`@+slirc/cid=${operation.id} REDACT ${target} ${operation.redactId} :${operation.reason ?? ""}\r\n`);
     },
     async sendAdminRedact(operation: Operation): Promise<void> {
-      if (!scope) throw new SendRefusedError("no session");
+      if (!rs.scope) throw new SendRefusedError("no session");
       if (!operation.redactId) throw new SendRefusedError("redact target missing");
-      const target = wireTargetForOperation(operation, authorized);
+      const target = wireTargetForOperation(operation, rs.authorized);
       if (!target) throw new SendRefusedError("conversation is no longer authorized");
       // The server rechecks admin authority and only answers ok after the native REDACT ack.
       const response = await fetch("/api/messages/redact", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channel: target, msgid: operation.redactId, accountId: scope.accountId, clientId: operation.id }),
+        body: JSON.stringify({ channel: target, msgid: operation.redactId, accountId: rs.scope.accountId, clientId: operation.id }),
       });
       const body = await response.json().catch(() => ({})) as { ok?: unknown; gone?: unknown; error?: unknown };
       if (!response.ok || body.ok !== true) {
         throw new SendRefusedError(typeof body.error === "string" ? body.error : `Delete failed (${response.status})`);
       }
       // The server no longer has the message, so no REDACT echo will come: remove it here.
-      if (body.gone === true && db) {
-        await db.applyBatch({ conversationId: operation.conversationId, events: [{ type: "redaction", conversationId: operation.conversationId, serverId: operation.redactId }], complete: true });
+      if (body.gone === true && rs.db) {
+        await rs.db.applyBatch({ conversationId: operation.conversationId, events: [{ type: "redaction", conversationId: operation.conversationId, serverId: operation.redactId }], complete: true });
       }
     },
   };
@@ -3068,7 +3050,7 @@ export function createClient(Alpine: any) {
   function hooks() {
     return {
       onReady: (conversation: AuthorizedConversation) => {
-        if (stopped || signingOut) return;
+        if (rs.stopped || rs.signingOut) return;
         ui.phase = "live";
         reconnectDelay = RECONNECT_FIRST_MS;
         ui.readyVersion += 1;
@@ -3077,63 +3059,63 @@ export function createClient(Alpine: any) {
         connectionNotice.reset();
         void seedReadMarker(conversation);
         scheduleMarkRead();
-        void outbox?.notifyReady();
+        void rs.outbox?.notifyReady();
         void autoRefresh.check();
         // Readiness is the point at which a queued welcome DM can actually reach the wire.
         void drainWelcome();
         void welcome.load();
       },
       onRedactRefused: (msgid: string, reason: string) => {
-        void outbox?.rejectRedact(msgid, reason).catch(() => {});
+        void rs.outbox?.rejectRedact(msgid, reason).catch(() => {});
       },
       onKicked: (conversation: AuthorizedConversation) => {
-        if (stopped || conversation.kind !== "thread") return;
+        if (rs.stopped || conversation.kind !== "thread") return;
         const thread = ui.threads.find((item: ThreadGrant) => item.conversationId === conversation.conversationId);
         if (thread) forgetThread(thread);
       },
       onUnready: () => {
-        if (stopped) return;
+        if (rs.stopped) return;
         ui.phase = "connecting";
         ui.readyVersion += 1;
       },
       onError: (_conversation: AuthorizedConversation | undefined, error: Error) => {
-        if (!stopped) ui.error = error.message;
+        if (!rs.stopped) ui.error = error.message;
       },
       onWhois: (message: IrcMessage) => {
-        if (!stopped) people.applyWhois(message);
+        if (!rs.stopped) people.applyWhois(message);
       },
       onLive: (conversation: AuthorizedConversation, message: IrcMessage) => {
-        if (stopped || signingOut) return;
+        if (rs.stopped || rs.signingOut) return;
         // Live only: history pages never reach this hook, so replay cannot invent typing state.
         if (message.command === "TAGMSG") typing.observeMessage(conversation.conversationId, message);
         else if (message.command === "PRIVMSG") typing.clear(conversation.conversationId, typingAccount(message));
         reminderNotice.observe(conversation, message);
       },
       onReadMarker: (conversation: AuthorizedConversation, timestamp: string) => {
-        if (stopped || signingOut) return;
-        serverMarkers.set(conversation.conversationId, timestamp);
+        if (rs.stopped || rs.signingOut) return;
+        rs.serverMarkers.set(conversation.conversationId, timestamp);
         void applyServerMarker(conversation, timestamp);
       },
     };
   }
 
   function wireSend(line: string): boolean {
-    if (socket?.readyState !== WebSocket.OPEN) return false;
-    socket.send(`${line}\r\n`);
+    if (rs.socket?.readyState !== WebSocket.OPEN) return false;
+    rs.socket.send(`${line}\r\n`);
     return true;
   }
 
   function registerBridge(nick: string): void {
-    bridge = new RelayBridge({
+    rs.bridge = new RelayBridge({
       nick,
       saslToken: saslToken(nick),
       send: (line) => {
-        if (socket?.readyState === WebSocket.OPEN) socket.send(`${line}\r\n`);
+        if (rs.socket?.readyState === WebSocket.OPEN) rs.socket.send(`${line}\r\n`);
       },
-      push: (line) => { notePong(line); presence.feed(line); sync?.push(line); },
+      push: (line) => { notePong(line); presence.feed(line); rs.sync?.push(line); },
       onCaps: (_enabled, missing) => {
-        capsOk = missing.length === 0;
-        ui.capsNote = capsOk ? "" : `Missing capabilities: ${missing.join(", ")}`;
+        rs.capsOk = missing.length === 0;
+        ui.capsNote = rs.capsOk ? "" : `Missing capabilities: ${missing.join(", ")}`;
       },
       onAuthFailed: (reason) => {
         ui.error = reason;
@@ -3142,7 +3124,7 @@ export function createClient(Alpine: any) {
   }
 
   function scheduleReconnect(): void {
-    if (stopped || suspended || signingOut || reconnectTimer !== null) return;
+    if (rs.stopped || rs.suspended || rs.signingOut || reconnectTimer !== null) return;
     ui.phase = "connecting";
     const wait = reconnectDelay;
     reconnectDelay = Math.min(Math.max(reconnectDelay * 2, 2_000), 30_000);
@@ -3153,41 +3135,41 @@ export function createClient(Alpine: any) {
   }
 
   function openSocket(user: string): void {
-    if (socket) {
-      const previous = socket;
-      socket = null;
+    if (rs.socket) {
+      const previous = rs.socket;
+      rs.socket = null;
       previous.close();
     }
     presence.start(user);
     refreshPresence();
-    serverMarkers.clear();
+    rs.serverMarkers.clear();
     const early = earlySocket;
     earlySocket = null;
     if (early && early.readyState > WebSocket.OPEN) early.close();
     const ws = early && early.readyState <= WebSocket.OPEN ? early : new WebSocket(url);
-    socket = ws;
+    rs.socket = ws;
     registerBridge(user);
     ws.onopen = () => {
-      if (socket !== ws) return;
-      bridge?.onOpen();
+      if (rs.socket !== ws) return;
+      rs.bridge?.onOpen();
     };
-    if (ws.readyState === WebSocket.OPEN) bridge?.onOpen();
+    if (ws.readyState === WebSocket.OPEN) rs.bridge?.onOpen();
     ws.onmessage = (event) => {
-      if (socket !== ws) return;
-      bridge?.feed(typeof event.data === "string" ? event.data : "");
+      if (rs.socket !== ws) return;
+      rs.bridge?.feed(typeof event.data === "string" ? event.data : "");
     };
     ws.onclose = () => {
-      if (socket !== ws) return;
-      socket = null;
+      if (rs.socket !== ws) return;
+      rs.socket = null;
       typing.reset();
       clearRoomMembers();
       presence.disconnect();
-      sync?.onDisconnect();
-      void outbox?.onDisconnected();
+      rs.sync?.onDisconnect();
+      void rs.outbox?.onDisconnected();
       scheduleReconnect();
     };
     ws.onerror = () => {
-      if (socket === ws && !stopped && !signingOut) connectionNotice.failed();
+      if (rs.socket === ws && !rs.stopped && !rs.signingOut) connectionNotice.failed();
     };
   }
 
@@ -3195,28 +3177,28 @@ export function createClient(Alpine: any) {
     return connecting = connectNow();
   }
   async function connectNow(): Promise<void> {
-    if (stopped || suspended || signingOut) return;
+    if (rs.stopped || rs.suspended || rs.signingOut) return;
     const epoch = ++connectEpoch;
     const profileReadRevision = profile.revision();
     ui.phase = "connecting";
-    if (!socket && !earlySocket && signedInHint()) earlySocket = new WebSocket(url);
+    if (!rs.socket && !earlySocket && signedInHint()) earlySocket = new WebSocket(url);
     let me: unknown;
     try {
       // Revalidate the session every reconnect, before the recovery list is published.
       me = await fetchJson("/auth/me");
     } catch {
-      if (epoch !== connectEpoch || stopped || suspended || signingOut) return;
+      if (epoch !== connectEpoch || rs.stopped || rs.suspended || rs.signingOut) return;
       dropEarlySocket();
       connectionNotice.failed();
       releaseBoot(); // never a blank boot screen; the error itself waits out the grace period
       scheduleReconnect();
       return;
     }
-    if (epoch !== connectEpoch || stopped || suspended || signingOut) return;
-    authenticatedAccountId = typeof (me as { accountId?: unknown })?.accountId === "string" ? (me as { accountId: string }).accountId : "";
-    reportTimeZone(authenticatedAccountId);
+    if (epoch !== connectEpoch || rs.stopped || rs.suspended || rs.signingOut) return;
+    rs.authenticatedAccountId = typeof (me as { accountId?: unknown })?.accountId === "string" ? (me as { accountId: string }).accountId : "";
+    reportTimeZone(rs.authenticatedAccountId);
     document.dispatchEvent(new CustomEvent("slirc:theme-account", {
-      detail: { accountId: authenticatedAccountId, theme: (me as { theme?: unknown })?.theme },
+      detail: { accountId: rs.authenticatedAccountId, theme: (me as { theme?: unknown })?.theme },
     }));
     const access = clientAccess(me, instance);
     signedInHint(access.ok);
@@ -3227,14 +3209,14 @@ export function createClient(Alpine: any) {
       pairing.clearPairRequest();
       pairing.stop();
       closeSocket();
-      void outbox?.onDisconnected();
-      outbox?.stop();
+      void rs.outbox?.onDisconnected();
+      rs.outbox?.stop();
       projection?.dispose();
       unread?.dispose(); unread = null; cancelMarkRead();
-      db?.close();
-      db = null; sync = null; outbox = null; projection = null; composer = null; scope = null; roomId = null; currentScope = "";
-      authorized = []; directories.clear(); dmPeerIds.clear();
-      composerTextByConversation.clear(); transcript.reset();
+      rs.db?.close();
+      rs.db = null; rs.sync = null; rs.outbox = null; projection = null; rs.composer = null; rs.scope = null; rs.roomId = null; rs.currentScope = "";
+      rs.authorized = []; rs.directories.clear(); dmPeerIds.clear();
+      rs.composerTextByConversation.clear(); transcript.reset();
       resetAccountUi();
       if (!(me as { authenticated?: unknown })?.authenticated) {
         ui.authenticated = false;
@@ -3259,8 +3241,8 @@ export function createClient(Alpine: any) {
     if (ui.note === SIGN_IN_REASON) ui.note = "";
     peek.stop();
     const key = scopeKey(access.scope);
-    const changedAccount = key !== currentScope;
-    if (changedAccount) { people.reset(); channelDrag.reset(); pendingDms.clear(); provisioning.clear(); iphoneApp.reset(); profile.resetProfile(); settings.reset(); channelCreate.reset(); newConversation.reset(); polls.reset(); jobCards.reset(); addPrompts.reset(); invitationsPage.reset(); admission.reset(); admissionFounder.reset(); irc.reset(); agents.reset(); adminStatus.reset(); branding.reset(); typing.reset(); reminderNotice.reset(); welcome.reset(); welcomeDraining = false; members.reset(); presence.reset(); clearRoomMembers(); ui.openRooms = {}; ui.ircConnection = null; ui.agentProfiles = {}; ui.agentRequests = []; agentRefreshes.clear(); }
+    const changedAccount = key !== rs.currentScope;
+    if (changedAccount) { people.reset(); channelDrag.reset(); rs.pendingDms.clear(); provisioning.clear(); iphoneApp.reset(); profile.resetProfile(); settings.reset(); channelCreate.reset(); newConversation.reset(); polls.reset(); jobCards.reset(); addPrompts.reset(); invitationsPage.reset(); admission.reset(); admissionFounder.reset(); irc.reset(); agents.reset(); adminStatus.reset(); branding.reset(); typing.reset(); reminderNotice.reset(); welcome.reset(); welcomeDraining = false; members.reset(); presence.reset(); clearRoomMembers(); ui.openRooms = {}; ui.ircConnection = null; ui.agentProfiles = {}; ui.agentRequests = []; agentRefreshes.clear(); }
     ui.authenticated = true;
     refreshWorkspaceChoices();
     pairing.clearPairRequest();
@@ -3268,7 +3250,7 @@ export function createClient(Alpine: any) {
     ui.isAdmin = access.role === "admin";
     ui.isFounder = (me as any).isFounder === true;
     ui.hasPhone = (me as any).hasPhone === true;
-    ui.phoneShortcutDismissed = phoneShortcutDismissed(authenticatedAccountId);
+    ui.phoneShortcutDismissed = phoneShortcutDismissed(rs.authenticatedAccountId);
     ui.greeting = (me as any).greeting !== false;
     ui.helpers = Array.isArray((me as any).helpers) ? (me as any).helpers.filter((nick: unknown): nick is string => typeof nick === "string") : [];
     ui.linksHome = typeof (me as any).linksHome === "string" ? (me as any).linksHome.toLowerCase() : "";
@@ -3282,15 +3264,15 @@ export function createClient(Alpine: any) {
     if (changedAccount || (profileReadRevision === profile.revision() && !profile.profileSaving && !profile.badgeSaving)) profile.applyProfile((me as any).profile);
     // Thread rooms are trusted /auth/me rows, added as authorized conversations so reply reuses the
     // existing sender path. They stay out of the Channels list.
-    authorized = [
+    rs.authorized = [
       ...access.conversations,
       ...access.threads.map((thread) => ({ conversationId: thread.conversationId, wireTarget: thread.channel, kind: "thread" as const })),
     ];
-    directories.clear(); dmPeerIds.clear();
+    rs.directories.clear(); dmPeerIds.clear();
     // A refreshed grant is authoritative: drop any typing state for a conversation it may have revoked.
     typing.clearAll();
     clearRoomMembers();
-    for (const item of authorized) directories.set(item.conversationId, item);
+    for (const item of rs.authorized) rs.directories.set(item.conversationId, item);
     const accountDetails = Array.isArray((me as any).accountDetails) ? (me as any).accountDetails : [];
     ui.accountIds = Object.fromEntries(accountDetails
       .filter((entry: any) => typeof entry?.nick === "string" && typeof entry?.id === "string")
@@ -3306,7 +3288,7 @@ export function createClient(Alpine: any) {
     const bootScreen = nav.$state.get().screen;
     if (bootScreen.kind === "dm") ensurePendingDirect(bootScreen.nick);
     nav.setDirectory({
-      roomConversationId: (room) => authorized.find((item) => item.kind !== "dm" && foldIdentifier(item.wireTarget) === foldIdentifier(room))?.conversationId,
+      roomConversationId: (room) => rs.authorized.find((item) => item.kind !== "dm" && foldIdentifier(item.wireTarget) === foldIdentifier(room))?.conversationId,
       dmPeerAccountId: (nick) => peerAccountIdFor(nick),
     });
     nav.refreshConversationId();
@@ -3325,16 +3307,16 @@ export function createClient(Alpine: any) {
     }
     ui.defaultChannel = typeof (me as any).defaultChannel === "string" ? (me as any).defaultChannel.toLowerCase() : "";
     ui.ircConnection = normalizeIrcConnection((me as any).irc);
-    ui.channels = authorized.filter((item) => item.kind === "room" && !item.wireTarget.startsWith("#t-"));
-    ui.directs = ((me as any).directs || []).filter((direct: any) => authorized.some((item) => item.kind === "dm" && item.wireTarget === direct.channel));
+    ui.channels = rs.authorized.filter((item) => item.kind === "room" && !item.wireTarget.startsWith("#t-"));
+    ui.directs = ((me as any).directs || []).filter((direct: any) => rs.authorized.some((item) => item.kind === "dm" && item.wireTarget === direct.channel));
     ui.contacts = Array.isArray((me as any).contacts)
       ? contactsWithoutDirects((me as any).contacts.filter((nick: unknown): nick is string => typeof nick === "string" && foldIdentifier(nick) !== foldIdentifier(access.scope.account)), ui.directs)
       : [];
     presence.setAvailability(Array.isArray((me as any).accountDetails) ? (me as any).accountDetails : []);
     ui.agentProfiles = mergeAgents(ui.agentProfiles, Array.isArray((me as any).accountDetails) ? (me as any).accountDetails : []);
     pairing.authorize(key);
-    if (key !== currentScope) await openScope(access);
-    if (epoch !== connectEpoch || stopped || suspended || signingOut) return;
+    if (key !== rs.currentScope) await openScope(access);
+    if (epoch !== connectEpoch || rs.stopped || rs.suspended || rs.signingOut) return;
     pairing.loadPending(key);
     void replyThreads.load();
     if (["settings", "profile"].includes(nav.$state.get().screen.kind)) settings.open();
@@ -3343,7 +3325,7 @@ export function createClient(Alpine: any) {
     if (nav.$state.get().screen.kind === "admin") adminStatus.open();
     if (nav.$state.get().screen.kind === "invitations") invitationsPage.open();
     if (nav.$state.get().screen.kind === "invitations" && ui.isFounder) admissionFounder.open();
-    sync?.recover(authorized);
+    rs.sync?.recover(rs.authorized);
     void notes.load();
     if (ownDm(nav.$state.get().screen)) nav.open({ kind: "notes" }, { replace: true });
     const shared = sharedDmScreen(nav.$state.get().screen, dmPeerNick);
@@ -3352,21 +3334,21 @@ export function createClient(Alpine: any) {
     const pendingId = screen.kind === "dm" ? pendingIdForNick(screen.nick) : null;
     const direct = screen.kind === "dm" ? ui.directs.find((item: any) => foldIdentifier(item.nick) === foldIdentifier(screen.nick)) : null;
     const selected = screen.kind === "room"
-      ? authorized.find((item) => item.kind !== "dm" && foldIdentifier(item.wireTarget) === foldIdentifier(screen.room))
-      : direct ? authorized.find((item) => item.kind === "dm" && item.wireTarget === direct.channel) : undefined;
+      ? rs.authorized.find((item) => item.kind !== "dm" && foldIdentifier(item.wireTarget) === foldIdentifier(screen.room))
+      : direct ? rs.authorized.find((item) => item.kind === "dm" && item.wireTarget === direct.channel) : undefined;
     const focusMessageId = screen.kind === "room" || screen.kind === "dm" ? screen.focusMessageId : undefined;
     if (focusMessageId && !selected && !pendingId) hint(LINK_MISSING);
     selectConversation(screen.kind === "notes" ? NOTES_CONVERSATION_ID : selected?.conversationId ?? pendingId ?? access.conversation.conversationId, selected || pendingId ? focusMessageId : undefined, linkThread(screen));
     // selectConversation can early-return for the already-selected conversation, so make sure the
     // first authorized members fetch runs after the account scope exists.
-    loadRoomMembers(activeConversation(), roomId);
+    loadRoomMembers(activeConversation(), rs.roomId);
     openSocket(access.scope.account);
     // Reveal as soon as the cached room can paint; IRC recovery continues behind the shell.
     void whenPainted().then(revealShell);
     // A pending conversation resumed by a reload resumes its server-side creation. A provisioning
     // pass already in flight from this tab owns the id, so this cannot start a second POST.
     if (pendingId) {
-      const entry = pendingDms.get(pendingId);
+      const entry = rs.pendingDms.get(pendingId);
       if (entry?.state === "provisioning" && !provisioning.has(pendingId)) void provisionDirect(entry.nick, pendingId);
     }
   }
@@ -3379,7 +3361,7 @@ export function createClient(Alpine: any) {
     unread?.dispose(); unread = null; cancelMarkRead();
     renderEpoch += 1;
     transcript.reset();
-    composerTextByConversation.clear(); transcript.reset();
+    rs.composerTextByConversation.clear(); transcript.reset();
     ui.messages = []; ui.composer = ""; ui.direct = false; ui.drafts = [];
     // Account scope changed: staged photo bytes belong to the old scope's database.
     if (mediaView.lightbox) mediaView.closeLightbox();
@@ -3390,16 +3372,16 @@ export function createClient(Alpine: any) {
     window.dispatchEvent(new CustomEvent("slirc:slash-reset"));
     window.dispatchEvent(new CustomEvent("slirc:mention-reset"));
     ui.editingMessageId = ""; ui.editAttachments = []; ui.editServerId = ""; ui.editConversationId = ""; ui.editSavedText = ""; ui.editSavedRevision = null;
-    outbox?.stop();
-    db?.close();
+    rs.outbox?.stop();
+    rs.db?.close();
     painted = false;
-    scope = access.scope;
-    roomId = access.conversation.conversationId;
+    rs.scope = access.scope;
+    rs.roomId = access.conversation.conversationId;
     focusDraftConversationId = null;
-    ui.currentConversationId = roomId;
-    currentScope = scopeKey(access.scope);
+    ui.currentConversationId = rs.roomId;
+    rs.currentScope = scopeKey(access.scope);
     const accountDb = new ClientDatabase(access.scope);
-    db = accountDb;
+    rs.db = accountDb;
     void restorePendingDirects(accountDb);
     mediaView.collapsedMedia = mediaView.loadCollapsedMedia(access.scope.accountId);
     // Cards seen before paint with the rows instead of landing one by one after them.
@@ -3411,10 +3393,10 @@ export function createClient(Alpine: any) {
       ui.mutedRooms = muted === null ? ["#open-chat", "#help"] : starredIdsFromStorage(muted);
     } catch { ui.starred = []; ui.channelOrder = []; ui.mutedRooms = ["#open-chat", "#help"]; }
     void refreshDrafts(accountDb);
-    sync = createSyncEngine({ db: accountDb, send: wireSend, nick: access.scope.account, hooks: hooks() });
+    rs.sync = createSyncEngine({ db: accountDb, send: wireSend, nick: access.scope.account, hooks: hooks() });
     projection = createConversationProjection(accountDb);
     projection.view.subscribe((view) => {
-      if (db !== accountDb || stopped || view.conversationId !== roomId) return;
+      if (rs.db !== accountDb || rs.stopped || view.conversationId !== rs.roomId) return;
       transcript.beforePaint(view);
       ui.messages = ui.notesOpen ? notesRows() : view.messages.filter((message) => message.authorNick !== "HistServ");
       greetingNote.consider(ui.messages);
@@ -3425,36 +3407,36 @@ export function createClient(Alpine: any) {
       if (view.error) ui.error = view.error;
       if (!view.loading) {
         paintNow();
-        transcript.afterPaint(view, () => db === accountDb && !stopped && view.conversationId === roomId);
+        transcript.afterPaint(view, () => rs.db === accountDb && !rs.stopped && view.conversationId === rs.roomId);
       }
     });
-    projection.select(roomId);
-    serverMarkers.clear();
+    projection.select(rs.roomId);
+    rs.serverMarkers.clear();
     unread = createUnreadProjection(accountDb, (message) => ui.greeting || !isDailyGreeting(message.authorAccount, message.text));
     unread.counts.subscribe((counts) => {
-      if (db !== accountDb || stopped) return;
+      if (rs.db !== accountDb || rs.stopped) return;
       ui.unread = counts;
       applyUnreadChrome();
       scheduleMarkRead();
     });
-    composer = new Composer(roomId, draftWriter(accountDb));
-    const scopeComposer = composer;
-    composer.onNote = (note) => {
-      if (stopped || db !== accountDb || composer !== scopeComposer) return;
+    rs.composer = new Composer(rs.roomId, draftWriter(accountDb));
+    const scopeComposer = rs.composer;
+    rs.composer.onNote = (note) => {
+      if (rs.stopped || rs.db !== accountDb || rs.composer !== scopeComposer) return;
       if (note === "") {
         if (!ui.draftNote || ui.draftNote === "Draft not saved") ui.draftNote = "";
       } else {
         ui.draftNote = note;
       }
     };
-    const draft = await accountDb.drafts.get(roomId);
-    if (db !== accountDb || stopped || suspended || signingOut) return;
+    const draft = await accountDb.drafts.get(rs.roomId);
+    if (rs.db !== accountDb || rs.stopped || rs.suspended || rs.signingOut) return;
     // Navigation may have replaced the composer while the draft was loading.
     scopeComposer.load(draft);
-    if (composer === scopeComposer && draft) ui.composer = scopeComposer.text;
+    if (rs.composer === scopeComposer && draft) ui.composer = scopeComposer.text;
     // Restore the staged photo for this conversation; a reload or account scope change must not
     // lose pending bytes.
-    if (roomId === access.conversation.conversationId) void restoreMediaDraft(access.conversation.conversationId);
+    if (rs.roomId === access.conversation.conversationId) void restoreMediaDraft(access.conversation.conversationId);
     startSender();
   }
 
@@ -3469,7 +3451,7 @@ export function createClient(Alpine: any) {
     const find = () => {
       const direct = ui.directs.find((item: { nick: string }) => foldIdentifier(item.nick) === foldIdentifier(recipientNick));
       if (!direct) return null;
-      const item = authorized.find((entry) => entry.kind === "dm" && entry.wireTarget === direct.channel);
+      const item = rs.authorized.find((entry) => entry.kind === "dm" && entry.wireTarget === direct.channel);
       return item?.conversationId ?? null;
     };
     const existing = find();
@@ -3487,10 +3469,10 @@ export function createClient(Alpine: any) {
   }
 
   async function readWelcomeOperation(opId: string): Promise<WelcomeOperation | null> {
-    if (!db) return null;
-    const operation = await db.operations.get(opId);
+    if (!rs.db) return null;
+    const operation = await rs.db.operations.get(opId);
     if (!operation) return null;
-    const message = await db.messages.get(operation.messageId);
+    const message = await rs.db.messages.get(operation.messageId);
     return { state: operation.state, serverId: message?.serverId ?? null };
   }
 
@@ -3506,6 +3488,7 @@ export function createClient(Alpine: any) {
   }
 
   async function dropWelcomeOperation(opId: string): Promise<void> {
+    const db = rs.db;
     if (!db) return;
     await db.transaction("rw", db.operations, db.messages, async () => {
       await db.operations.delete(opId);
@@ -3530,11 +3513,11 @@ export function createClient(Alpine: any) {
   async function drainWelcome(): Promise<void> {
     // Capture the starting account scope. Every closure refuses once the scope moves, so a drain
     // that outlives an account switch can never queue into the new account's database.
-    if (welcomeDraining || !outbox || !scope || !db || stopped || signingOut) return;
-    const startDb = db;
-    const startScope = scope;
-    const startScopeKey = currentScope;
-    const alive = () => !stopped && !signingOut && db === startDb && scope === startScope && currentScope === startScopeKey;
+    if (welcomeDraining || !rs.outbox || !rs.scope || !rs.db || rs.stopped || rs.signingOut) return;
+    const startDb = rs.db;
+    const startScope = rs.scope;
+    const startScopeKey = rs.currentScope;
+    const alive = () => !rs.stopped && !rs.signingOut && rs.db === startDb && rs.scope === startScope && rs.currentScope === startScopeKey;
     welcomeDraining = true;
     const guard = <T>(run: () => Promise<T>): Promise<T> => {
       if (!alive()) return Promise.reject(new Error("account scope changed"));
@@ -3580,11 +3563,11 @@ export function createClient(Alpine: any) {
         readOperation: (opId) => guard(() => readWelcomeOperation(opId)),
         enqueue: async (conversationId, opId, text) => {
           if (!alive()) throw new Error("account scope changed");
-          if (!outbox || !scope) throw new Error("sender not ready");
+          if (!rs.outbox || !rs.scope) throw new Error("sender not ready");
           // The revision is a send token, never a real draft: clearsDraft cannot match, so a
           // founder's open draft, selection or focus is untouched.
-          const queued = queuedTextFor(conversationId, scope.account, { text, revision: `welcome:${opId}` }, opId, Date.now());
-          await outbox.enqueueText(queued);
+          const queued = queuedTextFor(conversationId, rs.scope.account, { text, revision: `welcome:${opId}` }, opId, Date.now());
+          await rs.outbox.enqueueText(queued);
         },
         waitOutcome: (opId, timeoutMs) => guard(() => waitWelcomeOutcome(opId, timeoutMs)),
         drop: (opId) => guard(() => dropWelcomeOperation(opId)),
@@ -3592,7 +3575,7 @@ export function createClient(Alpine: any) {
         rememberClaim: rememberWelcomeClaim,
         forgetClaim: forgetWelcomeClaim,
         alive,
-        owner: { nick: scope?.account, name: ui.me },
+        owner: { nick: rs.scope?.account, name: ui.me },
       }, (message) => console.error("founder welcome:", message));
     } finally {
       welcomeDraining = false;
@@ -3600,41 +3583,41 @@ export function createClient(Alpine: any) {
   }
 
   function startSender(): void {
-    if (!db) return;
-    const senderDb = db;
-    const senderScope = currentScope;
+    if (!rs.db) return;
+    const senderDb = rs.db;
+    const senderScope = rs.currentScope;
     const scopedTransport: OutboxTransport = {
       sendText(operation): void {
-        if (db !== senderDb || currentScope !== senderScope) throw new SendRefusedError("account scope changed");
+        if (rs.db !== senderDb || rs.currentScope !== senderScope) throw new SendRefusedError("account scope changed");
         transport.sendText(operation);
       },
       sendRedact(operation): void {
-        if (db !== senderDb || currentScope !== senderScope) throw new SendRefusedError("account scope changed");
+        if (rs.db !== senderDb || rs.currentScope !== senderScope) throw new SendRefusedError("account scope changed");
         transport.sendRedact?.(operation);
       },
       sendAdminRedact(operation): Promise<void> {
-        if (db !== senderDb || currentScope !== senderScope) throw new SendRefusedError("account scope changed");
+        if (rs.db !== senderDb || rs.currentScope !== senderScope) throw new SendRefusedError("account scope changed");
         if (!transport.sendAdminRedact) throw new SendRefusedError("admin delete is not available");
         return Promise.resolve(transport.sendAdminRedact(operation));
       },
     };
-    outbox = createOutbox({
+    rs.outbox = createOutbox({
       db: senderDb,
       transport: scopedTransport,
-      isReady: (id) => sync?.isReady(id) ?? false,
+      isReady: (id) => rs.sync?.isReady(id) ?? false,
       // Any tab may queue; only the lock owner sends. A queued op for a conversation this tab
       // never opened stalls here, so ask the page to discover and join it.
       onStalled: (conversationIds) => { void recoverQueuedTargets(conversationIds); },
     });
     // Do not await start(): a second tab may hold the sender lock, and waiting for acquisition
     // would stall the socket. Enqueueing is still allowed while this tab waits for the lock.
-    void outbox.start().then(applyOutboxStatus);
+    void rs.outbox.start().then(applyOutboxStatus);
     applyOutboxStatus();
   }
 
   function applyOutboxStatus(): void {
-    if (stopped) return;
-    const status = outbox?.status();
+    if (rs.stopped) return;
+    const status = rs.outbox?.status();
     if (!status) return;
     // Sending is enabled for every tab: a follower commits durably and the lock owner transmits.
     ui.sendEnabled = status.sendingEnabled;
@@ -3652,7 +3635,7 @@ export function createClient(Alpine: any) {
   let targetRefreshAt = 0;
   let targetRefreshBackoff = 2_000;
   async function recoverQueuedTargets(conversationIds: string[]): Promise<void> {
-    if (stopped || suspended || signingOut || !outbox || !sync || !db || !scope) return;
+    if (rs.stopped || rs.suspended || rs.signingOut || !rs.outbox || !rs.sync || !rs.db || !rs.scope) return;
     const key = [...conversationIds].sort().join("|");
     if (targetRefreshing) return; // one refresh in flight; the next sweep re-signals any remaining target
     // A target the server keeps refusing must not turn every sweep into an endless /auth/me
@@ -3664,18 +3647,18 @@ export function createClient(Alpine: any) {
       targetRefreshBackoff = 2_000;
     }
     const epoch = ++targetRefreshEpoch;
-    const ownerScope = currentScope;
-    const ownerDb = db;
-    const ownerSync = sync;
-    const ownerOutbox = outbox;
+    const ownerScope = rs.currentScope;
+    const ownerDb = rs.db;
+    const ownerSync = rs.sync;
+    const ownerOutbox = rs.outbox;
     targetRefreshing = true;
     targetRefreshKey = key;
     // Everything below must be re-checked after every await: identity, socket/scope epoch, and
     // lock ownership. Fetch directly so an explicit 401/403 can fail closed instead of being
     // treated as a transient error that leaves the old authorization in place.
     const current = (): boolean =>
-      epoch === targetRefreshEpoch && !stopped && !suspended && !signingOut &&
-      db === ownerDb && sync === ownerSync && outbox === ownerOutbox && currentScope === ownerScope &&
+      epoch === targetRefreshEpoch && !rs.stopped && !rs.suspended && !rs.signingOut &&
+      rs.db === ownerDb && rs.sync === ownerSync && rs.outbox === ownerOutbox && rs.currentScope === ownerScope &&
       ownerOutbox.status().owner;
     try {
       let response: Response;
@@ -3700,9 +3683,9 @@ export function createClient(Alpine: any) {
         ownerSync.ensure([]);
         return;
       }
-      authorized = next;
-      directories.clear();
-      for (const item of next) directories.set(item.conversationId, item);
+      rs.authorized = next;
+      rs.directories.clear();
+      for (const item of next) rs.directories.set(item.conversationId, item);
       ownerSync.ensure(next);
       void ownerOutbox.notifyReady();
     } catch {
@@ -3719,14 +3702,14 @@ export function createClient(Alpine: any) {
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
     }
-    const ws = socket;
-    socket = null;
+    const ws = rs.socket;
+    rs.socket = null;
     ws?.close();
     dropEarlySocket();
     typing.reset();
     clearRoomMembers();
     presence.disconnect();
-    sync?.onDisconnect();
+    rs.sync?.onDisconnect();
   }
 
   // A frozen page must not retain the sender lock. Takeover recovers any interrupted write.
@@ -3735,22 +3718,22 @@ export function createClient(Alpine: any) {
     pairing.clearPairRequest();
     pairing.stop();
     closeSocket();
-    void outbox?.onDisconnected().catch(() => {});
-    outbox?.stop();
+    void rs.outbox?.onDisconnected().catch(() => {});
+    rs.outbox?.stop();
     connectionNotice.reset();
     if (event.persisted) {
-      suspended = true;
+      rs.suspended = true;
       return;
     }
-    stopped = true;
+    rs.stopped = true;
     projection?.dispose();
     unread?.dispose(); unread = null; cancelMarkRead();
   }
 
   function onPageShow(event: PageTransitionEvent): void {
     if (event.persisted) signIn.restored();
-    if (!event.persisted || !suspended) return;
-    suspended = false;
+    if (!event.persisted || !rs.suspended) return;
+    rs.suspended = false;
     reconnectDelay = RECONNECT_FIRST_MS;
     startSender();
     void connect();
@@ -3776,9 +3759,9 @@ export function createClient(Alpine: any) {
   window.addEventListener("slirc:channel-search-pick", (event) => {
     const detail = (event as CustomEvent<{ conversationId?: unknown; focusId?: unknown }>).detail;
     if (typeof detail?.conversationId !== "string" || typeof detail?.focusId !== "string") return;
-    if (detail.conversationId !== roomId) return;
+    if (detail.conversationId !== rs.roomId) return;
     // Notes have no server ids to look up; every other hit takes the message-link path (replies open their thread).
-    if (roomId === NOTES_CONVERSATION_ID) transcript.focus(detail.focusId);
+    if (rs.roomId === NOTES_CONVERSATION_ID) transcript.focus(detail.focusId);
     else selectConversation(detail.conversationId, detail.focusId);
   }, { signal: lifecycle.signal });
   // Cmd+Option+O (Ctrl+Alt+O off Apple) opens the Workspaces dialog, also from the composer. The
@@ -3868,7 +3851,7 @@ export function createClient(Alpine: any) {
   Object.assign(ui, {
     // Sidebar shortcut: straight to Devices with a code showing.
     addPhone(): void { openSettings(); void phoneOffer.show(); },
-    dismissPhoneShortcut(): void { dismissPhoneShortcut(authenticatedAccountId); ui.phoneShortcutDismissed = true; },
+    dismissPhoneShortcut(): void { dismissPhoneShortcut(rs.authenticatedAccountId); ui.phoneShortcutDismissed = true; },
     dismissInstallBanner(): void { dismissInstallBanner(); ui.installBanner = false; },
     // The instance rail sits on the far left of the desktop layout, outside the channel sidebar.
     railVisible(): boolean { return ui.authenticated && ui.isDesktop; },
@@ -3918,7 +3901,7 @@ export function createClient(Alpine: any) {
       openPopup();
       lifecycle.abort(); unsubscribeNav();
       phoneAnimation?.cancel(); phoneAnimation = null;
-      stopped = true; autoRefresh.stop(); closeSocket(); connectionNotice.reset(); outbox?.stop(); projection?.dispose(); unread?.dispose(); unread = null; cancelMarkRead();
+      rs.stopped = true; autoRefresh.stop(); closeSocket(); connectionNotice.reset(); rs.outbox?.stop(); projection?.dispose(); unread?.dispose(); unread = null; cancelMarkRead();
       pairing.stop(); phoneOffer.destroy(); scanner.destroy(); settings.destroy(); channelCreate.destroy(); newConversation.destroy(); addPrompts.destroy(); invitationsPage.destroy(); invitationAccept.destroy(); admission.destroy(); admissionFounder.destroy(); irc.destroy(); agents.destroy(); adminStatus.destroy(); branding.reset(); typing.destroy(); members.destroy(); channelDrag.reset(); document.body.classList.toggle("members-docked", false); transcript.reset();
     },
   });
