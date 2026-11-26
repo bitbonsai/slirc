@@ -60,6 +60,7 @@ import { PLAYER_HOSTS } from "./routes/embeds.ts";
 import { peekRoutes } from "./routes/peek.ts";
 import { profile } from "./routes/profile.ts";
 import { notes } from "./routes/notes.ts";
+import { publicRoomPaths, isPublicRoomNext } from "./http/public-rooms.ts";
 export { clientVersion, buildClient, assetVersion, versionShell } from "./http/assets.ts";
 export { untrustedMediaHeaders } from "./http/media.ts";
 export { agentSessionCapabilities, AGENT_POLL_MAX_WAIT_S, AGENT_SSE_KEEPALIVE_MS } from "./http/agent-support.ts";
@@ -967,15 +968,6 @@ async function clientBundle(c: Context) {
 for (const tab of ["/", "/dms", "/more"]) {
   app.get(tab, clientShell);
 }
-// Public rooms route the app on their own paths; the HTML does not wait on IRC 001.
-const PUBLIC_ROOM_SLUG = /^[a-z0-9][a-z0-9_-]{0,63}$/i;
-const publicRoomPaths = () => new Set(
-  ["open-chat", "help", ...openChannels.map((channel) => channel.replace(/^#/, "")), openRoom().replace(/^#/, "")]
-    .map((slug) => slug.toLowerCase())
-    .filter((slug) => PUBLIC_ROOM_SLUG.test(slug)),
-);
-const isPublicRoomNext = (next: string) =>
-  next.startsWith("/") && !next.slice(1).includes("/") && publicRoomPaths().has(next.slice(1).toLowerCase());
 for (const pub of publicRoomPaths()) app.get(`/${pub}`, serveShell);
 // Static docs site: /docs and /docs/<guide> serve directory index.html files.
 for (const doc of ["", "about", "agents", "bots", "channels", "clients", "comparison", "getting-started", "messages", "notifications", "privacy", "threads"]) {
