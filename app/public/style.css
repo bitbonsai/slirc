@@ -485,16 +485,6 @@ header .room-title { border: 0; background: none; padding: 0; }
 .install-banner a { color: var(--brand); font-weight: 600; text-decoration: none; }
 /* Verification reminder: a banner rather than a dialog, so the code field sits inline and the whole
    thing can be dismissed without losing the header button that brings it back. */
-.verify-banner { align-items: flex-start; }
-.verify-body { flex: 1; min-width: 0; display: grid; gap: .3rem; }
-.verify-body p { margin: 0; }
-.verify-code { display: flex; align-items: center; gap: .4rem; }
-.verify-code input { min-width: 0; flex: 1; padding: .35rem .5rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font: inherit; font-size: var(--text-sm); }
-.verify-code input:focus { border-color: var(--brand); outline: none; }
-.verify-resend { flex: 0 0 auto; padding: .3rem .1rem; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--text-sm); text-decoration: underline; cursor: pointer; }
-.verify-resend:hover, .verify-resend:focus-visible { color: var(--text); }
-.verify-note { color: var(--brand); font-size: var(--text-xs); }
-.verify-error { color: var(--danger); font-size: var(--text-xs); }
 .header-dms { position: relative; display: flex; align-items: center; min-height: 2.75rem; padding: 0 .35rem; }
 .header-dm { position: relative; width: 1.9rem; height: 1.9rem; margin-left: -.55rem; padding: 0; border: 0; border-radius: var(--radius-round); background: var(--panel-hi); color: var(--text); font: 700 var(--text-2xs)/1 var(--ui); cursor: pointer; }
 .header-dm:first-child { margin-left: 0; }
@@ -783,7 +773,6 @@ img[src^="data:image/svg+xml"] { scale: .9; object-fit: contain !important; bord
 .profile-copy small { color: var(--muted); font-size: var(--text-2xs); }
 .admin-badge { width: 1rem; height: 1rem; flex: 0 0 auto; fill: none; stroke: var(--brand); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .profile-admin { width: 1.15rem; height: 1.15rem; }
-.verify-email { color: var(--warning); }
 .history-loading { display: flex; align-items: center; justify-content: center; gap: .5rem; padding: 1.25rem 0; color: var(--muted); font: var(--text-sm)/1 var(--ui); }
 /* Fade only: a live arrival already slides up with #messages, and a rise on top of that doubles the motion. */
 @keyframes msg-in { from { opacity: 0; } to { opacity: 1; } }
