@@ -9,7 +9,10 @@
     "docs": "bun run scripts/build-docs.ts",
     "assemble": "bun run scripts/assemble-html.ts",
     "version": "bun run assemble && bun run scripts/version-assets.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "typecheck:ci": "bun scripts/typecheck-baseline.ts",
+    "typecheck:baseline": "bun scripts/typecheck-baseline.ts --update"
   },
   "dependencies": {
     "dexie": "^4.4.6",
@@ -23,6 +26,7 @@
     "@types/bun": "^1.4.1",
     "@types/web-push": "^3.6.4",
     "emojibase-data": "^17.0.0",
-    "fake-indexeddb": "^6.2.5"
+    "fake-indexeddb": "^6.2.5",
+    "typescript": "^7.0.2"
   }
 }
