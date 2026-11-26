@@ -13,6 +13,7 @@ export interface HelpTopic {
 
 export const HELP_TOPICS: readonly HelpTopic[] = [
   ...SLASH_COMMANDS.map((command) => ({ command: `/${command.name}${command.argument ? " …" : ""}`, description: command.description })),
+  { command: "Cmd/Ctrl+F", description: "search messages in the current conversation." },
   { command: "Open the help pages", description: "guides for using Slirc.", url: "/docs" },
 ];
 

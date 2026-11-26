@@ -31,5 +31,6 @@
       <button type="button" :class="library.on && 'on'" :aria-pressed="library.on ? 'true' : 'false'" x-on:click="library.show('links')">Links</button>
       <button type="button" :class="!library.on && 'on'" :aria-pressed="library.on ? 'false' : 'true'" x-on:click="library.show('messages')">Messages</button>
     </div>
+    <button type="button" class="header-icon channel-search-toggle" x-show="canSearchChannel()" aria-label="Search messages" data-tooltip="Search messages" x-tooltip x-on:click="openChannelSearch()"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('search')"></span></button>
     <button type="button" class="header-icon members-toggle" x-show="members.canShow()" :class="members.open && 'active'" :aria-expanded="members.open ? 'true' : 'false'" aria-controls="members-panel" aria-label="Members" data-tooltip="Members" x-tooltip x-on:click="members.toggle()"><span class="members-icon" aria-hidden="true"></span></button>
   </header>

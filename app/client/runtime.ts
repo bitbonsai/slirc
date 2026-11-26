@@ -61,6 +61,7 @@ import { createAgentsPage, stashConnectToken } from "@client/agents-page.ts";
 import { agentOfflineCard, agentOfflineFolded, createAgentBackToast, type AgentOfflineCard } from "@client/agent-offline.ts";
 import { createAdminPage } from "@client/admin-page.ts";
 import { isApplePlatform, isJumpShortcut, isWorkspacesShortcut, jumpRows, type JumpRow } from "@client/jump.ts";
+import { isChannelSearchShortcut, searchConversation, searchNotes } from "@client/search.ts";
 import { recallStep, sentTexts, type Recall } from "@client/composer-history.ts";
 import { createTypingIndicators, typingAccount, typingLine } from "@client/typing.ts";
 import { createConversationMenu } from "@client/conversation-menu.ts";
@@ -342,6 +343,8 @@ export function createClient(Alpine: any) {
     isExpanded,
     pickChannel,
     openJump,
+    canSearchChannel,
+    openChannelSearch,
     activeChannelArchived,
     threadForMessage,
     openThreadForMessage,
@@ -1000,6 +1003,46 @@ export function createClient(Alpine: any) {
     });
     openPopup();
     window.dispatchEvent(new CustomEvent("slirc:jump-open", { detail: { rows } }));
+  }
+
+  function canSearchChannel(): boolean {
+    if (!ui.authenticated || stopped || library.on) return false;
+    if (ui.profileRoute || ui.settingsRoute || ui.channelsRoute || ui.invitationsRoute || ui.ircRoute || ui.agentsRoute || ui.adminRoute || ui.joinRoute || ui.admissionRoute) return false;
+    if (!isDesktop && ui.mobileNav !== null) return false;
+    if (!roomId || ui.pendingDm) return false;
+    return roomId === NOTES_CONVERSATION_ID || directories.has(roomId);
+  }
+
+  function openChannelSearch(): void {
+    if (!canSearchChannel() || !roomId) return;
+    const targetId = roomId;
+    const isNotes = targetId === NOTES_CONVERSATION_ID;
+    const label = isNotes ? "Notes" : (ui.roomLabel || String(ui.channel ?? ""));
+    const targetDb = db;
+    const targetSync = sync;
+    openPopup();
+    window.dispatchEvent(new CustomEvent("slirc:channel-search-open", {
+      detail: {
+        conversationId: targetId,
+        label,
+        isNotes,
+        exhausted: isNotes ? true : (targetSync?.isExhausted(targetId) ?? false),
+        search: async (query: string) => {
+          if (isNotes) return searchNotes(notes.list, String(ui.account ?? ""), String(ui.nick ?? ""), query);
+          if (!targetDb) return { hits: [], total: 0, parsed: { from: null, terms: [] } };
+          return searchConversation(targetDb, targetId, query, {
+            threads: ui.threads,
+            conversations: authorized,
+            greeting: ui.greeting,
+            hidden: (message) => polls.hidesTally(message) || offlineFolded(message),
+          });
+        },
+        loadOlder: async () => {
+          if (isNotes || !targetSync) return { loaded: 0, hasMore: false };
+          return targetSync.loadOlder(targetId);
+        },
+      },
+    }));
   }
 
   // Alt+Up / Alt+Down recall. The recall ends when the text no longer matches what it put in the
@@ -3710,6 +3753,21 @@ export function createClient(Alpine: any) {
     if (open && open.id !== "jump-dialog") return;
     event.preventDefault();
     openJump();
+  }, { signal: lifecycle.signal });
+  window.addEventListener("keydown", (event) => {
+    if (!isChannelSearchShortcut(event, applePlatform) || !canSearchChannel()) return;
+    const open = document.querySelector("dialog[open]");
+    if (open && open.id !== "channel-search-dialog") return;
+    event.preventDefault();
+    openChannelSearch();
+  }, { signal: lifecycle.signal });
+  window.addEventListener("slirc:channel-search-pick", (event) => {
+    const detail = (event as CustomEvent<{ conversationId?: unknown; focusId?: unknown }>).detail;
+    if (typeof detail?.conversationId !== "string" || typeof detail?.focusId !== "string") return;
+    if (detail.conversationId !== roomId) return;
+    // Notes have no server ids to look up; every other hit takes the message-link path (replies open their thread).
+    if (roomId === NOTES_CONVERSATION_ID) transcript.focus(detail.focusId);
+    else selectConversation(detail.conversationId, detail.focusId);
   }, { signal: lifecycle.signal });
   // Cmd+Option+O (Ctrl+Alt+O off Apple) opens the Workspaces dialog, also from the composer. The
   // Mac app's menu has the same key and calls SlircOpenWorkspaces, so there the page leaves it alone

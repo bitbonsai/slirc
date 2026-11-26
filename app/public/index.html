@@ -230,6 +230,7 @@
       <button type="button" :class="library.on && 'on'" :aria-pressed="library.on ? 'true' : 'false'" x-on:click="library.show('links')">Links</button>
       <button type="button" :class="!library.on && 'on'" :aria-pressed="library.on ? 'false' : 'true'" x-on:click="library.show('messages')">Messages</button>
     </div>
+    <button type="button" class="header-icon channel-search-toggle" x-show="canSearchChannel()" aria-label="Search messages" data-tooltip="Search messages" x-tooltip x-on:click="openChannelSearch()"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('search')"></span></button>
     <button type="button" class="header-icon members-toggle" x-show="members.canShow()" :class="members.open && 'active'" :aria-expanded="members.open ? 'true' : 'false'" aria-controls="members-panel" aria-label="Members" data-tooltip="Members" x-tooltip x-on:click="members.toggle()"><span class="members-icon" aria-hidden="true"></span></button>
   </header>
 
@@ -2810,6 +2811,32 @@
         <p class="palette-empty" x-show="!filtered().length" role="status">Nothing matches.</p>
       </div>
       <p class="palette-foot" aria-hidden="true"><span class="palette-hint"><kbd>&uarr;</kbd><kbd>&darr;</kbd> move</span><span class="palette-hint"><kbd>&crarr;</kbd> open</span><span class="palette-hint"><kbd>esc</kbd> close</span></p>
+    </section>
+  </dialog>
+  <dialog id="channel-search-dialog" class="custom-modal palette-modal" x-data="channelSearchDialog" x-cloak aria-label="Search messages" x-on:cancel.prevent="close()" x-on:click="if ($event.target === $el) close()">
+    <section class="palette channel-search-palette">
+      <div class="channel-search-head">
+        <span class="channel-search-icon" aria-hidden="true" x-html="lucideIcon('search')"></span>
+        <input id="channel-search-input" class="palette-input channel-search-input" x-ref="search" type="text" role="combobox" :aria-label="placeholder()" aria-autocomplete="list" :aria-expanded="String(hasQuery)" aria-controls="channel-search-list" :aria-activedescendant="activeId()" autocomplete="off" spellcheck="false" :placeholder="placeholder()" x-model="query" x-on:input="onInput($event)" x-on:keydown="keydown($event)" />
+        <button type="button" class="channel-search-clear" x-show="query" aria-label="Clear search" x-on:click="clear()"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('x')"></span></button>
+      </div>
+      <div id="channel-search-list" class="palette-list" x-ref="list" role="listbox" aria-label="Matching messages" x-show="hasQuery">
+        <template x-for="(row, i) in hits" :key="row.id">
+          <button type="button" tabindex="-1" role="option" class="search-hit" :id="'channel-search-option-' + i" :class="i === index && 'active'" :aria-selected="String(i === index)" x-on:mouseenter="index = i" x-on:click="choose(row)">
+            <span class="palette-mark" aria-hidden="true"><span x-text="(row.authorNick || '?').slice(0, 1).toUpperCase()"></span><img :src="avatarUrl(row.authorNick)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span>
+            <span class="palette-copy search-hit-body">
+              <span class="search-hit-head"><strong x-text="row.authorNick"></strong><span class="search-hit-time" x-text="row.timeLabel"></span></span>
+              <span class="search-hit-snippet"><template x-for="(seg, j) in row.segments" :key="j"><span :class="seg.hit && 'search-hit-mark'" x-text="seg.text"></span></template></span>
+            </span>
+          </button>
+        </template>
+        <p class="palette-empty" x-show="hasQuery && !searching && !hits.length" role="status">No matches in loaded messages.</p>
+      </div>
+      <div class="palette-foot channel-search-foot">
+        <span class="channel-search-hints" aria-hidden="true" x-show="!hasQuery && !loadError"><span class="palette-hint"><kbd>&uarr;</kbd><kbd>&darr;</kbd> move</span><span class="palette-hint"><kbd>&crarr;</kbd> jump</span><span class="palette-hint"><kbd>esc</kbd> close</span></span>
+        <span class="channel-search-status" role="status" x-show="hasQuery || loadError" x-text="statusText()"></span>
+        <button type="button" class="channel-search-older" x-show="hasQuery && !isNotes && !exhausted" :disabled="loadingOlder" x-on:click="loadOlder()" x-text="loadingOlder ? 'Loading…' : 'Load older'"></button>
+      </div>
     </section>
   </dialog>
   <dialog id="help-dialog" class="custom-modal palette-modal" x-data="helpDialog" x-cloak x-on:cancel.prevent="close()" x-on:click="if ($event.target === $el) close()">

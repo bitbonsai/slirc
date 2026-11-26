@@ -17,6 +17,7 @@
 //     rejected page, a cycling cursor, or a thrown transaction leaves the room unready and its
 //     checkpoint untouched. An empty complete batch is "caught up", never a failure.
 
+import Dexie from "dexie";
 import { isConcat, joinParts } from "../public/multiline.js";
 import type { ClientDatabase } from "./db.ts";
 import { AGENT_OFFLINE_TAG } from "@client/agent-offline.ts";
@@ -73,6 +74,19 @@ export interface SyncOptions {
 /** The narrow readiness surface delivery may depend on. */
 export interface ReadinessSource {
   isReady(conversationId: string): boolean;
+}
+
+export interface LoadOlderResult {
+  loaded: number;
+  hasMore: boolean;
+}
+
+interface OlderRequest {
+  conversation: AuthorizedConversation;
+  epoch: number;
+  promise: Promise<LoadOlderResult>;
+  resolve: (result: LoadOlderResult) => void;
+  reject: (error: Error) => void;
 }
 
 interface Cursor {
@@ -148,6 +162,11 @@ export function buildAfterCommand(target: string, cursor: Cursor, limit: number)
 // A shared message link may point past the cached window: one page centred on it, any age.
 export function buildAroundCommand(target: string, serverId: string, limit: number): string {
   return `CHATHISTORY AROUND ${target} msgid=${serverId} ${limit}`;
+}
+
+export function buildBeforeCommand(target: string, timestamp: string | undefined, limit: number): string {
+  const anchor = timestamp ? `timestamp=${timestamp}` : "*";
+  return `CHATHISTORY BEFORE ${target} ${anchor} ${limit}`;
 }
 
 export function buildMarkReadCommand(target: string, timestamp: string): string {
@@ -370,6 +389,8 @@ export class SyncEngine implements ReadinessSource {
   private readonly byTarget = new Map<string, AuthorizedConversation>();
   private readonly ready = new Set<string>();
   private readonly pending = new Map<string, PendingRoom>();
+  private readonly olderRequests = new Map<string, OlderRequest>();
+  private readonly exhausted = new Set<string>();
   private readonly inflight = new Set<Promise<void>>();
   // One AROUND lookup per conversation. It is sent only while no page is in flight there, and the
   // server answers in order, so the next chathistory batch or FAIL for that target is its answer,
@@ -420,6 +441,51 @@ export class SyncEngine implements ReadinessSource {
     return this.authenticated && this.ready.has(conversationId);
   }
 
+  isExhausted(conversationId: string): boolean {
+    return this.exhausted.has(conversationId);
+  }
+
+  /** Fetch one older page via CHATHISTORY BEFORE without touching forward sync progress or pruning. */
+  loadOlder(conversationId: string): Promise<LoadOlderResult> {
+    const existing = this.olderRequests.get(conversationId);
+    if (existing) return existing.promise;
+    if (this.exhausted.has(conversationId)) return Promise.resolve({ loaded: 0, hasMore: false });
+    const conversation = this.authorized.get(conversationId);
+    if (!this.authenticated || !conversation) return Promise.reject(new Error("Conversation is not connected"));
+    if (this.pending.get(conversationId)?.awaiting) return Promise.reject(new Error("Sync is still in progress"));
+
+    let resolve!: (result: LoadOlderResult) => void;
+    let reject!: (error: Error) => void;
+    const promise = new Promise<LoadOlderResult>((res, rej) => { resolve = res; reject = rej; });
+    const request: OlderRequest = { conversation, epoch: this.epoch, promise, resolve, reject };
+    this.olderRequests.set(conversationId, request);
+
+    this.track((async () => {
+      try {
+        const oldest = await this.opts.db.messages
+          .where("[conversationId+time]")
+          .between([conversationId, Dexie.minKey], [conversationId, Dexie.maxKey])
+          .filter((message) => message.state === "confirmed")
+          .first();
+        if (!this.authenticated || request.epoch !== this.epoch || this.olderRequests.get(conversationId) !== request) {
+          if (this.olderRequests.get(conversationId) === request) this.olderRequests.delete(conversationId);
+          request.reject(new Error("Disconnected"));
+          return;
+        }
+        const line = buildBeforeCommand(conversation.wireTarget, oldest?.time, this.limit);
+        if (!this.opts.send(line)) {
+          this.olderRequests.delete(conversationId);
+          request.reject(new Error(`Send failed for ${conversation.wireTarget}`));
+        }
+      } catch (error) {
+        if (this.olderRequests.get(conversationId) === request) this.olderRequests.delete(conversationId);
+        request.reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    })());
+
+    return promise;
+  }
+
   /** The caller's complete authorized set: every conversation to join and catch up. Not capped. */
   recover(conversations: AuthorizedConversation[]): void {
     const previous = new Map(this.authorized);
@@ -434,6 +500,7 @@ export class SyncEngine implements ReadinessSource {
     for (const [id, conversation] of previous) {
       if (this.authorized.has(id)) continue;
       if (this.ready.delete(id)) this.opts.hooks?.onUnready?.(conversation);
+      this.exhausted.delete(id);
       this.dropRoom(id);
     }
     if (this.authenticated) this.join([...this.authorized.values()]);
@@ -451,6 +518,7 @@ export class SyncEngine implements ReadinessSource {
     for (const [id, conversation] of [...this.authorized]) {
       if (wanted.has(id)) continue;
       if (this.ready.delete(id)) this.opts.hooks?.onUnready?.(conversation);
+      this.exhausted.delete(id);
       this.dropRoom(id);
       this.authorized.delete(id);
       const folded = foldTarget(conversation.wireTarget);
@@ -463,6 +531,7 @@ export class SyncEngine implements ReadinessSource {
         // The server-owned target changed: the old JOIN and its history no longer describe this
         // conversation, so drop readiness/pending and recover fresh against the new target.
         this.unready(conversation.conversationId);
+        this.exhausted.delete(conversation.conversationId);
         this.dropRoom(conversation.conversationId);
         const folded = foldTarget(existing.wireTarget);
         if (this.byTarget.get(folded)?.conversationId === conversation.conversationId) this.byTarget.delete(folded);
@@ -648,9 +717,17 @@ export class SyncEngine implements ReadinessSource {
     if (batch.type === "chathistory") {
       if (this.arounds.has(conversation.conversationId)) { this.track(this.applyAround(conversation, batch)); return; }
       const room = this.pending.get(conversation.conversationId);
-      if (!room || !room.awaiting || room.epoch !== this.epoch) return;
-      room.awaiting = false;
-      this.track(this.applyPage(room, batch));
+      if (room && room.awaiting && room.epoch === this.epoch) {
+        room.awaiting = false;
+        this.track(this.applyPage(room, batch));
+        return;
+      }
+      const older = this.olderRequests.get(conversation.conversationId);
+      if (older && older.epoch === this.epoch) {
+        this.olderRequests.delete(conversation.conversationId);
+        this.track(this.applyOlderPage(older, batch));
+        return;
+      }
       return;
     }
     if (batch.type === "draft/multiline" || batch.type === "draft/event-playback") {
@@ -717,11 +794,18 @@ export class SyncEngine implements ReadinessSource {
     const room = this.pending.get(conversationId);
     if (room) { this.clearProbe(room); this.settle(room, false); }
     this.pending.delete(conversationId);
+    const older = this.olderRequests.get(conversationId);
+    if (older) {
+      this.olderRequests.delete(conversationId);
+      older.reject(new Error("Conversation closed"));
+    }
   }
 
   private clearPending(): void {
     for (const room of this.pending.values()) { this.clearProbe(room); this.settle(room, false); }
     this.pending.clear();
+    for (const older of this.olderRequests.values()) older.reject(new Error("Disconnected"));
+    this.olderRequests.clear();
   }
 
   private onJoin(message: IrcMessage): void {
@@ -794,6 +878,15 @@ export class SyncEngine implements ReadinessSource {
     let conversation: AuthorizedConversation | undefined;
     for (const target of message.params.slice(2, 4)) {
       if (!conversation && target && target !== "*") conversation = this.byTarget.get(foldTarget(target));
+    }
+    if (conversation && !this.arounds.has(conversation.conversationId)) {
+      const older = this.olderRequests.get(conversation.conversationId);
+      if (older && !this.pending.get(conversation.conversationId)?.awaiting) {
+        this.olderRequests.delete(conversation.conversationId);
+        const reason = message.params.at(-1) || "history request refused";
+        older.reject(new Error(`CHATHISTORY refused for ${conversation.wireTarget}: ${reason}`));
+        return;
+      }
     }
     if (!conversation) {
       for (const room of this.pending.values()) {
@@ -900,6 +993,24 @@ export class SyncEngine implements ReadinessSource {
       this.requestPage(room);
     } catch (error) {
       if (current()) this.failRoom(room.conversation, error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  private async applyOlderPage(older: OlderRequest, batch: IrcBatch): Promise<void> {
+    const { conversationId } = older.conversation;
+    if (!this.authenticated || older.epoch !== this.epoch) {
+      older.reject(new Error("Disconnected"));
+      return;
+    }
+    try {
+      const events = eventsFromBatch(conversationId, batch);
+      const hasMore = rawEventLineCount(batch) >= this.limit;
+      if (!hasMore) this.exhausted.add(conversationId);
+      await this.opts.db.applyBatch({ conversationId, events, complete: true, checkpoint: undefined });
+      const loaded = events.filter((event) => event.type === "message").length;
+      older.resolve({ loaded, hasMore });
+    } catch (error) {
+      older.reject(error instanceof Error ? error : new Error(String(error)));
     }
   }
 

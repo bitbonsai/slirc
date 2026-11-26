@@ -4,7 +4,7 @@ import { landOffer } from "@client/phone-offer.ts";
 import { tooltipDirective } from "@client/tooltips.ts";
 import { codeDirective } from "@client/code-input.ts";
 import { tabBarComponent } from "@client/tab-bar.ts";
-import { helpDialogComponent, jumpDialogComponent } from "@client/palettes.ts";
+import { helpDialogComponent, jumpDialogComponent, channelSearchDialogComponent } from "@client/palettes.ts";
 import { slashHelpPanelComponent, mentionPickerComponent } from "@client/composer-pickers.ts";
 import { pullRefreshComponent } from "@client/pull-refresh.ts";
 
@@ -17,6 +17,7 @@ async function start(): Promise<void> {
   Alpine.directive("tooltip", tooltipDirective);
   Alpine.directive("code", codeDirective);
   Alpine.data("jumpDialog", jumpDialogComponent);
+  Alpine.data("channelSearchDialog", channelSearchDialogComponent);
   Alpine.data("helpDialog", helpDialogComponent);
   Alpine.data("giphyPicker", () => client.giphy);
   Alpine.data("emojiPicker", () => client.emoji);
