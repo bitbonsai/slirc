@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
-import { text } from "./common.ts";
-import { devLinks, hash } from "./session.ts";
+import { devLinks } from "./session.ts";
 import { brandKind } from "../config.ts";
 
 // One client bundle, built from source on first request and cached for the process lifetime. A

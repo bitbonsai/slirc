@@ -1,4 +1,3 @@
-import { join } from "node:path";
 import { Hono, type Context } from "hono";
 import { setCookie } from "hono/cookie";
 import { serveStatic } from "hono/bun";
@@ -16,30 +15,28 @@ import { observeReplyLine } from "./reply-threads.ts";
 import { handleRelayUpgrade, relayWebsocketHandlers } from "./relay.ts";
 import { configuredAppOrigin, isAllowedClientOrigin } from "./request-security.ts";
 import { escapeHtml } from "../shared/escape-html.ts";
-import { sessionByToken, session, currentUser, devLinks, appOrigin } from "./http/session.ts";
-import { text } from "./http/common.ts";
+import { sessionByToken, currentUser, devLinks, appOrigin } from "./http/session.ts";
 import { agentSessionCapabilities } from "./http/agent-support.ts";
+import { cacheGravatar } from "./http/profiles.ts";
+import { workspaceIconVersion } from "./http/media.ts";
+import { buildClient, buildVideoEncode, versionShell, assetCacheControl } from "./http/assets.ts";
+import { publicRoomPaths } from "./http/public-rooms.ts";
+import { ircConnectionMeta } from "./http/irc-connection.ts";
 import { pairing } from "./routes/pairing.ts";
 import { agents } from "./routes/agents.ts";
 import { links } from "./routes/links.ts";
-import { cacheGravatar } from "./http/profiles.ts";
 import { admin } from "./routes/admin.ts";
 import { polls } from "./routes/polls.ts";
 import { channels } from "./routes/channels.ts";
-import { workspaceIconVersion } from "./http/media.ts";
 import { uploads } from "./routes/uploads.ts";
 import { invitations } from "./routes/invitations.ts";
-import { buildClient, buildVideoEncode, versionShell, assetCacheControl } from "./http/assets.ts";
 import { joinlinks } from "./routes/join-links.ts";
 import { bots } from "./routes/bots.ts";
 import { irc } from "./routes/irc.ts";
-import { embeds } from "./routes/embeds.ts";
-import { PLAYER_HOSTS } from "./routes/embeds.ts";
+import { embeds, PLAYER_HOSTS } from "./routes/embeds.ts";
 import { peekRoutes } from "./routes/peek.ts";
 import { profile } from "./routes/profile.ts";
 import { notes } from "./routes/notes.ts";
-import { publicRoomPaths } from "./http/public-rooms.ts";
-import { ircConnectionMeta } from "./http/irc-connection.ts";
 import { auth } from "./routes/auth.ts";
 import { reminders } from "./routes/reminders.ts";
 import { dms } from "./routes/dms.ts";
@@ -151,20 +148,29 @@ app.use("*", async (c, next) => {
 });
 
 app.route("/", system);
-
 app.route("/", pairing);
-
 app.route("/", agents);
-
 app.route("/", bots);
-
 app.route("/", irc);
+app.route("/", profile);
+app.route("/", admin);
+app.route("/", reminders);
+app.route("/", polls);
+app.route("/", dms);
+app.route("/", notes);
+app.route("/", auth);
+app.route("/", invitations);
+app.route("/", links);
+app.route("/", welcome);
+app.route("/", peekRoutes);
+app.route("/", push);
+app.route("/", embeds);
+app.route("/", uploads);
+app.route("/", channels);
+app.route("/", projects);
+app.route("/", joinlinks);
 
 for (const account of allAccounts()) void cacheGravatar(account.nick);
-
-app.route("/", profile);
-
-app.route("/", admin);
 
 // Best effort: an invite that cannot open the DM is still a joined channel.
 async function ensureDirectConversation(nick: string, other: string): Promise<void> {
@@ -175,38 +181,8 @@ async function ensureDirectConversation(nick: string, other: string): Promise<vo
   }
 }
 
-app.route("/", reminders);
-
-app.route("/", polls);
-
-app.route("/", dms);
-
-app.route("/", notes);
-
-app.route("/", auth);
-
-app.route("/", invitations);
-
-app.route("/", links);
-
-app.route("/", welcome);
-
-app.route("/", peekRoutes);
-
-app.route("/", push);
-
-app.route("/", embeds);
-
-app.route("/", uploads);
-
 // Read once at start so a bad SLIRC_EMOJI_BUDGET_BYTES stops the app instead of the first add.
 emojiBudgetBytes();
-
-app.route("/", channels);
-
-app.route("/", projects);
-
-app.route("/", joinlinks);
 
 // The docs site is served by Caddy from app/public on its own host; see caddy/slirc.caddy.
 // Client shell: the one index.html document is served directly at every canonical route, with

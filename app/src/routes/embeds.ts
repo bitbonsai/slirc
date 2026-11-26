@@ -3,7 +3,6 @@ import { untrustedMediaHeaders } from "../http/media.ts";
 import { fetchPublic, ResponseTooLarge } from "../safe-fetch.ts";
 import { directImageEmbed, parseOg } from "../og.ts";
 import { IMAGE_LIMITS } from "../photo.ts";
-import { text } from "../http/common.ts";
 import { Hono } from "hono";
 
 export const embeds = new Hono();

@@ -1,11 +1,9 @@
 import { createLimiter, peerKey } from "../request-security.ts";
 import { createPeek, type PeekMessage, peekable } from "../peek.ts";
-import { polls } from "./polls.ts";
 import { enabledHelpers } from "../config.ts";
 import { pollById, pollView } from "../polls.ts";
 import { normalized } from "../rooms.ts";
-import { embeds, embedCache } from "./embeds.ts";
-import { text } from "../http/common.ts";
+import { embedCache } from "./embeds.ts";
 import { avatarVersion, knownAccount } from "../http/profiles.ts";
 import { db } from "../db.ts";
 import { Hono } from "hono";

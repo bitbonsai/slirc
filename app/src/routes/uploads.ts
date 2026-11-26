@@ -3,13 +3,12 @@ import emojiRows from "../../public/vendor/emoji.json" with { type: "json" };
 import { currentUser, verifiedHuman, sameOriginJson } from "../http/session.ts";
 import { accountByNick } from "../accounts.ts";
 import { readBoundedJson, WORKSPACE_ICON_SCOPE, untrustedMediaHeaders } from "../http/media.ts";
-import { normalized, agentCanReadChannel } from "../rooms.ts";
+import { agentCanReadChannel } from "../rooms.ts";
 import { randomBytes } from "node:crypto";
 import { db } from "../db.ts";
 import { slircMode, emojiBudgetBytes } from "../config.ts";
 import { type ContentfulStatusCode } from "hono/utils/http-status";
 import { type Context, Hono } from "hono";
-import { admin } from "./admin.ts";
 import { bindingForRequest } from "../http/agent-support.ts";
 
 export const uploads = new Hono();

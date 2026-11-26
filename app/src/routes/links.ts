@@ -3,9 +3,7 @@ import { type Account } from "../accounts.ts";
 import { linksEnabled, type LinkRow, canRemoveLink, type LinkQuery, SOURCES, searchLinks, linkFilterFacets, viewerHasSite, storedFavicon, storeFavicon, linkKey, visibleLinkByKey, visibleLink, linkFacets, editLinkTopic, MAX_EDITED_TOPICS, removeLink } from "../links.ts";
 import { currentUser, verifiedHuman, sameOriginJson } from "../http/session.ts";
 import { imageKind, storedPost, hasCopy, originalGone, storedImage, storedCopy, storedImageDims } from "../links-images.ts";
-import { text } from "../http/common.ts";
 import { fetchFavicon } from "../links-fetch.ts";
-import { join } from "node:path";
 import { bodyLimit } from "hono/body-limit";
 import { Hono } from "hono";
 

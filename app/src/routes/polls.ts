@@ -10,7 +10,6 @@ import { setPollChangeListener, helperSay, pollTag, tallyTag } from "../helper-b
 import { accountByNick } from "../accounts.ts";
 import { memberAddDenial, belongsTo } from "../http/authz.ts";
 import { grantChannelAccess } from "../grants.ts";
-import { join } from "node:path";
 import { Hono } from "hono";
 
 export const polls = new Hono();

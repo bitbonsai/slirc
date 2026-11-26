@@ -6,7 +6,6 @@ import { isOpenChannel, channelInfo, memberChannels, openChannels } from "../roo
 import { ircChannelExists } from "../accounts.ts";
 import { createChannel } from "../grants.ts";
 import { db } from "../db.ts";
-import { channels } from "./channels.ts";
 import { channelsChanged } from "../live.ts";
 import { opAdmins } from "../admin-ops.ts";
 import { appError, pairingIp } from "../http/common.ts";

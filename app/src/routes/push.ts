@@ -1,8 +1,6 @@
 import { vapidKeys, db } from "../db.ts";
-import { subscribe } from "../live.ts";
 import { currentUser, verifiedHuman, hash } from "../http/session.ts";
-import { accountByNick, type Account } from "../accounts.ts";
-import { auth } from "./auth.ts";
+import { accountByNick } from "../accounts.ts";
 import { Hono } from "hono";
 
 export const push = new Hono();

@@ -6,7 +6,7 @@ import { createChannel, renameChannel, setChannelTopic, setChannelMode, makeChan
 import { db } from "../db.ts";
 import { channelsChanged } from "../live.ts";
 import { opAdmins } from "../admin-ops.ts";
-import { appError, text } from "../http/common.ts";
+import { appError } from "../http/common.ts";
 import { renameLinksChannel, deleteScopedLinks } from "../links.ts";
 import { listEmailInvites } from "../email-invites.ts";
 import { normalizeProfileBadge } from "../../shared/profile-badges.ts";

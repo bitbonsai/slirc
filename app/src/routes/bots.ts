@@ -1,11 +1,9 @@
 import { sameOriginJson, verifiedHuman } from "../http/session.ts";
-import { admin } from "./admin.ts";
 import { db } from "../db.ts";
 import { ergo, rotateIrcPassword } from "../accounts.ts";
 import { botLimit, botCount, createBotAccount, BotError } from "../bot-accounts.ts";
 import { appError } from "../http/common.ts";
 import { clearIrcResetNotice, IRC_RESET_BOTS } from "../http/irc-devices.ts";
-import { channels } from "./channels.ts";
 import { removeAgentAccount } from "../agent-accounts.ts";
 import { accountIrcPassword } from "../irc-key.ts";
 import { Hono } from "hono";

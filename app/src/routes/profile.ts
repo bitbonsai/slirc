@@ -1,8 +1,7 @@
 import { currentUser, devLinks } from "../http/session.ts";
 import { knownAccount, cacheGravatar, profileJson, avatarDir } from "../http/profiles.ts";
-import { accountByNick, type Account, cleanDisplayName, displayNameError } from "../accounts.ts";
-import { asciiFold, discoverableHuman, isMember, normalized } from "../rooms.ts";
-import { admin } from "./admin.ts";
+import { accountByNick, cleanDisplayName, displayNameError } from "../accounts.ts";
+import { asciiFold, discoverableHuman, isMember } from "../rooms.ts";
 import { bodyLimit } from "hono/body-limit";
 import { withUploadSlot, normalizeUploadImage, PhotoError } from "../photo.ts";
 import { readBoundedJson, untrustedMediaHeaders } from "../http/media.ts";
@@ -13,7 +12,6 @@ import { normalizeProfileBadge } from "../../shared/profile-badges.ts";
 import { peekAuthors } from "./peek.ts";
 import { peekable } from "../peek.ts";
 import { openRoom } from "../welcome.ts";
-import { text } from "../http/common.ts";
 import { Hono } from "hono";
 
 export const profile = new Hono();

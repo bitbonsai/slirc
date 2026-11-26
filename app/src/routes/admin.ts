@@ -6,10 +6,9 @@ import { removeAgentsOwnedBy, removeAgent } from "../http/agent-support.ts";
 import { removeMemberFromIrc } from "../grants.ts";
 import { serializeIrcDeviceChange } from "../http/irc-devices.ts";
 import { listCertificates, removeCertificate } from "../irc-certificates.ts";
-import { agents } from "./agents.ts";
 import { type Binding, bindingMetadata } from "../agent-session.ts";
 import { agentRuntimeConnected } from "../agent-session-transport.ts";
-import { appError, text } from "../http/common.ts";
+import { appError } from "../http/common.ts";
 import { join, dirname } from "node:path";
 import { Hono } from "hono";
 

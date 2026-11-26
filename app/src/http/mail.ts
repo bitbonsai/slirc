@@ -6,7 +6,6 @@ import { db } from "../db.ts";
 import { randomBytes, randomInt } from "node:crypto";
 import { isValidNext } from "../rooms.ts";
 import { magicLinkEmail, directInviteEmail, inviteEmail } from "../email.ts";
-import { text } from "./common.ts";
 import { createLimiter } from "../request-security.ts";
 
 // Counted per day and kind (mail-count.ts) so the Resend free tier is not hit by surprise.

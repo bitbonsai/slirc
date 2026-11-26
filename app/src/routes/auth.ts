@@ -13,17 +13,13 @@ import { sendOnboarding } from "../http/onboarding.ts";
 import { onboardingDestination } from "../onboarding.ts";
 import { isValidNext, directConversations, memberChannels, visibleChannels, sharedContacts, openChannels, defaultChannel } from "../rooms.ts";
 import { isPublicRoomNext } from "../http/public-rooms.ts";
-import { text } from "../http/common.ts";
 import { enqueueWelcomeJob, isFounder } from "../founder-welcome.ts";
 import { openRoom } from "../welcome.ts";
 import { joinLinksHomeOnce, linksHome, linksChannelsFor } from "../links-collect.ts";
 import { linksEnabled } from "../links.ts";
 import { ircResetNotice } from "../http/irc-devices.ts";
-import { channels } from "./channels.ts";
-import { irc } from "./irc.ts";
 import { ircConnectionMeta } from "../http/irc-connection.ts";
 import { accountDetails, profileJson } from "../http/profiles.ts";
-import { profile } from "./profile.ts";
 import { Hono } from "hono";
 
 export const auth = new Hono();

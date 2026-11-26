@@ -2,7 +2,6 @@ import { createLimiter } from "../request-security.ts";
 import { bodyLimit } from "hono/body-limit";
 import { verifiedHuman, currentUser, sameOriginJson } from "../http/session.ts";
 import { enabledHelpers } from "../config.ts";
-import { text } from "../http/common.ts";
 import { directConversation } from "../rooms.ts";
 import { openDirectConversation } from "../direct.ts";
 import { scheduleReminder, reminderOutcome, helperSay } from "../helper-bot.ts";
