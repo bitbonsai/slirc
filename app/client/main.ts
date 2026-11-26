@@ -3,7 +3,9 @@ import { createClient } from "@client/runtime.ts";
 import { landOffer } from "@client/phone-offer.ts";
 import { tooltipDirective } from "@client/tooltips.ts";
 import { codeDirective } from "@client/code-input.ts";
+import { modalDirective } from "@client/modal.ts";
 import { tabBarComponent } from "@client/tab-bar.ts";
+import { conversationRowsComponent } from "@client/conversation-rows.ts";
 import { helpDialogComponent, jumpDialogComponent, channelSearchDialogComponent } from "@client/palettes.ts";
 import { slashHelpPanelComponent, mentionPickerComponent } from "@client/composer-pickers.ts";
 import { pullRefreshComponent } from "@client/pull-refresh.ts";
@@ -13,6 +15,7 @@ import { pullRefreshComponent } from "@client/pull-refresh.ts";
 export function registerComponents(Alpine: any, client: ReturnType<typeof createClient>): void {
   Alpine.directive("tooltip", tooltipDirective);
   Alpine.directive("code", codeDirective);
+  Alpine.directive("modal", modalDirective);
   Alpine.data("jumpDialog", jumpDialogComponent);
   Alpine.data("channelSearchDialog", channelSearchDialogComponent);
   Alpine.data("helpDialog", helpDialogComponent);
@@ -26,6 +29,7 @@ export function registerComponents(Alpine: any, client: ReturnType<typeof create
   Alpine.data("transcript", () => client.transcript);
   Alpine.data("profilePage", () => client.profile);
   Alpine.data("tabBar", tabBarComponent);
+  Alpine.data("conversationRows", conversationRowsComponent);
   Alpine.data("settingsPage", () => client.settings);
   Alpine.data("channelsPage", () => client.channelCreate);
   Alpine.data("newConversation", () => client.newConversation);

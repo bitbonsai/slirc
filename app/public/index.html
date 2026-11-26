@@ -197,7 +197,7 @@
     <button type="button" class="instance-rail-item instance-rail-add" aria-haspopup="dialog" aria-label="Add or manage workspaces" data-tooltip="Add a workspace" x-tooltip :aria-expanded="String(workspaceDialog)" x-on:click="openWorkspaces()"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('plus')"></span></button>
   </nav>
 
-  <header x-cloak x-show="!booting && (authenticated || peekRoom) && !joinRoute && (isDesktop || (mobileNav === null && !profileRoute && !settingsRoute && !channelsRoute && !invitationsRoute && !ircRoute && !agentsRoute && !adminRoute))">
+  <header x-cloak x-show="view.showsHeader">
     <button class="mobile-back" type="button" aria-label="Back" x-show="!isDesktop && authenticated" x-on:click="goBack()">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
     </button>
@@ -214,15 +214,15 @@
           <button type="button" class="history-btn" aria-label="Back" x-tooltip :disabled="!canGoBack()" x-on:click="goBack()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
           <button type="button" class="history-btn" aria-label="Forward" x-tooltip :disabled="!canGoForward()" x-on:click="goForward()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
         </div>
-        <button id="room-title" class="room-title" type="button" x-show="!profileRoute && !settingsRoute && !channelsRoute && !invitationsRoute && !ircRoute && !agentsRoute && !adminRoute" :disabled="isDesktop && ((!direct && !!activeThread) || notesOpen)" :aria-label="isDesktop ? (direct ? 'Open profile for ' + channel : (activeThread ? null : 'Open channel settings for ' + channel)) : (direct && !notesOpen ? 'Open profile for ' + channel + ' · ' + avatarStatusLabel(channel) : 'Open channels from ' + channel)" :data-tooltip="headerTooltip()" x-tooltip x-on:click="isDesktop ? (notesOpen ? null : direct ? people.openWhois(channel) : (activeThread ? null : channelPrefs.openChannelSettings(channel))) : (direct && !notesOpen ? people.openWhois(channel) : openHome())">
+        <button id="room-title" class="room-title" type="button" x-show="view.showsRoomTitle" :disabled="isDesktop && ((!direct && !!activeThread) || notesOpen)" :aria-label="isDesktop ? (direct ? 'Open profile for ' + channel : (activeThread ? null : 'Open channel settings for ' + channel)) : (direct && !notesOpen ? 'Open profile for ' + channel + ' · ' + avatarStatusLabel(channel) : 'Open channels from ' + channel)" :data-tooltip="headerTooltip()" x-tooltip x-on:click="isDesktop ? (notesOpen ? null : direct ? people.openWhois(channel) : (activeThread ? null : channelPrefs.openChannelSettings(channel))) : (direct && !notesOpen ? people.openWhois(channel) : openHome())">
           <span class="room-mark" x-show="notesOpen" aria-hidden="true"><span class="menu-icon" x-html="lucideIcon('notebook-pen')"></span></span>
           <span class="room-mark channel" x-show="!direct && !notesOpen" aria-hidden="true" :class="isOpenRoom(channel) && 'open'"><span class="lock-icon" x-show="!isOpenRoom(channel)"></span><span class="channel-hash" x-show="isOpenRoom(channel)">#</span></span>
           <template x-if="direct"><span class="room-mark peer-avatar avatar-status-host" aria-hidden="true" :data-status="avatarStatus(channel)"><span>@</span><img :src="avatarUrl(channel)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span></template>
           <span class="room-title-text"><span x-text="headerTitle()"></span><span class="room-subtitle" x-show="headerSubtitle()" x-text="headerSubtitle()"></span></span>
         </button>
-        <span class="room-title profile-title" x-show="profileRoute || settingsRoute || channelsRoute || invitationsRoute || ircRoute || agentsRoute || adminRoute">
-          <span class="room-mark" aria-hidden="true" x-html="adminRoute ? lucideIcon('user-star') : agentsRoute ? lucideIcon('bot') : channelsRoute ? lucideIcon('hash') : invitationsRoute ? lucideIcon('mail') : settingsRoute ? lucideIcon('smartphone') : ircRoute ? lucideIcon('terminal') : lucideIcon('user')"></span>
-          <span class="room-title-text"><span x-text="adminRoute ? 'Admin' : agentsRoute ? 'Agents' : channelsRoute ? 'Create channel' : invitationsRoute ? 'People' : settingsRoute ? 'Devices' : ircRoute ? 'IRC clients' : 'You'"></span></span>
+        <span class="room-title profile-title" x-show="view.onPage">
+          <span class="room-mark" aria-hidden="true" x-html="lucideIcon(view.pageIcon)"></span>
+          <span class="room-title-text"><span x-text="view.pageTitle"></span></span>
         </span>
       </div>
     </div>
@@ -235,8 +235,8 @@
   </header>
 
   <aside id="rooms" class="rooms" x-cloak x-show="authenticated && isDesktop && roomsOpen" x-transition:enter="rooms-enter" x-transition:enter-start="rooms-hidden" x-transition:enter-end="rooms-visible" x-transition:leave="rooms-leave" x-transition:leave-start="rooms-visible" x-transition:leave-end="rooms-hidden" x-on:click.self="if (!isDesktop) roomsOpen = false">
-    <div class="rooms-sheet">
-      <div class="draft-section starred-section" x-show="starredItems().length" x-transition:enter="draft-enter" x-transition:enter-start="draft-enter-start" x-transition:enter-end="draft-enter-end" x-transition:leave="draft-leave" x-transition:leave-start="draft-leave-start" x-transition:leave-end="draft-leave-end"><div class="draft-section-inner"><button class="section-title" type="button" :class="!starredOpen && 'collapsed'" :aria-expanded="starredOpen" x-on:click="starredOpen = !starredOpen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg><span>Starred</span></button><div x-show="starredOpen"><template x-for="item in starredItems()" :key="'starred-' + item.conversationId"><div class="draft-section star-item" x-transition:enter="draft-enter" x-transition:enter-start="draft-enter-start" x-transition:enter-end="draft-enter-end" x-transition:leave="draft-leave" x-transition:leave-start="draft-leave-start" x-transition:leave-end="draft-leave-end"><div class="draft-section-inner"><div class="channel-row"><button class="room" type="button" :class="[(item.kind === 'dm' ? direct && channel === item.nick : !direct && channel === item.wireTarget) && 'active', isMuted(item.kind === 'dm' ? 'dm:' + item.conversationId : item.wireTarget) && 'muted-room']" x-on:click="item.kind === 'dm' ? openDirect(item.nick) : openRoom(item.wireTarget)"><template x-if="item.kind === 'dm'"><span class="room-mark peer-avatar avatar-status-host" aria-hidden="true" :data-status="avatarStatus(item.nick)"><span>@</span><img :src="avatarUrl(item.nick)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span></template><template x-if="item.kind !== 'dm'"><span class="room-mark channel" aria-hidden="true" :class="isOpenRoom(item.wireTarget) && 'open'"><span class="lock-icon" x-show="!isOpenRoom(item.wireTarget)"></span><span class="channel-hash" x-show="isOpenRoom(item.wireTarget)">#</span></span></template><span class="sr-only" x-show="item.kind === 'dm'" x-text="avatarStatusLabel(item.nick)"></span><span class="room-name" x-text="item.label"></span><span class="unread-badge" x-show="unreadCount(item.conversationId)" x-text="badgeText(item.conversationId)"></span></button><button class="channel-kebab" type="button" :aria-label="'Options for ' + item.label" x-on:click.stop="menus.openNavMenu($event, item.conversationId, item.kind, item.kind === 'dm' ? item.nick : item.wireTarget, item.label)">⋮</button></div></div></div></template></div></div></div>
+    <div class="rooms-sheet" x-data="conversationRows">
+      <div class="draft-section starred-section" x-show="starredItems().length" x-transition:enter="draft-enter" x-transition:enter-start="draft-enter-start" x-transition:enter-end="draft-enter-end" x-transition:leave="draft-leave" x-transition:leave-start="draft-leave-start" x-transition:leave-end="draft-leave-end"><div class="draft-section-inner"><button class="section-title" type="button" :class="!starredOpen && 'collapsed'" :aria-expanded="starredOpen" x-on:click="starredOpen = !starredOpen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg><span>Starred</span></button><div x-show="starredOpen"><template x-for="item in starredItems()" :key="'starred-' + item.conversationId"><div class="draft-section star-item" x-transition:enter="draft-enter" x-transition:enter-start="draft-enter-start" x-transition:enter-end="draft-enter-end" x-transition:leave="draft-leave" x-transition:leave-start="draft-leave-start" x-transition:leave-end="draft-leave-end"><div class="draft-section-inner"><div class="channel-row"><button class="room" type="button" :class="starredClass(item)" x-on:click="openStarred(item)"><template x-if="item.kind === 'dm'"><span class="room-mark peer-avatar avatar-status-host" aria-hidden="true" :data-status="avatarStatus(item.nick)"><span>@</span><img  :src="avatarUrl(item.nick)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span></template><template x-if="item.kind !== 'dm'"><span class="room-mark channel" aria-hidden="true" :class="isOpenRoom(item.wireTarget) && 'open'"><span class="lock-icon" x-show="!isOpenRoom(item.wireTarget)"></span><span class="channel-hash" x-show="isOpenRoom(item.wireTarget)">#</span></span></template><span class="sr-only" x-show="item.kind === 'dm'" x-text="avatarStatusLabel(item.nick)"></span><span class="room-name" x-text="item.label"></span><span class="unread-badge" x-show="unreadCount(item.conversationId)" x-text="badgeText(item.conversationId)"></span></button><button class="channel-kebab" type="button" :aria-label="'Options for ' + item.label" x-on:click.stop="menus.openNavMenu($event, item.conversationId, item.kind, item.kind === 'dm' ? item.nick : item.wireTarget, item.label)">⋮</button></div></div></div></template></div></div></div>
       <div class="draft-section" x-show="draftsList().length" x-transition:enter="draft-enter" x-transition:enter-start="draft-enter-start" x-transition:enter-end="draft-enter-end" x-transition:leave="draft-leave" x-transition:leave-start="draft-leave-start" x-transition:leave-end="draft-leave-end">
         <div class="draft-section-inner">
         <button class="section-title" type="button" :class="!draftsOpen && 'collapsed'" :aria-expanded="draftsOpen" x-on:click="draftsOpen = !draftsOpen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg><span>Drafts</span></button>
@@ -249,17 +249,17 @@
         </div>
       </div>
       <div class="section-head"><button class="section-title" type="button" :class="!channelsOpen && 'collapsed'" :aria-expanded="channelsOpen" x-on:click="channelsOpen = !channelsOpen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg><span>Channels</span></button><button class="section-add" type="button" aria-label="Create a channel" data-tooltip="Create a channel" x-tooltip x-on:click="openChannels()"><img src="/icons/ui/plus.svg?v=555549fc" alt="" /></button></div>
-      <div id="channel-list" x-show="channelsOpen" :class="channelDrag.draggingId && 'is-dragging'"><template x-for="item in channelList()" :key="item.conversationId"><div class="channel-item" :data-channel-id="item.conversationId"><div class="channel-row" :class="channelDrag.draggingId === item.conversationId && 'is-dragging'" x-on:pointerdown="channelDrag.pointerDown($event, item.conversationId)"><button class="room" :class="[channel === item.wireTarget && !direct && 'active', isMuted(item.wireTarget) && 'muted-room']" type="button" x-on:click="if (!channelDrag.consumeClick()) openRoom(item.wireTarget)" x-on:keydown="channelDrag.keydown($event, item.conversationId)"><span class="room-mark channel" aria-hidden="true" :class="isOpenRoom(item.wireTarget) && 'open'"><span class="lock-icon" x-show="!isOpenRoom(item.wireTarget)"></span><span class="channel-hash" x-show="isOpenRoom(item.wireTarget)">#</span></span><span class="room-name" x-text="item.wireTarget.replace(/^#/, '')"></span><span class="unread-badge" x-show="unreadCount(item.conversationId)" x-text="badgeText(item.conversationId)"></span></button><button class="channel-kebab" type="button" aria-label="Channel options" x-on:click.stop="menus.openNavMenu($event, item.conversationId, 'room', item.wireTarget, item.wireTarget)">⋮</button></div></div></template></div>
+      <div id="channel-list" x-show="channelsOpen" :class="channelDrag.draggingId && 'is-dragging'"><template x-for="item in channelList()" :key="item.conversationId"><div class="channel-item" :data-channel-id="item.conversationId"><div class="channel-row" :class="channelDrag.draggingId === item.conversationId && 'is-dragging'" x-on:pointerdown="channelDrag.pointerDown($event, item.conversationId)"><button class="room" :class="channelClass(item)" type="button" x-on:click="if (!channelDrag.consumeClick()) openRoom(item.wireTarget)" x-on:keydown="channelDrag.keydown($event, item.conversationId)"><span class="room-mark channel" aria-hidden="true" :class="isOpenRoom(item.wireTarget) && 'open'"><span class="lock-icon" x-show="!isOpenRoom(item.wireTarget)"></span><span class="channel-hash" x-show="isOpenRoom(item.wireTarget)">#</span></span><span class="room-name" x-text="item.wireTarget.replace(/^#/, '')"></span><span class="unread-badge" x-show="unreadCount(item.conversationId)" x-text="badgeText(item.conversationId)"></span></button><button class="channel-kebab" type="button" aria-label="Channel options" x-on:click.stop="menus.openNavMenu($event, item.conversationId, 'room', item.wireTarget, item.wireTarget)">⋮</button></div></div></template></div>
       
       <div x-show="replyThreads.items.length">
         <button class="section-title" type="button" :class="!replyThreads.listOpen && 'collapsed'" :aria-expanded="replyThreads.listOpen" x-on:click="replyThreads.toggle()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg><span>Threads</span><span class="unread-badge" x-show="!replyThreads.listOpen && replyThreads.unreadTotal()" x-text="replyThreads.badge(replyThreads.unreadTotal())" :aria-label="replyThreads.unreadTotal() + ' unread'"></span></button>
-        <div x-show="replyThreads.listOpen"><template x-for="thread in replyThreads.visible().shown" :key="'reply-thread-' + thread.rootId"><div class="channel-row"><button class="room thread-room" :class="replyThreads.isActive(thread) && 'active'" type="button" :aria-label="'Open thread: ' + thread.title + ', ' + thread.label + (thread.unread ? ', ' + thread.unread + ' unread' : '')" x-on:click="replyThreads.open(thread)"><span class="room-mark" aria-hidden="true"><svg viewBox="0 0 24 24" style="width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="m15 10 5 5-5 5"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/></svg></span><span><span class="thread-name" x-text="thread.title"></span><small x-text="thread.label"></small></span><span class="unread-badge" x-show="thread.unread" x-text="replyThreads.badge(thread.unread)"></span></button></div></template><div class="channel-row nested-thread" x-show="replyThreads.visible().more > 0 || replyThreads.collapsible()"><button class="room thread-room thread-more" type="button" x-on:click="replyThreads.toggleExpanded()"><span class="room-mark" aria-hidden="true"><svg viewBox="0 0 24 24" style="width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></span><span class="thread-name" x-text="replyThreads.expanded ? 'Show fewer' : replyThreads.visible().more + ' more'"></span></button></div></div>
+        <div x-show="replyThreads.listOpen"><template x-for="thread in replyThreads.visible().shown" :key="'reply-thread-' + thread.rootId"><div class="channel-row"><button class="room thread-room" :class="replyThreads.isActive(thread) && 'active'" type="button" :aria-label="threadLabel(thread)" x-on:click="replyThreads.open(thread)"><span class="room-mark" aria-hidden="true"><svg viewBox="0 0 24 24" style="width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="m15 10 5 5-5 5"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/></svg></span><span><span class="thread-name" x-text="thread.title"></span><small x-text="thread.label"></small></span><span class="unread-badge" x-show="thread.unread" x-text="replyThreads.badge(thread.unread)"></span></button></div></template><div class="channel-row nested-thread" x-show="replyThreads.visible().more > 0 || replyThreads.collapsible()"><button class="room thread-room thread-more" type="button" x-on:click="replyThreads.toggleExpanded()"><span class="room-mark" aria-hidden="true"><svg viewBox="0 0 24 24" style="width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></span><span class="thread-name" x-text="replyThreads.expanded ? 'Show fewer' : replyThreads.visible().more + ' more'"></span></button></div></div>
       </div>
-      <div x-show="agentList().length"><div class="section-head"><button class="section-title" type="button" :class="!agentsOpen && 'collapsed'" :aria-expanded="agentsOpen" x-on:click="agentsOpen = !agentsOpen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg><span>Agents</span></button><button class="section-add" type="button" aria-label="Connect an agent" data-tooltip="Connect an agent" x-tooltip x-on:click="openAgents()"><img src="/icons/ui/plus.svg?v=555549fc" alt="" /></button></div><div x-show="agentsOpen"><template x-for="item in agentList()" :key="'agent-' + item.nick"><div><div class="channel-row"><button class="room" :class="[direct && channel === item.nick && 'active', isMuted('dm:' + conversationIdForDm(item.channel)) && 'muted-room']" type="button" :disabled="directBusy === item.nick" x-on:click="openDirect(item.nick)" :data-tooltip="item.nick + ' · ' + avatarStatusLabel(item.nick)" x-tooltip><span class="room-mark peer-avatar avatar-status-host" aria-hidden="true" :data-status="avatarStatus(item.nick)"><span>@</span><img loading="lazy" :src="avatarUrl(item.nick)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span><span class="room-name" x-text="item.label"></span><span class="sr-only" x-text="avatarStatusLabel(item.nick)"></span><span class="unread-badge" x-show="unreadCount(conversationIdForDm(item.channel))" x-text="badgeText(conversationIdForDm(item.channel))"></span></button><button class="channel-kebab" type="button" x-show="item.channel" :aria-label="'Options for ' + item.label" x-on:click.stop="menus.openNavMenu($event, conversationIdForDm(item.channel), 'dm', item.nick, item.label)">⋮</button></div></div></template></div></div>
-      <div class="section-head"><button class="section-title" type="button" :class="!dmsOpen && 'collapsed'" :aria-expanded="dmsOpen" x-on:click="dmsOpen = !dmsOpen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg><span>Direct messages</span></button><button class="section-add" type="button" aria-label="New conversation" data-tooltip="New conversation" x-tooltip x-on:click="newConversation.open($event)"><img src="/icons/ui/plus.svg?v=555549fc" alt="" /></button></div><div x-show="dmsOpen"><div class="channel-row notes-row"><button class="room" type="button" :class="notesOpen && 'active'" x-on:click="openNotes()"><span class="room-mark" aria-hidden="true"><span class="menu-icon" x-html="lucideIcon('notebook-pen')"></span></span><span class="room-name">Notes</span></button></div><template x-for="item in directList()" :key="item.conversationId || item.channel"><div><div class="channel-row"><button class="room" :class="[direct && channel === item.nick && 'active', isMuted('dm:' + conversationIdForDm(item.channel)) && 'muted-room']" type="button" x-on:click="openDirect(item.nick)" :data-tooltip="item.nick + ' · ' + avatarStatusLabel(item.nick)" x-tooltip><span class="room-mark peer-avatar avatar-status-host" aria-hidden="true" :data-status="avatarStatus(item.nick)"><span>@</span><img loading="lazy" :src="avatarUrl(item.nick)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span><span class="room-name" x-text="item.nick"></span><span class="sr-only" x-text="avatarStatusLabel(item.nick)"></span><span class="unread-badge" x-show="unreadCount(conversationIdForDm(item.channel))" x-text="badgeText(conversationIdForDm(item.channel))"></span></button><button class="channel-kebab" type="button" x-show="!item.pending" aria-label="Direct message options" x-on:click.stop="menus.openNavMenu($event, conversationIdForDm(item.channel), 'dm', item.nick, item.nick)">⋮</button></div></div></template>
-<template x-for="item in groupList()" :key="'group-' + item.conversationId"><div class="channel-row"><button class="room" :class="[!direct && channel === item.wireTarget && 'active']" type="button" x-on:click="openRoom(item.wireTarget)"><span class="room-mark channel" aria-hidden="true" :class="isOpenRoom(item.wireTarget) && 'open'"><span class="lock-icon" x-show="!isOpenRoom(item.wireTarget)"></span><span class="channel-hash" x-show="isOpenRoom(item.wireTarget)">#</span></span><span class="room-name" x-text="roomLabelFor(item.wireTarget)"></span><span class="unread-badge" x-show="unreadCount(item.conversationId)" x-text="badgeText(item.conversationId)"></span></button><button class="channel-kebab" type="button" :aria-label="'Group options for ' + roomLabelFor(item.wireTarget)" x-on:click.stop="menus.openNavMenu($event, item.conversationId, 'room', item.wireTarget, roomLabelFor(item.wireTarget))">⋮</button></div></template>
+      <div x-show="agentList().length"><div class="section-head"><button class="section-title" type="button" :class="!agentsOpen && 'collapsed'" :aria-expanded="agentsOpen" x-on:click="agentsOpen = !agentsOpen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg><span>Agents</span></button><button class="section-add" type="button" aria-label="Connect an agent" data-tooltip="Connect an agent" x-tooltip x-on:click="openAgents()"><img src="/icons/ui/plus.svg?v=555549fc" alt="" /></button></div><div x-show="agentsOpen"><template x-for="item in agentList()" :key="'agent-' + item.nick"><div><div class="channel-row"><button class="room" :class="dmClass(item)" type="button" :disabled="directBusy === item.nick" x-on:click="openDirect(item.nick)" :data-tooltip="rowTip(item.nick)" x-tooltip><span class="room-mark peer-avatar avatar-status-host" aria-hidden="true" :data-status="avatarStatus(item.nick)"><span>@</span><img loading="lazy" :src="avatarUrl(item.nick)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span><span class="room-name" x-text="item.label"></span><span class="sr-only" x-text="avatarStatusLabel(item.nick)"></span><span class="unread-badge" x-show="unreadCount(dmId(item))" x-text="badgeText(dmId(item))"></span></button><button class="channel-kebab" type="button" x-show="item.channel" :aria-label="'Options for ' + item.label" x-on:click.stop="menus.openNavMenu($event, dmId(item), 'dm', item.nick, item.label)">⋮</button></div></div></template></div></div>
+      <div class="section-head"><button class="section-title" type="button" :class="!dmsOpen && 'collapsed'" :aria-expanded="dmsOpen" x-on:click="dmsOpen = !dmsOpen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg><span>Direct messages</span></button><button class="section-add" type="button" aria-label="New conversation" data-tooltip="New conversation" x-tooltip x-on:click="newConversation.open($event)"><img src="/icons/ui/plus.svg?v=555549fc" alt="" /></button></div><div x-show="dmsOpen"><div class="channel-row notes-row"><button class="room" type="button" :class="notesOpen && 'active'" x-on:click="openNotes()"><span class="room-mark" aria-hidden="true"><span class="menu-icon" x-html="lucideIcon('notebook-pen')"></span></span><span class="room-name">Notes</span></button></div><template x-for="item in directList()" :key="item.conversationId || item.channel"><div><div class="channel-row"><button class="room" :class="dmClass(item)" type="button" x-on:click="openDirect(item.nick)" :data-tooltip="rowTip(item.nick)" x-tooltip><span class="room-mark peer-avatar avatar-status-host" aria-hidden="true" :data-status="avatarStatus(item.nick)"><span>@</span><img loading="lazy" :src="avatarUrl(item.nick)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span><span class="room-name" x-text="item.nick"></span><span class="sr-only" x-text="avatarStatusLabel(item.nick)"></span><span class="unread-badge" x-show="unreadCount(dmId(item))" x-text="badgeText(dmId(item))"></span></button><button class="channel-kebab" type="button" x-show="!item.pending" aria-label="Direct message options" x-on:click.stop="menus.openNavMenu($event, dmId(item), 'dm', item.nick, item.nick)">⋮</button></div></div></template>
+<template x-for="item in groupList()" :key="'group-' + item.conversationId"><div class="channel-row"><button class="room" :class="groupClass(item)" type="button" x-on:click="openRoom(item.wireTarget)"><span class="room-mark channel" aria-hidden="true" :class="isOpenRoom(item.wireTarget) && 'open'"><span class="lock-icon" x-show="!isOpenRoom(item.wireTarget)"></span><span class="channel-hash" x-show="isOpenRoom(item.wireTarget)">#</span></span><span class="room-name" x-text="roomLabelFor(item.wireTarget)"></span><span class="unread-badge" x-show="unreadCount(item.conversationId)" x-text="badgeText(item.conversationId)"></span></button><button class="channel-kebab" type="button" :aria-label="'Group options for ' + roomLabelFor(item.wireTarget)" x-on:click.stop="menus.openNavMenu($event, item.conversationId, 'room', item.wireTarget, roomLabelFor(item.wireTarget))">⋮</button></div></template>
     </div>
-      <div x-show="contactList().length"><div class="section-head"><button class="section-title" type="button" :class="!contactsOpen && 'collapsed'" :aria-expanded="contactsOpen" x-on:click="contactsOpen = !contactsOpen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg><span>Contacts</span></button></div><div x-show="contactsOpen"><template x-for="nick in contactList()" :key="'contact-' + nick"><div class="channel-row"><button class="room" type="button" :disabled="directBusy === nick" x-on:click="openDirect(nick)" :data-tooltip="nick + ' · ' + avatarStatusLabel(nick)" x-tooltip><span class="room-mark peer-avatar avatar-status-host" aria-hidden="true" :data-status="avatarStatus(nick)"><span>@</span><img loading="lazy" :src="avatarUrl(nick)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span><span class="room-name" x-text="nick"></span><span class="sr-only" x-text="avatarStatusLabel(nick)"></span></button></div></template></div></div>
+      <div x-show="contactList().length"><div class="section-head"><button class="section-title" type="button" :class="!contactsOpen && 'collapsed'" :aria-expanded="contactsOpen" x-on:click="contactsOpen = !contactsOpen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg><span>Contacts</span></button></div><div x-show="contactsOpen"><template x-for="nick in contactList()" :key="'contact-' + nick"><div class="channel-row"><button class="room" type="button" :disabled="directBusy === nick" x-on:click="openDirect(nick)" :data-tooltip="rowTip(nick)" x-tooltip><span class="room-mark peer-avatar avatar-status-host" aria-hidden="true" :data-status="avatarStatus(nick)"><span>@</span><img loading="lazy" :src="avatarUrl(nick)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span><span class="room-name" x-text="nick"></span><span class="sr-only" x-text="avatarStatusLabel(nick)"></span></button></div></template></div></div>
     </div>
     <div class="panel-footer">
         <div class="rail-shortcut" x-show="isDesktop && !hasPhone && !phoneShortcutDismissed">
@@ -272,7 +272,7 @@
         </div>
         <div class="profile-card">
           <button type="button" class="profile-main" x-ref="railProfile" x-on:click="openProfile()" :aria-label="'Your profile · ' + avatarStatusLabel(account)" x-tooltip>
-            <span class="profile-avatar avatar-status-host" :data-status="avatarStatus(account)" aria-hidden="true" :style="'background:' + ['#f5c2e7','#cba6f7','#eba0ac','#fab387','#f9e2af','#a6e3a1','#94e2d5','#89dceb','#74c7ec','#89b4fa','#b4befe'][([...((account || '').toLowerCase())].reduce((v, c) => Math.imul(31, v) + c.charCodeAt(0) | 0, 0) >>> 0) % 11] + ';color:#11111b'">
+            <span class="profile-avatar avatar-status-host" :data-status="avatarStatus(account)" aria-hidden="true" :style="messageView.avatarStyle(account)">
               <img :src="avatarUrl(account)" alt="" x-on:load="$el.hidden = false" x-on:error="$el.hidden = true" />
               <span x-text="(account || '?').slice(0, 1).toUpperCase()"></span>
             </span>
@@ -292,7 +292,7 @@
     <button type="button" role="menuitem" x-on:click.stop="menus.copyChannelText('link')"><span class="menu-icon" x-html="lucideIcon('link')"></span>Link</button>
   </div>
 
-  <main x-data="transcript" id="chat" class="chat" x-ref="chat" x-cloak x-show="(authenticated || peekRoom) && !profileRoute && !settingsRoute && !channelsRoute && !invitationsRoute && !ircRoute && !agentsRoute && !adminRoute && (isDesktop || mobileNav === null) && !library.on" x-on:scroll.passive="transcript.onChatScroll()" x-on:touchmove.passive="transcript.noteInput()" x-on:wheel.passive="transcript.noteInput()" x-on:pointerdown="transcript.noteInput()" x-on:keydown.window="transcript.noteKey($event)" x-on:dragover="onDragOver($event)" x-on:dragleave="onDragLeave($event)" x-on:drop="onDrop($event)">
+  <main x-data="transcript" id="chat" class="chat" x-ref="chat" x-cloak x-show="view.showsTranscript" x-on:scroll.passive="transcript.onChatScroll()" x-on:touchmove.passive="transcript.noteInput()" x-on:wheel.passive="transcript.noteInput()" x-on:pointerdown="transcript.noteInput()" x-on:keydown.window="transcript.noteKey($event)" x-on:dragover="onDragOver($event)" x-on:dragleave="onDragLeave($event)" x-on:drop="onDrop($event)">
     <div class="pull-indicator" x-data="pullRefresh('chat')" :class="['is-' + pullState, pullArmed() && 'armed']" :style="pullStyle()"><img class="pull-logo" src="/logo.webp" alt="" /><span class="pull-label" role="status" x-text="pullLabel()"></span></div>
     <div class="drop-offer" x-cloak x-show="dragActive" aria-hidden="true"><p>Drop a photo to add it</p></div>
     <div class="notify-banner" x-cloak x-show="error || sendError || threadError || capsNote || sendReason || draftNote">
@@ -424,7 +424,7 @@
             </section>
           </template>
           <template x-if="!agentOffline(message) && !polls.card(message) && !jobCards.card(message)">
-          <div class="msg" :class="[transcript.continuesPrevious(message, index) && 'cont', (message.state === 'saving' || message.state === 'queued' || message.state === 'sending') && 'pending', actions.actionMessageId === message.id && 'menu-open', replyThreadRootId && message.serverId === replyThreadRootId && 'thread-open', replyThreadFaded[message.serverId] && 'thread-fade', isAction(message) && 'action', notesOpen && 'note']" tabindex="-1" :data-message-id="message.id" x-on:keydown="actions.messageKeydown($event, message)" x-on:click="if (!getSelection()?.toString() && !$event.target.closest('button, a')) $event.currentTarget.focus()" x-on:touchstart.passive="actions.pressStart($event, message)" x-on:touchmove.passive="actions.pressMove($event)" x-on:touchend="actions.pressEnd($event)" x-on:touchcancel="actions.pressCancel()" x-on:contextmenu="actions.pressContextMenu($event, message)">
+          <div class="msg" :class="transcript.messageClass(message, index)" tabindex="-1" :data-message-id="message.id" x-on:keydown="actions.messageKeydown($event, message)" x-on:click="if (!getSelection()?.toString() && !$event.target.closest('button, a')) $event.currentTarget.focus()" x-on:touchstart.passive="actions.pressStart($event, message)" x-on:touchmove.passive="actions.pressMove($event)" x-on:touchend="actions.pressEnd($event)" x-on:touchcancel="actions.pressCancel()" x-on:contextmenu="actions.pressContextMenu($event, message)">
             <button x-show="message.state === 'confirmed' && message.serverId" type="button" class="message-more" :style="actions.popupAnchorStyles(message.id, 'more')" aria-label="More message actions" x-tooltip :aria-expanded="actions.actionMessageId === message.id" x-on:click.stop="actions.toggleThreadMenu(message)">
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
             </button>
@@ -831,8 +831,8 @@
     </div>
   </main>
 
-  <p class="archived-channel" role="status" x-cloak x-show="authenticated && activeChannelArchived() && !profileRoute && !settingsRoute && !channelsRoute && !invitationsRoute && !ircRoute && !agentsRoute && !adminRoute && (isDesktop || mobileNav === null) && !library.on"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('archive')"></span> Archived channel. You can read it, but nobody can post.</p>
-  <form x-data="composerEditor" id="composer" class="composer" :class="[(editor.composerTall || media || mediaCompress || (isEditing() && editingMedia().length)) && 'tall', isEditing() && 'editing']" role="group" aria-label="Message composer" x-on:dragover="onDragOver($event)" x-on:dragleave="onDragLeave($event)" x-on:drop="onDrop($event)" x-cloak x-show="authenticated && !profileRoute && !settingsRoute && !channelsRoute && !invitationsRoute && !ircRoute && !agentsRoute && !adminRoute && (isDesktop || mobileNav === null) && !library.on && !activeChannelArchived()" x-on:submit.prevent="send()" x-on:transitionend.self="polls.plusOpen && placePlusMenu($refs.plusMenu, $refs.plus)">
+  <p class="archived-channel" role="status" x-cloak x-show="view.showsArchivedNotice"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('archive')"></span> Archived channel. You can read it, but nobody can post.</p>
+  <form x-data="composerEditor" id="composer" class="composer" :class="[(editor.composerTall || media || mediaCompress || (isEditing() && editingMedia().length)) && 'tall', isEditing() && 'editing']" role="group" aria-label="Message composer" x-on:dragover="onDragOver($event)" x-on:dragleave="onDragLeave($event)" x-on:drop="onDrop($event)" x-cloak x-show="view.showsComposer" x-on:submit.prevent="send()" x-on:transitionend.self="polls.plusOpen && placePlusMenu($refs.plusMenu, $refs.plus)">
     <p class="sr-only" role="status" aria-live="polite" x-text="typing.statusText()"></p>
     <div class="typing-row" x-cloak x-show="typing.accounts().length">
       <span class="typing-avatars">
@@ -1027,7 +1027,7 @@
     </section>
   </dialog>
     <!-- Toasts live in the shell so they show on every screen; without a composer they sit at the bottom. -->
-    <div class="toast-region" role="status" aria-live="polite" x-cloak x-show="authenticated" :class="!(authenticated && !profileRoute && !settingsRoute && !channelsRoute && !invitationsRoute && !ircRoute && !agentsRoute && !adminRoute && (isDesktop || mobileNav === null)) && 'no-composer'"><template x-for="item in stickies.slice(0, 3)" :key="item.id">
+    <div class="toast-region" role="status" aria-live="polite" x-cloak x-show="authenticated" :class="!view.composerSpace && 'no-composer'"><template x-for="item in stickies.slice(0, 3)" :key="item.id">
       <div class="glass-toast sticky" :class="item.icon === 'refresh' && 'hud'">
         <svg class="toast-icon" viewBox="0 0 24 24" aria-hidden="true" x-show="item.icon !== 'refresh'"><use href="/icons/lucide/sprite.svg#bell"></use></svg>
         <svg class="toast-icon" viewBox="0 0 24 24" aria-hidden="true" x-show="item.icon === 'refresh'"><use href="/icons/lucide/sprite.svg#rotate-cw"></use></svg>
@@ -1130,6 +1130,7 @@
   <div
     class="mobile-screen"
     data-phone-screen="home"
+    x-data="conversationRows"
     x-cloak
     x-show="authenticated && !isDesktop && mobileNav === 'home'"
   >
@@ -1173,7 +1174,7 @@
             x-on:click="starredOpen = !starredOpen"
           >
             <span>Starred</span>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
           </button>
           <div x-show="starredOpen">
             <template x-for="item in starredItems()" :key="'mobile-starred-' + item.conversationId">
@@ -1191,43 +1192,20 @@
                     <button
                       type="button"
                       class="mobile-row"
-                      :class="item.kind === 'dm' && isMuted('dm:' + item.conversationId) && 'muted-room'"
-                      x-on:click="item.kind === 'dm' ? openDirect(item.nick) : openRoom(item.wireTarget)"
+                      :class="starredPhoneClass(item)"
+                      x-on:click="openStarred(item)"
                     >
                       <template x-if="item.kind === 'dm'">
-                        <span
-                          class="room-mark peer-avatar avatar-status-host"
-                          aria-hidden="true"
-                          :data-status="avatarStatus(item.nick)"
-                        >
-                          <span>@</span>
-                          <img
-                            :src="avatarUrl(item.nick)"
-                            alt=""
-                            x-on:error="$el.hidden = true"
-                            x-on:load="$el.hidden = false"
-                          />
-                        </span>
+                        <span class="room-mark peer-avatar avatar-status-host" aria-hidden="true" :data-status="avatarStatus(item.nick)"><span>@</span><img  :src="avatarUrl(item.nick)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span>
                       </template>
                       <template x-if="item.kind !== 'dm'">
-                        <span
-                          class="room-mark channel"
-                          aria-hidden="true"
-                          :class="isOpenRoom(item.wireTarget) && 'open'"
-                        >
-                          <span class="lock-icon" x-show="!isOpenRoom(item.wireTarget)"></span>
-                          <span class="channel-hash" x-show="isOpenRoom(item.wireTarget)">#</span>
-                        </span>
+                        <span class="room-mark channel" aria-hidden="true" :class="isOpenRoom(item.wireTarget) && 'open'"><span class="lock-icon" x-show="!isOpenRoom(item.wireTarget)"></span><span class="channel-hash" x-show="isOpenRoom(item.wireTarget)">#</span></span>
                       </template>
                       <span class="sr-only" x-show="item.kind === 'dm'" x-text="avatarStatusLabel(item.nick)"></span>
                       <span class="mobile-row-main">
                         <strong x-text="item.label"></strong>
                       </span>
-                      <span
-                        class="unread-badge"
-                        x-show="unreadCount(item.conversationId)"
-                        x-text="badgeText(item.conversationId)"
-                      ></span>
+                      <span class="unread-badge" x-show="unreadCount(item.conversationId)" x-text="badgeText(item.conversationId)"></span>
                     </button>
                     <button
                       type="button"
@@ -1263,15 +1241,13 @@
             x-on:click="draftsOpen = !draftsOpen"
           >
             <span>Drafts</span>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
           </button>
           <div x-show="draftsOpen">
             <template x-for="draft in draftsList()" :key="'mobile-draft-' + draft.conversationId">
               <div class="draft-mobile-row">
                 <button type="button" class="mobile-row" x-on:click="openDraft(draft.conversationId)">
-                  <span class="room-mark" aria-hidden="true">
-                    <span class="menu-icon" x-html="lucideIcon('pencil')"></span>
-                  </span>
+                  <span class="room-mark" aria-hidden="true"><span class="menu-icon" x-html="lucideIcon('pencil')"></span></span>
                   <span class="mobile-row-main">
                     <strong x-text="draft.label"></strong>
                     <small x-text="draft.text"></small>
@@ -1301,28 +1277,17 @@
           <div>
             <div class="draft-mobile-row">
               <button type="button" class="mobile-row" x-on:click="openRoom(item.wireTarget)">
-                <span
-                  class="room-mark channel"
-                  aria-hidden="true"
-                  :class="isOpenRoom(item.wireTarget) && 'open'"
-                >
-                  <span class="lock-icon" x-show="!isOpenRoom(item.wireTarget)"></span>
-                  <span class="channel-hash" x-show="isOpenRoom(item.wireTarget)">#</span>
-                </span>
+                <span class="room-mark channel" aria-hidden="true" :class="isOpenRoom(item.wireTarget) && 'open'"><span class="lock-icon" x-show="!isOpenRoom(item.wireTarget)"></span><span class="channel-hash" x-show="isOpenRoom(item.wireTarget)">#</span></span>
                 <span class="mobile-row-main">
                   <strong x-text="roomLabelFor(item.wireTarget)"></strong>
                 </span>
-                <span
-                  class="unread-badge"
-                  x-show="unreadCount(item.conversationId)"
-                  x-text="badgeText(item.conversationId)"
-                ></span>
+                <span class="unread-badge" x-show="unreadCount(item.conversationId)" x-text="badgeText(item.conversationId)"></span>
               </button>
               <button
                 type="button"
                 class="draft-delete"
                 x-tooltip
-                :aria-label="isStarred(item.conversationId) ? 'Unstar channel' : 'Star channel'"
+                :aria-label="starLabel(item.conversationId, 'channel')"
                 x-on:click.stop="toggleStar(item.conversationId)"
                 x-html="lucideIcon('star')"
               ></button>
@@ -1346,14 +1311,12 @@
           x-text="replyThreads.badge(replyThreads.unreadTotal())"
           :aria-label="replyThreads.unreadTotal() + ' unread'"
         ></span>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
       </button>
       <div x-show="replyThreads.items.length && replyThreads.listOpen">
         <template x-for="thread in replyThreads.visible().shown" :key="'mobile-reply-thread-' + thread.rootId">
           <button type="button" class="mobile-row" x-on:click="replyThreads.open(thread)">
-            <span class="room-mark" aria-hidden="true">
-              <svg viewBox="0 0 24 24" style="width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="m15 10 5 5-5 5"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/></svg>
-            </span>
+            <span class="room-mark" aria-hidden="true"><svg viewBox="0 0 24 24" style="width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="m15 10 5 5-5 5"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/></svg></span>
             <span class="mobile-row-main">
               <strong x-text="thread.title"></strong>
               <small x-text="thread.label"></small>
@@ -1367,9 +1330,7 @@
           x-show="replyThreads.visible().more > 0 || replyThreads.collapsible()"
           x-on:click="replyThreads.toggleExpanded()"
         >
-          <span class="room-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" style="width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
-          </span>
+          <span class="room-mark" aria-hidden="true"><svg viewBox="0 0 24 24" style="width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></span>
           <span class="mobile-row-main">
             <strong x-text="replyThreads.expanded ? 'Show fewer' : replyThreads.visible().more + ' more threads'"></strong>
           </span>
@@ -1383,6 +1344,7 @@
   <div
     class="mobile-screen"
     data-phone-screen="dms"
+    x-data="conversationRows"
     x-cloak
     x-show="authenticated && !isDesktop && mobileNav === 'dms'"
   >
@@ -1405,9 +1367,7 @@
       <div class="mobile-spacer"></div>
       <div class="draft-mobile-row">
         <button type="button" class="mobile-row notes-row" x-on:click="openNotes()">
-          <span class="room-mark" aria-hidden="true">
-            <span class="menu-icon" x-html="lucideIcon('notebook-pen')"></span>
-          </span>
+          <span class="room-mark" aria-hidden="true"><span class="menu-icon" x-html="lucideIcon('notebook-pen')"></span></span>
           <span class="mobile-row-main">
             <strong>Notes</strong>
           </span>
@@ -1422,7 +1382,7 @@
         x-on:click="agentsOpen = !agentsOpen"
       >
         <span>Agents</span>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
       </button>
       <div x-show="agentsOpen">
         <template x-for="item in agentList()" :key="'m-agent-' + item.nick">
@@ -1431,41 +1391,24 @@
               <button
                 type="button"
                 class="mobile-row"
-                :class="isMuted('dm:' + conversationIdForDm(item.channel)) && 'muted-room'"
+                :class="dmPhoneClass(item)"
                 :disabled="directBusy === item.nick"
                 x-on:click="openDirect(item.nick)"
               >
-                <span
-                  class="room-mark peer-avatar avatar-status-host"
-                  aria-hidden="true"
-                  :data-status="avatarStatus(item.nick)"
-                >
-                  <span>@</span>
-                  <img
-                    loading="lazy"
-                    :src="avatarUrl(item.nick)"
-                    alt=""
-                    x-on:error="$el.hidden = true"
-                    x-on:load="$el.hidden = false"
-                  />
-                </span>
+                <span class="room-mark peer-avatar avatar-status-host" aria-hidden="true" :data-status="avatarStatus(item.nick)"><span>@</span><img loading="lazy" :src="avatarUrl(item.nick)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span>
                 <span class="mobile-row-main">
                   <strong x-text="item.label"></strong>
                   <span class="sr-only" x-text="avatarStatusLabel(item.nick)"></span>
                 </span>
-                <span
-                  class="unread-badge"
-                  x-show="unreadCount(conversationIdForDm(item.channel))"
-                  x-text="badgeText(conversationIdForDm(item.channel))"
-                ></span>
+                <span class="unread-badge" x-show="unreadCount(dmId(item))" x-text="badgeText(dmId(item))"></span>
               </button>
               <button
                 type="button"
                 class="draft-delete"
                 x-show="item.channel"
                 x-tooltip
-                :aria-label="isStarred(conversationIdForDm(item.channel)) ? 'Unstar agent' : 'Star agent'"
-                x-on:click.stop="toggleStar(conversationIdForDm(item.channel))"
+                :aria-label="starLabel(dmId(item), 'agent')"
+                x-on:click.stop="toggleStar(dmId(item))"
                 x-html="lucideIcon('star')"
               ></button>
             </div>
@@ -1482,7 +1425,7 @@
         x-on:click="peopleOpen = !peopleOpen"
       >
         <span>People</span>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
       </button>
       <div x-show="peopleOpen">
         <template x-for="item in directList()" :key="item.conversationId || item.channel">
@@ -1491,42 +1434,25 @@
               <button
                 type="button"
                 class="mobile-row"
-                :class="isMuted('dm:' + conversationIdForDm(item.channel)) && 'muted-room'"
+                :class="dmPhoneClass(item)"
                 x-on:click="openDirect(item.nick)"
-                :data-tooltip="item.nick + ' · ' + avatarStatusLabel(item.nick)"
+                :data-tooltip="rowTip(item.nick)"
                 x-tooltip
               >
-                <span
-                  class="room-mark peer-avatar avatar-status-host"
-                  aria-hidden="true"
-                  :data-status="avatarStatus(item.nick)"
-                >
-                  <span>@</span>
-                  <img
-                    loading="lazy"
-                    :src="avatarUrl(item.nick)"
-                    alt=""
-                    x-on:error="$el.hidden = true"
-                    x-on:load="$el.hidden = false"
-                  />
-                </span>
+                <span class="room-mark peer-avatar avatar-status-host" aria-hidden="true" :data-status="avatarStatus(item.nick)"><span>@</span><img loading="lazy" :src="avatarUrl(item.nick)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span>
                 <span class="mobile-row-main">
                   <strong x-text="item.nick"></strong>
                   <span class="sr-only" x-text="avatarStatusLabel(item.nick)"></span>
                 </span>
-                <span
-                  class="unread-badge"
-                  x-show="unreadCount(conversationIdForDm(item.channel))"
-                  x-text="badgeText(conversationIdForDm(item.channel))"
-                ></span>
+                <span class="unread-badge" x-show="unreadCount(dmId(item))" x-text="badgeText(dmId(item))"></span>
               </button>
               <button
                 type="button"
                 class="draft-delete"
                 x-show="!item.pending"
                 x-tooltip
-                :aria-label="isStarred(conversationIdForDm(item.channel)) ? 'Unstar direct message' : 'Star direct message'"
-                x-on:click.stop="toggleStar(conversationIdForDm(item.channel))"
+                :aria-label="starLabel(dmId(item), 'direct message')"
+                x-on:click.stop="toggleStar(dmId(item))"
                 x-html="lucideIcon('star')"
               ></button>
             </div>
@@ -1536,28 +1462,17 @@
         <template x-for="item in groupList()" :key="'m-group-' + item.conversationId">
           <div class="draft-mobile-row">
             <button type="button" class="mobile-row" x-on:click="openRoom(item.wireTarget)">
-              <span
-                class="room-mark channel"
-                aria-hidden="true"
-                :class="isOpenRoom(item.wireTarget) && 'open'"
-              >
-                <span class="lock-icon" x-show="!isOpenRoom(item.wireTarget)"></span>
-                <span class="channel-hash" x-show="isOpenRoom(item.wireTarget)">#</span>
-              </span>
+              <span class="room-mark channel" aria-hidden="true" :class="isOpenRoom(item.wireTarget) && 'open'"><span class="lock-icon" x-show="!isOpenRoom(item.wireTarget)"></span><span class="channel-hash" x-show="isOpenRoom(item.wireTarget)">#</span></span>
               <span class="mobile-row-main">
                 <strong x-text="roomLabelFor(item.wireTarget)"></strong>
               </span>
-              <span
-                class="unread-badge"
-                x-show="unreadCount(item.conversationId)"
-                x-text="badgeText(item.conversationId)"
-              ></span>
+              <span class="unread-badge" x-show="unreadCount(item.conversationId)" x-text="badgeText(item.conversationId)"></span>
             </button>
             <button
               type="button"
               class="draft-delete"
               x-tooltip
-              :aria-label="isStarred(item.conversationId) ? 'Unstar group' : 'Star group'"
+              :aria-label="starLabel(item.conversationId, 'group')"
               x-on:click.stop="toggleStar(item.conversationId)"
               x-html="lucideIcon('star')"
             ></button>
@@ -1577,7 +1492,7 @@
         x-on:click="contactsOpen = !contactsOpen"
       >
         <span>Contacts</span>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
       </button>
       <div x-show="contactsOpen">
         <template x-for="nick in contactList()" :key="'contact-' + nick">
@@ -1586,23 +1501,10 @@
             class="mobile-row"
             :disabled="directBusy === nick"
             x-on:click="openDirect(nick)"
-            :data-tooltip="nick + ' · ' + avatarStatusLabel(nick)"
+            :data-tooltip="rowTip(nick)"
             x-tooltip
           >
-            <span
-              class="room-mark peer-avatar avatar-status-host"
-              aria-hidden="true"
-              :data-status="avatarStatus(nick)"
-            >
-              <span>@</span>
-              <img
-                loading="lazy"
-                :src="avatarUrl(nick)"
-                alt=""
-                x-on:error="$el.hidden = true"
-                x-on:load="$el.hidden = false"
-              />
-            </span>
+            <span class="room-mark peer-avatar avatar-status-host" aria-hidden="true" :data-status="avatarStatus(nick)"><span>@</span><img loading="lazy" :src="avatarUrl(nick)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span>
             <span class="mobile-row-main">
               <strong x-text="nick"></strong>
               <span class="sr-only" x-text="avatarStatusLabel(nick)"></span>
@@ -1865,7 +1767,7 @@
         </section>
       </section>
     </div>
-    <dialog class="custom-modal" aria-labelledby="settings-signout-title" tabindex="-1" x-on:keydown="settings.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && settingsRoute && settings.signOutTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!settings.sessionsBusy) settings.closeSignOut()">
+    <dialog class="custom-modal" aria-labelledby="settings-signout-title" tabindex="-1" x-on:keydown="settings.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && settingsRoute && settings.signOutTarget" x-on:cancel.prevent="if (!settings.sessionsBusy) settings.closeSignOut()">
       <section class="notice-card"><h2 id="settings-signout-title">Sign out browser?</h2><p>You will need to sign in again on <strong x-text="settings.signOutTarget?.label"></strong>. This browser stays signed in.</p><p class="profile-error" role="alert" x-show="settings.sessionsError" x-text="settings.sessionsError"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="settings.sessionsBusy" x-on:click="settings.closeSignOut()">Cancel</button><button type="button" class="btn-primary" :disabled="settings.sessionsBusy" x-on:click="settings.confirmSignOut()" x-text="settings.sessionsBusy ? 'Signing out…' : 'Sign out'"></button></div></section>
     </dialog>
   </div>
@@ -2110,7 +2012,7 @@
       </div>
     </div></section>
   </dialog>
-  <dialog id="poll-dialog" class="custom-modal poll-modal" :class="!isDesktop && 'sheet-modal'" aria-labelledby="poll-dialog-title" x-cloak x-effect="const show = authenticated && polls.dialogOpen; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="polls.closeDialog()" x-on:click="if ($event.target === $el) polls.closeDialog()">
+  <dialog id="poll-dialog" class="custom-modal poll-modal" :class="!isDesktop && 'sheet-modal'" aria-labelledby="poll-dialog-title" x-cloak x-modal="authenticated && polls.dialogOpen" x-on:cancel.prevent="polls.closeDialog()" x-on:click="if ($event.target === $el) polls.closeDialog()">
     <section class="poll-dialog-card" :class="isDesktop ? 'notice-card' : 'action-sheet'">
       <form class="poll-form" novalidate x-on:submit.prevent="polls.submit()">
         <div class="poll-dialog-head">
@@ -2153,7 +2055,7 @@
       </form>
     </section>
   </dialog>
-  <dialog id="poll-votes" class="custom-modal poll-modal" :class="!isDesktop && 'sheet-modal'" aria-labelledby="poll-votes-title" x-cloak x-effect="const show = authenticated && !!polls.votesFor; if (show && !$el.open) { $el.showModal(); $nextTick(() => $el.querySelector('.dialog-close')?.focus()); } else if (!show && $el.open) $el.close()" x-on:cancel.prevent="polls.closeVotes()" x-on:click="if ($event.target === $el) polls.closeVotes()">
+  <dialog id="poll-votes" class="custom-modal poll-modal" :class="!isDesktop && 'sheet-modal'" aria-labelledby="poll-votes-title" x-cloak x-modal="authenticated && !!polls.votesFor" data-modal-focus=".dialog-close" x-on:cancel.prevent="polls.closeVotes()" x-on:click="if ($event.target === $el) polls.closeVotes()">
     <section class="poll-dialog-card poll-votes-card" :class="isDesktop ? 'notice-card' : 'action-sheet'">
       <div class="poll-dialog-head">
         <h2 id="poll-votes-title">Votes</h2>
@@ -2484,7 +2386,7 @@
         </section>
       </section>
     </div>
-    <dialog class="custom-modal" aria-labelledby="agent-rename-title" tabindex="-1" x-on:keydown="agents.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && agentsRoute && agents.renameTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!agents.busy) agents.closeRename()">
+    <dialog class="custom-modal" aria-labelledby="agent-rename-title" tabindex="-1" x-on:keydown="agents.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && agentsRoute && agents.renameTarget" x-on:cancel.prevent="if (!agents.busy) agents.closeRename()">
       <form class="notice-card" x-on:submit.prevent="agents.confirmRename()"><h2 id="agent-rename-title">Rename agent</h2><p>Also renames the coding session when it is connected.</p><input type="text" class="agent-rename-input" maxlength="80" aria-label="Agent name" autofocus x-model="agents.renameValue" :disabled="agents.busy" /><p class="profile-error" role="alert" x-show="agents.error" x-text="agents.error"></p><div class="pair-actions"><button type="button" class="btn-secondary" :disabled="agents.busy" x-on:click="agents.closeRename()">Cancel</button><button type="submit" class="btn-primary" :disabled="agents.busy" x-text="agents.busy ? 'Saving…' : 'Save'"></button></div></form>
     </dialog>
   </div>
@@ -2543,7 +2445,7 @@
         </section>
       </section>
     </div>
-    <dialog class="custom-modal" aria-labelledby="irc-remove-title" tabindex="-1" x-on:keydown="irc.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && ircRoute && irc.removeTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!irc.busy) irc.closeRemove()">
+    <dialog class="custom-modal" aria-labelledby="irc-remove-title" tabindex="-1" x-on:keydown="irc.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && ircRoute && irc.removeTarget" x-on:cancel.prevent="if (!irc.busy) irc.closeRemove()">
       <section class="notice-card"><h2 id="irc-remove-title">Remove <span x-text="irc.removeTarget?.label"></span>?</h2><p x-text="irc.removeMessage()"></p><p class="profile-error" role="alert" x-show="irc.error" x-text="irc.error"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="irc.busy" x-on:click="irc.closeRemove()">Cancel</button><button type="button" class="btn-danger" :disabled="irc.busy" x-on:click="irc.confirmRemove()" x-text="irc.busy ? 'Removing…' : 'Remove'"></button></div></section>
     </dialog>
   </div>
@@ -2647,7 +2549,7 @@
         </section>
       </section>
     </div>
-    <dialog class="custom-modal" aria-labelledby="admin-icon-crop-title" tabindex="-1" x-cloak x-effect="const show = !booting && authenticated && adminRoute && !!branding.crop; if (show && !$el.open) { $el.showModal(); $nextTick(() => $el.querySelector('.icon-crop-zoom input')?.focus()); } else if (!show && $el.open) $el.close()" x-on:cancel.prevent="branding.cancel()">
+    <dialog class="custom-modal" aria-labelledby="admin-icon-crop-title" tabindex="-1" x-cloak x-modal="!booting && authenticated && adminRoute && !!branding.crop" data-modal-focus=".icon-crop-zoom input" x-on:cancel.prevent="branding.cancel()">
       <section class="notice-card icon-crop-card">
         <h2 id="admin-icon-crop-title">Crop icon</h2>
         <p>Drag to move the image. Zoom with the slider.</p>
@@ -2657,10 +2559,10 @@
         <div class="pair-actions"><button type="button" class="btn-secondary" :disabled="!!branding.busy" x-on:click="branding.cancel()">Cancel</button><button type="button" class="btn-primary" :disabled="!!branding.busy" x-on:click="branding.save()" x-text="branding.busy === 'save' ? 'Saving…' : 'Save icon'">Save icon</button></div>
       </section>
     </dialog>
-    <dialog class="custom-modal" aria-labelledby="admin-bot-remove-title" tabindex="-1" x-on:keydown="adminStatus.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && adminRoute && adminStatus.botRemoveTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!adminStatus.botBusy) adminStatus.closeRemoveBot()">
+    <dialog class="custom-modal" aria-labelledby="admin-bot-remove-title" tabindex="-1" x-on:keydown="adminStatus.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && adminRoute && adminStatus.botRemoveTarget" x-on:cancel.prevent="if (!adminStatus.botBusy) adminStatus.closeRemoveBot()">
       <section class="notice-card"><h2 id="admin-bot-remove-title">Remove <span x-text="adminStatus.botRemoveTarget?.nick"></span>?</h2><p>Its IRC account stops working and it leaves every channel. Scripts using it lose access. You can create a new bot later.</p><p class="profile-error" role="alert" x-show="adminStatus.botsError" x-text="adminStatus.botsError"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="!!adminStatus.botBusy" x-on:click="adminStatus.closeRemoveBot()">Cancel</button><button type="button" class="btn-danger" :disabled="!!adminStatus.botBusy" x-on:click="adminStatus.confirmRemoveBot()" x-text="adminStatus.botBusy ? 'Removing…' : 'Remove'"></button></div></section>
     </dialog>
-    <dialog class="custom-modal" aria-labelledby="admin-agent-remove-title" tabindex="-1" x-on:keydown="adminStatus.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && adminRoute && adminStatus.removeTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!adminStatus.removing) adminStatus.closeRemoveAgent()">
+    <dialog class="custom-modal" aria-labelledby="admin-agent-remove-title" tabindex="-1" x-on:keydown="adminStatus.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && adminRoute && adminStatus.removeTarget" x-on:cancel.prevent="if (!adminStatus.removing) adminStatus.closeRemoveAgent()">
       <section class="notice-card"><h2 id="admin-agent-remove-title">Remove <span x-text="adminStatus.removeTarget?.name"></span>?</h2><p>This disconnects <span x-text="adminStatus.removeTarget?.owner"></span>'s agent, removes its DM and takes it out of every channel. They can pair a new one.</p><p class="profile-error" role="alert" x-show="adminStatus.agentsError" x-text="adminStatus.agentsError"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="adminStatus.removing" x-on:click="adminStatus.closeRemoveAgent()">Cancel</button><button type="button" class="btn-danger" :disabled="adminStatus.removing" x-on:click="adminStatus.confirmRemoveAgent()" x-text="adminStatus.removing ? 'Removing…' : 'Remove'"></button></div></section>
     </dialog>
   </div>
@@ -2686,7 +2588,7 @@
     <p class="members-empty" x-show="!members.rows().length" x-text="members.emptyText()"></p>
     <button type="button" class="link-button members-retry" x-show="members.error()" x-on:click="members.request()">Try again</button>
   </aside>
-  <dialog class="custom-modal sheet-modal" aria-label="Members" x-cloak x-effect="const open = !isDesktop && members.open && members.canShow(); if (open && !$el.open) $el.showModal(); else if (!open && $el.open) $el.close()" x-on:cancel.prevent="members.close()" x-on:close="members.close()" x-on:click="if ($event.target === $el) members.close()">
+  <dialog class="custom-modal sheet-modal" aria-label="Members" x-cloak x-modal="!isDesktop && members.open && members.canShow()" x-on:cancel.prevent="members.close()" x-on:close="members.close()" x-on:click="if ($event.target === $el) members.close()">
     <section class="action-sheet members-sheet">
       <div class="sheet-head"><strong>Members</strong><span x-text="members.countLabel()"></span></div>
       <div class="members-sheet-list">
@@ -2984,7 +2886,7 @@
 
   <p class="profile-error" role="alert" x-cloak x-show="authenticated && pairing.approvalError" x-text="pairing.approvalError"></p>
   <p class="notify-banner pair-result" role="status" x-cloak x-show="authenticated && (pairing.pendingPair === 'approved' || pairing.pendingPair === 'denied')"><span style="flex:1;min-width:0" x-text="pairing.pendingPair === 'approved' ? 'Browser linked to this account.' : 'Sign-in request denied.'"></span><button type="button" class="notify-banner-close" aria-label="Dismiss notification" x-on:click="pairing.pendingPair = null"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></p>
-  <dialog x-data="devicePairing" class="custom-modal pair-modal" aria-labelledby="client-pair-title" x-cloak x-effect="const show = !booting && authenticated && pairing.pendingPair && typeof pairing.pendingPair === 'object'; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel="pairing.pendingPair = null"><section class="notice-card pair-card"><p class="pair-eyebrow">Link browser</p><h2 id="client-pair-title" tabindex="-1" autofocus>Approve this sign-in?</h2><p style="overflow-wrap:anywhere" x-text="pairRequestSummary(pairing.pendingPair, account)"></p><p>Only approve if you started this on that device. Check that the code matches the one it shows.</p><div class="pair-code"><small>Code</small><strong x-text="formatPairCode(pairing.pendingPair?.code)"></strong></div><p class="profile-error" role="alert" x-show="pairing.approvalError" x-text="pairing.approvalError"></p><div class="pair-actions"><button type="button" class="btn-primary" :disabled="pairing.approvalBusy" x-on:click="pairing.approvePair()">Approve</button><button type="button" class="btn-secondary" :disabled="pairing.approvalBusy" x-on:click="pairing.denyPair()">Deny</button></div></section></dialog>
+  <dialog x-data="devicePairing" class="custom-modal pair-modal" aria-labelledby="client-pair-title" x-cloak x-modal="!booting && authenticated && pairing.pendingPair && typeof pairing.pendingPair === 'object'" x-on:cancel="pairing.pendingPair = null"><section class="notice-card pair-card"><p class="pair-eyebrow">Link browser</p><h2 id="client-pair-title" tabindex="-1" autofocus>Approve this sign-in?</h2><p style="overflow-wrap:anywhere" x-text="pairRequestSummary(pairing.pendingPair, account)"></p><p>Only approve if you started this on that device. Check that the code matches the one it shows.</p><div class="pair-code"><small>Code</small><strong x-text="formatPairCode(pairing.pendingPair?.code)"></strong></div><p class="profile-error" role="alert" x-show="pairing.approvalError" x-text="pairing.approvalError"></p><div class="pair-actions"><button type="button" class="btn-primary" :disabled="pairing.approvalBusy" x-on:click="pairing.approvePair()">Approve</button><button type="button" class="btn-secondary" :disabled="pairing.approvalBusy" x-on:click="pairing.denyPair()">Deny</button></div></section></dialog>
 
   <div x-data="messageActions" class="reaction-picker" :class="actions.reactionSearch && 'searching'" x-cloak x-show="actions.openReactionId" :style="actions.pickerStyle()" x-on:mouseleave="if (!actions.reactionSearch) actions.closeReactionPicker()" x-on:mousedown.outside="actions.closeReactionPicker()" x-on:keydown.escape="actions.closeReactionPicker()">
     <template x-if="!actions.reactionSearch">
@@ -3010,7 +2912,7 @@
     </template>
   </div>
 
-  <dialog id="message-sheet" class="custom-modal sheet-modal" aria-label="Message actions" x-cloak x-on:contextmenu.prevent x-effect="const open = !isDesktop && !!actions.actionMessage(); if (open && !$el.open) $el.showModal(); else if (!open && $el.open) $el.close()" x-on:cancel.prevent="actions.reactionSearch ? actions.closeReactionSearch() : actions.closeMessageMenu(true)" x-on:click="if ($event.target === $el) actions.closeMessageMenu(false)">
+  <dialog id="message-sheet" class="custom-modal sheet-modal" aria-label="Message actions" x-cloak x-on:contextmenu.prevent x-modal="!isDesktop && !!actions.actionMessage()" x-on:cancel.prevent="actions.reactionSearch ? actions.closeReactionSearch() : actions.closeMessageMenu(true)" x-on:click="if ($event.target === $el) actions.closeMessageMenu(false)">
     <template x-if="actions.actionMessage()">
       <section class="action-sheet">
         <div class="sheet-head"><strong x-text="actions.actionMessage()?.authorNick"></strong><span x-text="formatTime(actions.actionMessage()?.time)"></span></div>
@@ -3121,7 +3023,7 @@
       </div>
     </section>
   </dialog>
-  <dialog class="custom-modal" aria-labelledby="agent-remove-title" tabindex="-1" x-on:keydown="agents.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && agents.removeTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!agents.busy) agents.closeRemove()">
+  <dialog class="custom-modal" aria-labelledby="agent-remove-title" tabindex="-1" x-on:keydown="agents.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && agents.removeTarget" x-on:cancel.prevent="if (!agents.busy) agents.closeRemove()">
     <section class="notice-card"><h2 id="agent-remove-title">Remove <span x-text="agents.removeTarget?.nick"></span>?</h2><p>This disconnects Slirc, removes the agent's DM and its threads, and revokes its credentials and channel access. It may not stop work already running locally.</p><p class="profile-error" role="alert" x-show="agents.error" x-text="agents.error"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="agents.busy" x-on:click="agents.closeRemove()">Cancel</button><button type="button" class="btn-danger" :disabled="agents.busy" x-on:click="agents.confirmRemove()" x-text="agents.busy ? 'Removing…' : 'Remove'"></button></div></section>
   </dialog>
 
@@ -3136,7 +3038,7 @@
     </section>
   </dialog>
 
-  <dialog x-data="peopleCard" id="whois-dialog" class="custom-modal" x-cloak x-effect="const open = !!people.whoisNick; if (open && !$el.open) $el.showModal(); else if (!open && $el.open) $el.close()" x-on:cancel.prevent="people.closeWhois()" x-on:click="if ($event.target === $el) people.closeWhois()">
+  <dialog x-data="peopleCard" id="whois-dialog" class="custom-modal" x-cloak x-modal="!!people.whoisNick" x-on:cancel.prevent="people.closeWhois()" x-on:click="if ($event.target === $el) people.closeWhois()">
     <section class="notice-card whois-card" role="dialog" aria-labelledby="whois-title" tabindex="-1" autofocus>
       <button type="button" class="profile-close" aria-label="Close" x-tooltip x-on:click="people.closeWhois()" x-html="lucideIcon('x')"></button>
       <div class="whois-heading">
@@ -3275,7 +3177,7 @@
       <p class="palette-foot"><span class="palette-hint"><kbd>&uarr;</kbd><kbd>&darr;</kbd> move</span><span class="palette-hint"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('corner-down-right')"></span> open</span><span class="palette-hint"><kbd>esc</kbd> close</span></p>
     </section>
   </dialog>
-  <dialog id="workspace-dialog" class="custom-modal" aria-labelledby="workspace-dialog-title" x-cloak x-effect="const show = authenticated && workspaceDialog; if (show && !$el.open) { $el.showModal(); $el.querySelector('#workspace-address')?.focus() } else if (!show && $el.open) $el.close()" x-on:cancel.prevent="closeWorkspaces()" x-on:click="if ($event.target === $el) closeWorkspaces()">
+  <dialog id="workspace-dialog" class="custom-modal" aria-labelledby="workspace-dialog-title" x-cloak x-modal="authenticated && workspaceDialog" data-modal-focus="#workspace-address" x-on:cancel.prevent="closeWorkspaces()" x-on:click="if ($event.target === $el) closeWorkspaces()">
     <section class="notice-card workspace-card">
       <h2 id="workspace-dialog-title">Workspaces</h2>
       <p>Each workspace keeps its own sign-in.</p>

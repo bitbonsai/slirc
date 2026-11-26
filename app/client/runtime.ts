@@ -79,6 +79,7 @@ import { createMessageView } from "@client/message-view.ts";
 import { createComposerEditor } from "@client/composer-editor.ts";
 import { createLinkActions } from "@client/link-actions.ts";
 import { createClientState, type ClientSession } from "@client/client-state.ts";
+import { createView } from "@client/view.ts";
 import { agentFor, agentHeader, agentLabel, agentMention, agentNavRows, applyAgentUpdate, forgetAgent, isAgentNick, mergeAgents } from "@client/agent-roster.ts";
 import { createReminderNotice, remindResult } from "@client/reminder-notice.ts";
 import { createAutoRefresh, loadedBuild } from "@client/auto-refresh.ts";
@@ -248,6 +249,7 @@ export function createClient(Alpine: any) {
   let authorized: AuthorizedConversation[] = [];
 
   const ui: any = Alpine.reactive(createClientState(isDesktop, COARSE));
+  ui.view = createView(ui);
   const notes = createNotes(Alpine.reactive, { onChange: () => showNotes() });
   // The THREADS group in the sidebar: reply threads this person started or replied to.
   const replyThreads = createReplyThreadList(Alpine.reactive, {
@@ -403,7 +405,7 @@ export function createClient(Alpine: any) {
     homeDot,
     dmsDot,
     // Phone tab bar: on the tab roots and More pages, never over a conversation, where the composer sits in its place.
-    phoneTabBar: () => !!(ui.mobileNav || ui.profileRoute || ui.settingsRoute || ui.channelsRoute || ui.invitationsRoute || ui.ircRoute || ui.agentsRoute || ui.adminRoute),
+    phoneTabBar: () => ui.view.showsTabBar,
     toggleMute,
     conversationIdForDm,
     toggleStar,
@@ -593,7 +595,7 @@ export function createClient(Alpine: any) {
     canShow: () => membersPanelVisible({
       authenticated: ui.authenticated, stopped,
       direct: ui.direct, threaded: !!ui.activeThread, channel: String(ui.channel ?? ""),
-      route: !!(ui.profileRoute || ui.settingsRoute || ui.channelsRoute || ui.invitationsRoute || ui.ircRoute || ui.agentsRoute || ui.adminRoute || ui.joinRoute || ui.admissionRoute),
+      route: ui.view.routed,
       authorized: !!roomId && directories.has(roomId),
       publicRoom: ui.openRooms[String(ui.channel ?? "")] === true,
     }),
@@ -608,7 +610,7 @@ export function createClient(Alpine: any) {
   });
   const mediaView = createMediaView(Alpine.reactive, { core: ui, nextTick, openPopup, session, origin: instance,
     autoCollapsed: (message) => collapsesOlderGiphy({ channel: String(ui.channel ?? ""), coarse: COARSE, open: isOpenRoom(String(ui.channel ?? "")), direct: !!ui.direct, thread: !!ui.activeThread }) && isOlderGiphy(transcript.displayedMessages(), message) });
-  const transcript = createTranscript({ core: ui, nextTick, authorized: () => authorized, stopped: () => stopped, linkOpen: () => !!links.linkPopup, closeLink: () => links.closeLinkPopup(false), onPinChange: (pinned) => { if (pinned) scheduleMarkRead(); }, hidden: (message) => polls.hidesTally(message) || offlineFolded(message), rememberEmbed: (url, meta) => { if (scope) rememberEmbed(scope.accountId, url, meta); } });
+  const transcript = createTranscript({ core: ui, nextTick, authorized: () => authorized, stopped: () => stopped, menuOpenId: () => actions.actionMessageId, linkOpen: () => !!links.linkPopup, closeLink: () => links.closeLinkPopup(false), onPinChange: (pinned) => { if (pinned) scheduleMarkRead(); }, hidden: (message) => polls.hidesTally(message) || offlineFolded(message), rememberEmbed: (url, meta) => { if (scope) rememberEmbed(scope.accountId, url, meta); } });
   const peek = createPeekView({ ui, polls, scrollToBottom: (force) => transcript.scrollToBottom(force), nextTick: (callback) => { void nextTick(callback); }, signedInBefore: () => signedInHint(), openRoom: (room) => nav.open({ kind: "room", room }, { replace: true }) });
   peek.start();
   const giphy = createGiphyPicker(Alpine.reactive, { core: ui, session, openPopup, roomId: () => roomId, isAuthorized: (id) => id === NOTES_CONVERSATION_ID || directories.has(id), queueConversationText, saveNote: (text) => notes.add(text) });
@@ -628,7 +630,7 @@ export function createClient(Alpine: any) {
   // The Links view of a channel that has the links helper in it.
   const library = createLinksView(Alpine.reactive, {
     core: ui,
-    routed: () => !!(ui.profileRoute || ui.settingsRoute || ui.channelsRoute || ui.invitationsRoute || ui.ircRoute || ui.agentsRoute || ui.adminRoute || ui.joinRoute || ui.admissionRoute),
+    routed: () => ui.view.routed,
     post: async (text) => {
       if (!roomId) throw new Error("Messaging is not ready yet. Reconnect and try again.");
       await queueConversationText(roomId, text);
@@ -1008,7 +1010,7 @@ export function createClient(Alpine: any) {
 
   function canSearchChannel(): boolean {
     if (!ui.authenticated || stopped || library.on) return false;
-    if (ui.profileRoute || ui.settingsRoute || ui.channelsRoute || ui.invitationsRoute || ui.ircRoute || ui.agentsRoute || ui.adminRoute || ui.joinRoute || ui.admissionRoute) return false;
+    if (ui.view.routed) return false;
     if (!isDesktop && ui.mobileNav !== null) return false;
     if (!roomId || ui.pendingDm) return false;
     return roomId === NOTES_CONVERSATION_ID || directories.has(roomId);
@@ -1174,7 +1176,7 @@ export function createClient(Alpine: any) {
   }
 
   function conversationOnScreen(): boolean {
-    if (ui.profileRoute || ui.settingsRoute || ui.channelsRoute || ui.invitationsRoute || ui.ircRoute || ui.agentsRoute || ui.adminRoute || ui.joinRoute || ui.admissionRoute) return false;
+    if (ui.view.routed) return false;
     return ui.isDesktop || ui.mobileNav === null;
   }
 

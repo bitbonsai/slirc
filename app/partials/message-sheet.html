@@ -1,4 +1,4 @@
-  <dialog id="message-sheet" class="custom-modal sheet-modal" aria-label="Message actions" x-cloak x-on:contextmenu.prevent x-effect="const open = !isDesktop && !!actions.actionMessage(); if (open && !$el.open) $el.showModal(); else if (!open && $el.open) $el.close()" x-on:cancel.prevent="actions.reactionSearch ? actions.closeReactionSearch() : actions.closeMessageMenu(true)" x-on:click="if ($event.target === $el) actions.closeMessageMenu(false)">
+  <dialog id="message-sheet" class="custom-modal sheet-modal" aria-label="Message actions" x-cloak x-on:contextmenu.prevent x-modal="!isDesktop && !!actions.actionMessage()" x-on:cancel.prevent="actions.reactionSearch ? actions.closeReactionSearch() : actions.closeMessageMenu(true)" x-on:click="if ($event.target === $el) actions.closeMessageMenu(false)">
     <template x-if="actions.actionMessage()">
       <section class="action-sheet">
         <div class="sheet-head"><strong x-text="actions.actionMessage()?.authorNick"></strong><span x-text="formatTime(actions.actionMessage()?.time)"></span></div>

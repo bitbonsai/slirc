@@ -1,4 +1,4 @@
-  <dialog id="workspace-dialog" class="custom-modal" aria-labelledby="workspace-dialog-title" x-cloak x-effect="const show = authenticated && workspaceDialog; if (show && !$el.open) { $el.showModal(); $el.querySelector('#workspace-address')?.focus() } else if (!show && $el.open) $el.close()" x-on:cancel.prevent="closeWorkspaces()" x-on:click="if ($event.target === $el) closeWorkspaces()">
+  <dialog id="workspace-dialog" class="custom-modal" aria-labelledby="workspace-dialog-title" x-cloak x-modal="authenticated && workspaceDialog" data-modal-focus="#workspace-address" x-on:cancel.prevent="closeWorkspaces()" x-on:click="if ($event.target === $el) closeWorkspaces()">
     <section class="notice-card workspace-card">
       <h2 id="workspace-dialog-title">Workspaces</h2>
       <p>Each workspace keeps its own sign-in.</p>
