@@ -59,6 +59,7 @@ import { ANIMATED_EMOJI_LIMITS, canReadUploadChannel, IMAGE_LIMITS, normalizeUpl
 import emojiRows from "../public/vendor/emoji.json" with { type: "json" };
 import { escapeHtml } from "../shared/escape-html.ts";
 import { devUser, sessionCookie, acctCookie, hash, CLIENT_TOKEN_TTL_MS, MAX_CLIENT_TOKENS_PER_SESSION, sessionByToken, cookieSession, clientBearerToken, session, sessionOrBearer, closeClientTokensForSession, revokeSession, currentUser, verifiedHuman, sameOriginJson, admissionCsrf, invitationCsrf, signInCsrf, userAgentDetails, completeFirstVerification, startSession, devLinks, appOrigin } from "./http/session.ts";
+import { appError, pairingIp, text } from "./http/common.ts";
 export { sessionByToken } from "./http/session.ts";
 
 assertDirectReadiness(db);
@@ -306,13 +307,6 @@ async function sendEmailInvite({ to, inviter, inviterEmail, destination, token, 
 
 const app = new Hono();
 
-// App failures answer 500, never 502: Cloudflare swaps an origin 502 for its own HTML page, so
-// the client would lose the JSON message. The error is logged here because the reply may not say it all.
-function appError(c: Context, error: unknown, fallback: string, extra: Record<string, unknown> = {}) {
-  console.error(`${c.req.method} ${c.req.path} failed:`, error);
-  return c.json({ error: error instanceof Error ? error.message : fallback, ...extra }, 500);
-}
-
 let ircDeviceChanges = Promise.resolve();
 function serializeIrcDeviceChange<T>(work: () => Promise<T>): Promise<T> {
   // ponytail: one queue fits one app process; use a distributed lock if Slirc scales out.
@@ -443,7 +437,6 @@ app.get("/api/apps", (c) => {
 // browser-session pairing
 const pairPollLimit = createLimiter({ limit: 60, windowMs: 60_000 });
 const pairApprovalLimit = createLimiter({ limit: 30, windowMs: 60_000 });
-const pairingIp = peerKey;
 app.use("/api/pair*", bodyLimit({ maxSize: 2_048 }));
 app.use("/api/pair*", async (c, next) => {
   c.header("Cache-Control", "no-store");
@@ -681,7 +674,6 @@ app.use("/api/agent/session/*", async (c, next) => {
 });
 
 const bearerSecret = (c: any) => c.req.header("Authorization")?.match(/^Bearer ([A-Za-z0-9_-]{43})$/)?.[1] || "";
-const text = (value: unknown, max: number) => typeof value === "string" ? value.slice(0, max) : "";
 
 // Which slirc-agent this workspace expects. Public: the CLI asks before it changes anything.
 app.get("/api/agent/version", (c) => {
