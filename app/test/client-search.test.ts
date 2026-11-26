@@ -15,6 +15,7 @@ const {
   searchConversation,
   searchMessages,
   searchNotes,
+  shortenUrls,
 } = await import("../client/search.ts");
 const { threadOperationId } = await import("../client/threads.ts");
 
@@ -307,4 +308,13 @@ test("hits say when a message started a thread or is a reply in one", () => {
   const plain = makeMessage({ id: "p", conversationId: room, serverId: "s-p", text: "topic alone", time: "2026-11-24T10:03:00.000Z" });
   const labels = Object.fromEntries(searchMessages([root, one, two, plain], "topic").hits.map((h) => [h.id, h.thread]));
   expect(labels).toEqual({ root: "Thread, 2 replies", r1: "Reply in thread", r2: "Reply in thread", p: "" });
+});
+
+test("long addresses are shortened in hits unless a search word is inside them", () => {
+  const url = "https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=1200";
+  const short = shortenUrls(`pic ${url}`);
+  expect(short.length).toBeLessThan(60);
+  expect(short.endsWith("…")).toBe(true);
+  expect(shortenUrls(`pic ${url}`, ["pexels-photo"])).toContain(url);
+  expect(shortenUrls("see https://a.test/x")).toBe("see https://a.test/x");
 });

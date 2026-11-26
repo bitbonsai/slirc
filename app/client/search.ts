@@ -234,6 +234,16 @@ export function buildSnippetSegments(
   return segments;
 }
 
+// Long addresses print as host and the start of the path, so a hit stays a line or two. An address
+// that contains a search word stays whole so the highlight still lands on it.
+export function shortenUrls(text: string, terms: readonly string[] = [], max = 36): string {
+  return text.replace(/https?:\/\/[^\s<>)]+/g, (url) => {
+    const bare = url.replace(/^https?:\/\//, "");
+    if (bare.length <= max || terms.some((term) => term && url.toLowerCase().includes(term.toLowerCase()))) return url;
+    return `${bare.slice(0, max - 1)}…`;
+  });
+}
+
 function newestFirst(a: Message, b: Message): number {
   const ta = effectiveMessageTime(a);
   const tb = effectiveMessageTime(b);
@@ -277,7 +287,7 @@ export function searchMessages(
       authorNick: message.authorNick,
       time,
       timeLabel: formatSearchTime(time, now),
-      segments: buildSnippetSegments(link ? message.text.replace(link.url, "").trim() : message.text, parsed.terms),
+      segments: buildSnippetSegments(shortenUrls(link ? message.text.replace(link.url, "").trim() : message.text, parsed.terms), parsed.terms),
       thumb: link ? "" : messageThumb(message, origin),
       link,
       thread: threadLabel(message, replies),
