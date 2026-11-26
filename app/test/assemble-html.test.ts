@@ -18,6 +18,18 @@ test("replaces includes verbatim and resolves nesting", async () => {
   expect([...used].sort()).toEqual(["body", "row"]);
 });
 
+test("an include passes arguments into the partial's {{slots}}", async () => {
+  const { html } = await assemble(
+    `<!-- include: row name=item.nick lazy="" --><!-- include: row name=nick lazy='loading="lazy"' -->`,
+    reader({ row: "<img {{lazy}} :src=\"url({{name}})\">\n" }),
+  );
+  expect(html).toBe('<img  :src="url(item.nick)"><img loading="lazy" :src="url(nick)">');
+});
+
+test("a slot nobody filled is an error, not leftover braces", async () => {
+  await expect(assemble("<!-- include: row a=1 -->", reader({ row: "{{a}}{{b}}" }))).rejects.toThrow(/partial row needs b=/);
+});
+
 test("rejects an include cycle", async () => {
   const cycle = assemble("<!-- include: a -->", reader({ a: "<!-- include: b -->", b: "<!-- include: a -->" }));
   await expect(cycle).rejects.toThrow(/partial cycle: index -> a -> b -> a/);
