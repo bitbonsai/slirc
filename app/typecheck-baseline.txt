@@ -12,7 +12,6 @@ client/runtime.ts TS2339 Property 'tab' does not exist on type 'Screen'.
 client/runtime.ts TS7006 Parameter 'item' implicitly has an 'any' type.
 client/runtime.ts TS7006 Parameter 'item' implicitly has an 'any' type.
 client/runtime.ts TS7006 Parameter 'item' implicitly has an 'any' type.
-client/runtime.ts TS7006 Parameter 'row' implicitly has an 'any' type.
 client/store.ts TS2367 This comparison appears to be unintentional because the types '"failed" | "queued" | "sending" | "uncertain"' and '"saving"' have no overlap.
 shared/irc.ts TS2345 Argument of type 'string | NonSharedBuffer' is not assignable to parameter of type 'Buffer<ArrayBufferLike>'.
 src/admissions.ts TS2322 Type '{ status: string; admission?: undefined; fence?: undefined; } | { status: string; admission: { id: string; application_id: string; application_revision: number; generation: number; approved_email: string; ... 11 more ...; claim_name: string; }; fence: { ...; }; }' is not assignable to type '{ status: "claimed"; admission: AdmissionRow; fence: AdmissionFence; } | { status: "claim-mismatch" | "invalid" | "name-mismatch" | "spent"; }'.

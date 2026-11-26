@@ -81,6 +81,7 @@ import { createLinkActions } from "@client/link-actions.ts";
 import { createClientState, type ClientSession } from "@client/client-state.ts";
 import { createView } from "@client/view.ts";
 import { createRuntimeState } from "@client/core/runtime-state.ts";
+import { createRoomMembers } from "@client/features/room-members.ts";
 import { createConnection } from "@client/core/connection.ts";
 import { createComposerSend } from "@client/features/composer-send.ts";
 import { createOutboxSync } from "@client/core/outbox-sync.ts";
@@ -253,6 +254,7 @@ export function createClient(Alpine: any) {
   const { hooks, wireSend, startSender } = createOutboxSync({ state: rs, ui, instance, connectionNotice: () => connectionNotice, autoRefresh: () => autoRefresh, welcome: () => welcome, people: () => people, typing: () => typing, reminderNotice: () => reminderNotice, seedReadMarker: (...args) => seedReadMarker(...args), scheduleMarkRead: (...args) => scheduleMarkRead(...args), applyServerMarker: (...args) => applyServerMarker(...args), drainWelcome: (...args) => drainWelcome(...args), forgetThread: (...args) => forgetThread(...args), resetReconnectBackoff: (...args) => resetReconnectBackoff(...args) });
   const { canSend, send, resend, cancel } = createComposerSend({ state: rs, ui, mediaSender, notes, editor: () => editor, transcript: () => transcript, typing: () => typing, polls: () => polls, emoji: () => emoji, addPrompts: () => addPrompts, runSlash: (...args) => runSlash(...args), saveEdit: (...args) => saveEdit(...args), hint: (...args) => hint(...args), runRemind: (...args) => runRemind(...args), activeConversation: (...args) => activeConversation(...args), runPollVote: (...args) => runPollVote(...args), updateDraftNavigation: (...args) => updateDraftNavigation(...args), sendMedia: (...args) => sendMedia(...args), isLocallyEnqueueable: (...args) => isLocallyEnqueueable(...args), refreshDrafts: (...args) => refreshDrafts(...args), isGroupRoom: (...args) => isGroupRoom(...args) });
   const { signedInHint, preopenSocket, dropEarlySocket, reconnect, pullRefresh, resetReconnectBackoff, scheduleReconnect, openSocket, closeSocket } = createConnection({ state: rs, ui, url, presence: () => presence, typing: () => typing, connectionNotice: () => connectionNotice, connect: (...args) => connect(...args), wireSend: (...args) => wireSend(...args), refreshPresence: (...args) => refreshPresence(...args), clearRoomMembers: (...args) => clearRoomMembers(...args) });
+  const { clearRoomMembers, loadRoomMembers, refreshPresence } = createRoomMembers({ state: rs, ui, members: () => members, presence: () => presence });
   Object.assign(ui, {
     commandPaletteStyle: () => commandPaletteStyle(ui.isDesktop),
     giphyPanelStyle: () => giphyPanelStyle(ui.isDesktop),
@@ -891,70 +893,6 @@ export function createClient(Alpine: any) {
     const item = rs.authorized.find((entry) => entry.kind !== "dm" && foldIdentifier(entry.wireTarget) === foldIdentifier(room));
     if (item) { rs.navIntent += 1; nav.open({ kind: "room", room: item.wireTarget }); }
   }
-  // Bumped on every clear/navigation/account change; an in-flight member reply older than the current
-  // generation is dropped so it cannot repopulate the rail after a disconnect or revoke.
-  let memberEpoch = 0;
-
-  function clearRoomMembers(): void {
-    memberEpoch += 1;
-    ui.roomMemberRows = []; ui.roomPendingInvitations = []; ui.roomMembers = []; ui.roomMembersOwner = "";
-    ui.roomMembersPublic = false; ui.roomMembersLoading = false; ui.roomMembersError = "";
-  }
-
-  function loadRoomMembers(item: AuthorizedConversation | undefined, id: string | null): void {
-    // No account scope yet (pre-connect reactivity): never fetch into an unauthenticated window.
-    if (!rs.currentScope) { clearRoomMembers(); refreshPresence(); return; }
-    if (!item || item.kind !== "room") { clearRoomMembers(); refreshPresence(); return; }
-    const wire = item.wireTarget;
-    const requestingScope = rs.currentScope;
-    clearRoomMembers();
-    const requestEpoch = memberEpoch;
-    ui.roomMembersLoading = true;
-    refreshPresence();
-    void fetch(`/api/channels/${encodeURIComponent(wire)}/members`, { credentials: "same-origin", cache: "no-store", signal: AbortSignal.timeout(15_000) })
-      .then(async (response) => ({ ok: response.ok, status: response.status, body: await response.json().catch(() => null) }))
-      .then(({ ok, status, body }) => {
-        if (!memberResponseApplies(
-          { conversationId: id, scope: requestingScope, generation: requestEpoch },
-          { conversationId: rs.roomId, scope: rs.currentScope, generation: memberEpoch, stopped: rs.stopped, authorized: !!rs.roomId && rs.directories.has(rs.roomId) },
-        )) return;
-        if (!ok) throw new Error(typeof body?.error === "string" ? body.error : `Could not load members (${status}).`);
-        const rows: unknown[] = Array.isArray(body?.members) ? body.members : [];
-        ui.roomMembersPublic = body?.public === true;
-        ui.roomMembersOwner = typeof body?.owner === "string" ? body.owner : "";
-        ui.roomPendingInvitations = Array.isArray(body?.pendingInvitations)
-          ? body.pendingInvitations.filter((row: any) => row && typeof row.email === "string" && ["pending", "sending", "uncertain"].includes(row.status)) : [];
-        ui.roomMemberRows = rows.filter((row): row is Record<string, unknown> => !!row && typeof (row as Record<string, unknown>).nick === "string")
-          .map((row) => ({
-            nick: String(row.nick),
-            kind: typeof row.kind === "string" ? row.kind : "member",
-            role: typeof row.role === "string" ? row.role : "member",
-            machine: typeof row.machine === "string" ? row.machine : null,
-            availability: typeof row.availability === "string" ? row.availability : "",
-            badge: typeof row.badge === "string" ? row.badge : "",
-          }));
-        ui.roomMembers = ui.roomMemberRows.map((row) => row.nick);
-        rememberAvatarVersions(ui.avatarVersions, rows);
-        presence.setAvailability(rows as { nick: string; availability?: unknown; badge?: unknown; attached?: unknown }[]);
-        ui.agentProfiles = mergeAgents(ui.agentProfiles, rows);
-        ui.roomMembersLoading = false;
-        refreshPresence();
-      })
-      .catch((error) => {
-        if (!memberResponseApplies(
-          { conversationId: id, scope: requestingScope, generation: requestEpoch },
-          { conversationId: rs.roomId, scope: rs.currentScope, generation: memberEpoch, stopped: rs.stopped, authorized: !!rs.roomId && rs.directories.has(rs.roomId) },
-        )) return;
-        ui.roomMembersLoading = false;
-        ui.roomMembersError = error instanceof Error && error.name === "TimeoutError" ? "Members took too long to load." : error instanceof Error ? error.message : "Could not load members.";
-        ui.roomMemberRows = []; ui.roomPendingInvitations = []; ui.roomMembers = []; refreshPresence();
-      });
-  }
-
-  function refreshPresence(): void {
-    presence.watch([...ui.directs.map((item: { nick: string }) => item.nick), ...ui.contacts, ...ui.roomMembers]);
-  }
-
   function openHome(): void { rs.navIntent += 1; nav.tab("home"); }
   function goBack(): void {
     rs.navIntent += 1;
