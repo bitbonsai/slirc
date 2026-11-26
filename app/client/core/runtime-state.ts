@@ -30,6 +30,8 @@ export interface RuntimeState {
   // BFCache freeze: socket closed, durable state kept for resume.
   suspended: boolean;
   signingOut: boolean;
+  // Bumped by every deliberate navigation, so a slow open that finished late can tell it was superseded.
+  navIntent: number;
   capsOk: boolean;
   authorized: AuthorizedConversation[];
   directories: Map<string, AuthorizedConversation>;
@@ -55,6 +57,7 @@ export function createRuntimeState(): RuntimeState {
     stopped: false,
     suspended: false,
     signingOut: false,
+    navIntent: 0,
     capsOk: true,
     authorized: [],
     directories: new Map(),

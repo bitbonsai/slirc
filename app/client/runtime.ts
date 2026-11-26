@@ -81,6 +81,7 @@ import { createLinkActions } from "@client/link-actions.ts";
 import { createClientState, type ClientSession } from "@client/client-state.ts";
 import { createView } from "@client/view.ts";
 import { createRuntimeState } from "@client/core/runtime-state.ts";
+import { createDirectMessages } from "@client/features/direct-messages.ts";
 import { createUnread } from "@client/features/unread.ts";
 import { agentFor, agentHeader, agentLabel, agentMention, agentNavRows, applyAgentUpdate, forgetAgent, isAgentNick, mergeAgents } from "@client/agent-roster.ts";
 import { createReminderNotice, remindResult } from "@client/reminder-notice.ts";
@@ -212,20 +213,13 @@ export function createClient(Alpine: any) {
     forward: () => window.history.forward(),
   };
   const nav = createNavigation({ origin: instance, history });
-  let navIntent = 0;
   // A labelled link to a message here opens it in place instead of the link menu.
   const openMessageLink = (href: string) => {
     const screen = parseRoute(href, instance);
     if (!screen) return;
-    navIntent += 1;
+    rs.navIntent += 1;
     nav.open(screen);
   };
-  const dmPeerIds = new Map<string, string>();
-  // A first-contact DM the server has not authorized yet, keyed by the account-scoped conversation
-  // id. Declared before any navigation subscriber can run; pending is local enqueue permission
-  // only and never enters `authorized`.
-  const provisioning = new Map<string, Promise<void>>();
-
   const ui: any = Alpine.reactive(createClientState(isDesktop, COARSE));
   ui.view = createView(ui);
   const notes = createNotes(Alpine.reactive, { onChange: () => showNotes() });
@@ -262,6 +256,7 @@ export function createClient(Alpine: any) {
     .then((body) => { ui.aboutLabel = aboutLabel(String(body?.version ?? ""), shellVersion(window as never)); })
     .catch(() => {});
   const { unreadCount, homeDot, threadsUnread, dmsDot, applyUnreadChrome, conversationOnScreen, scheduleMarkRead, cancelMarkRead, applyServerMarker, seedReadMarker } = createUnread({ state: rs, ui, isGroupRoom, wireSend, transcript: () => transcript });
+  const { dmPeerIds, provisioning, peerAccountIdFor, pendingIdForNick, pendingDirectRows, contactList, isLocallyEnqueueable, ensurePendingDirect, restorePendingDirects, retryPendingDirect, provisionDirect, openDirect } = createDirectMessages({ state: rs, ui, nav, connect: (...args) => connect(...args), openNotes: (...args) => openNotes(...args), refreshDrafts: (...args) => refreshDrafts(...args) });
   Object.assign(ui, {
     commandPaletteStyle: () => commandPaletteStyle(ui.isDesktop),
     giphyPanelStyle: () => giphyPanelStyle(ui.isDesktop),
@@ -810,7 +805,7 @@ export function createClient(Alpine: any) {
   function ownDm(screen: Screen): boolean {
     return screen.kind === "dm" && !!ui.account && foldIdentifier(screen.nick) === foldIdentifier(ui.account);
   }
-  function openNotes(): void { navIntent += 1; nav.open({ kind: "notes" }); }
+  function openNotes(): void { rs.navIntent += 1; nav.open({ kind: "notes" }); }
   // Open Notes shows the notes as its rows, so the menu, edit and delete find them like messages.
   function notesRows(): Message[] { return notes.messages(ui.account, ui.me || ui.account); }
   function showNotes(): void {
@@ -832,7 +827,7 @@ export function createClient(Alpine: any) {
     nav.open(initial, { replace: true });
   }
   window.addEventListener("popstate", (event) => {
-    navIntent += 1;
+    rs.navIntent += 1;
     nav.pop(routeFromMount(location.pathname, location.hash, location.search), event.state ?? undefined);
     // Safari already animates edge-back; do not fade the restored page a second time.
     transcript.noFade();
@@ -1272,200 +1267,14 @@ export function createClient(Alpine: any) {
     if (!(screen.kind === "dm" && foldIdentifier(screen.nick) === foldIdentifier(nick)) && !inThread) return;
     const rooms = rs.authorized.filter((item) => item.kind === "room" && !item.wireTarget.startsWith("#t-"));
     const landing = rooms.find((item) => foldIdentifier(item.wireTarget) === foldIdentifier(ui.defaultChannel)) ?? rooms[0];
-    navIntent += 1;
+    rs.navIntent += 1;
     nav.open({ kind: "room", room: landing?.wireTarget ?? DEV_CHANNEL });
     hint(`${nick} was removed.`);
   }
 
   function openRoom(room: string = DEV_CHANNEL): void {
     const item = rs.authorized.find((entry) => entry.kind !== "dm" && foldIdentifier(entry.wireTarget) === foldIdentifier(room));
-    if (item) { navIntent += 1; nav.open({ kind: "room", room: item.wireTarget }); }
-  }
-  // --- Optimistic first-contact DMs -------------------------------------------------------------
-  // A brand-new 1:1 DM needs a slow Ergo createDirectChannel before it is server-authorized, so
-  // the click otherwise looks like a no-op for seconds. The click instead opens a pending
-  // conversation at once, keyed by the peer's immutable account id — the same id the authorized DM
-  // will use — so drafts and queued text map onto the final conversation with no duplicate or loss.
-  // Pending is local enqueue permission only: it never enters `authorized`, and the outbox still
-  // requires sync readiness (a recovered, joined, membership-authorized conversation) to transmit.
-  function peerAccountIdFor(nick: string): string | undefined {
-    return dmPeerIds.get(foldIdentifier(nick)) ?? ui.accountIds[foldIdentifier(nick)];
-  }
-
-  function pendingIdForNick(nick: string): string | null {
-    for (const [id, entry] of rs.pendingDms) if (foldIdentifier(entry.nick) === foldIdentifier(nick)) return id;
-    return null;
-  }
-
-  // Pending rows for the DMs list. An id the server already authorized is dropped, so the row is
-  // never shown twice during the hand-off from pending to authorized.
-  function pendingDirectRows(): { nick: string; channel: string; conversationId: string; pending: true }[] {
-    const rows: { nick: string; channel: string; conversationId: string; pending: true }[] = [];
-    for (const [id, entry] of rs.pendingDms) {
-      if (rs.directories.has(id)) { rs.pendingDms.delete(id); continue; }
-      rows.push({ nick: entry.nick, channel: "", conversationId: id, pending: true });
-    }
-    return rows;
-  }
-
-  // Contacts drop a nick the moment its DM is pending or authorized, and the DMs list picks it up,
-  // so the row visibly moves instead of lingering for the whole provisioning round trip.
-  function contactList(): string[] {
-    void ui.pendingDmVersion;
-    const moved = new Set([...rs.pendingDms.values()].map((entry) => foldIdentifier(entry.nick)));
-    return ui.contacts.filter((nick: string) => !moved.has(foldIdentifier(nick)) && !isAgentNick(ui.agentProfiles, nick));
-  }
-
-  // Local write permission, deliberately separate from network delivery authority. A pending
-  // conversation accepts a durable enqueue; only sync readiness lets the outbox transmit it.
-  function isLocallyEnqueueable(id: string): boolean {
-    return rs.directories.has(id) || rs.pendingDms.has(id);
-  }
-
-  function refreshPendingUi(): void {
-    for (const id of [...rs.pendingDms.keys()]) if (rs.directories.has(id)) rs.pendingDms.delete(id);
-    ui.pendingDmVersion += 1;
-    const entry = rs.roomId ? rs.pendingDms.get(rs.roomId) : undefined;
-    ui.pendingDm = !!entry;
-    ui.pendingDmState = entry?.state ?? "";
-    ui.pendingDmError = entry?.error ?? "";
-  }
-
-  function ensurePendingDirect(nick: string): string | null {
-    const accountId = peerAccountIdFor(nick);
-    if (!accountId) return null;
-    const id = conversationId("dm", accountId);
-    if (rs.directories.has(id)) return null;
-    if (!rs.pendingDms.has(id)) rs.pendingDms.set(id, { nick, accountId, state: "provisioning" });
-    refreshPendingUi();
-    return id;
-  }
-
-  async function restorePendingDirects(targetDb: ClientDatabase): Promise<void> {
-    const nickById = new Map(Object.entries(ui.accountIds).map(([nick, id]: [string, any]) => [String(id), nick]));
-    const contacts = new Set((ui.contacts as string[]).map(foldIdentifier));
-    try {
-      const [drafts, operations] = await Promise.all([targetDb.drafts.toArray(), targetDb.operations.toArray()]);
-      if (rs.db !== targetDb || rs.stopped || !rs.scope || rs.currentScope !== scopeKey(targetDb.scope)) return;
-      const candidates = new Set([...drafts.filter((draft) => !!draft.text.trim()).map((draft) => draft.conversationId),
-        ...operations.filter((operation) => operation.kind === "text" && operation.state !== "confirmed").map((operation) => operation.conversationId)]);
-      for (const id of candidates) {
-        if (rs.directories.has(id)) continue;
-        let parsed: unknown;
-        try { parsed = JSON.parse(id); } catch { continue; }
-        if (!Array.isArray(parsed) || parsed.length !== 2 || parsed[0] !== "dm" || typeof parsed[1] !== "string") continue;
-        const nick = nickById.get(parsed[1]);
-        if (!nick || !contacts.has(foldIdentifier(nick))) continue;
-        if (!rs.pendingDms.has(id)) rs.pendingDms.set(id, { nick, accountId: parsed[1], state: "provisioning" });
-      }
-      refreshPendingUi();
-      await refreshDrafts(targetDb);
-    } catch { /* Durable messages and drafts remain available; a later scope open retries. */ }
-  }
-
-  function retryPendingDirect(): void {
-    const id = rs.roomId;
-    const entry = id ? rs.pendingDms.get(id) : undefined;
-    if (!id || !entry || entry.state !== "failed") return;
-    entry.state = "provisioning"; entry.error = undefined;
-    refreshPendingUi();
-    void provisionDirect(entry.nick, id);
-  }
-
-  // Server-side pair creation runs in the background. It never navigates: a newer navigation wins,
-  // and the authorized conversation shares the pending id, so the open view simply stops pending.
-  function provisionDirect(nick: string, id: string): Promise<void> {
-    const active = provisioning.get(id);
-    if (active) return active;
-    const request = runProvisionDirect(nick, id);
-    provisioning.set(id, request);
-    void request.finally(() => { if (provisioning.get(id) === request) provisioning.delete(id); });
-    return request;
-  }
-
-  async function runProvisionDirect(nick: string, id: string): Promise<void> {
-    const requestingScope = rs.currentScope;
-    ui.directBusy = ui.directBusy || nick;
-    try {
-      const response = await fetch(`/api/dms/${encodeURIComponent(nick)}`, { method: "POST", credentials: "same-origin" });
-      const body = await response.json().catch(() => ({}));
-      if (rs.currentScope !== requestingScope || rs.stopped) return;
-      if (!response.ok) throw new Error(body.error || `Could not open DM (${response.status})`);
-      await connect();
-      if (rs.currentScope !== requestingScope || rs.stopped) return;
-      const available = ui.directs.find((item: { nick: string }) => foldIdentifier(item.nick) === foldIdentifier(nick));
-      if (!available) throw new Error("The server did not authorize this direct message.");
-      rs.pendingDms.delete(id);
-    } catch (error) {
-      if (rs.currentScope !== requestingScope || rs.stopped) return;
-      const entry = rs.pendingDms.get(id);
-      if (entry) { entry.state = "failed"; entry.error = error instanceof Error ? error.message : "Could not open DM."; }
-    } finally {
-      if (ui.directBusy === nick) ui.directBusy = "";
-      refreshPendingUi();
-    }
-  }
-
-  // `deliberate` is a person pressing Message on someone's card. Open-channel posters are not
-  // Contacts, so that press skips the optimistic path and lets the server's discovery gate decide.
-  async function openDirect(nick: string, deliberate = false): Promise<void> {
-    if (ui.account && foldIdentifier(nick) === foldIdentifier(ui.account)) { openNotes(); return; }
-    const direct = ui.directs.find((item: { nick: string }) => foldIdentifier(item.nick) === foldIdentifier(nick));
-    // Only a direct the server still authorizes may short-circuit. A local row whose conversation
-    // is absent from the last authoritative set is stale (e.g. just deleted) and must not be
-    // reopened from cache; fall through to a fresh POST plus reconnect.
-    if (direct && cachedDirectIsAuthorized(direct, rs.authorized)) { navIntent += 1; nav.open({ kind: "dm", nick: direct.nick }); return; }
-    const known = !!direct || ui.contacts.some((contact: string) => foldIdentifier(contact) === foldIdentifier(nick));
-    if (!known && !deliberate) return;
-    // A pending first-contact DM is already open-able; navigate to it and only restart a failed try.
-    const existing = pendingIdForNick(nick);
-    if (existing) {
-      navIntent += 1;
-      nav.open({ kind: "dm", nick });
-      const entry = rs.pendingDms.get(existing)!;
-      if (entry.state === "failed") {
-        entry.state = "provisioning"; entry.error = undefined;
-        refreshPendingUi();
-      }
-      if (entry.state === "provisioning") {
-        return provisionDirect(entry.nick, existing);
-      }
-      return;
-    }
-    // Optimistic path: a contact whose immutable peer id is already known opens immediately.
-    if (!direct && known) {
-      const accountId = peerAccountIdFor(nick);
-      if (accountId) {
-        const id = ensurePendingDirect(nick);
-        if (id) {
-          navIntent += 1;
-          nav.open({ kind: "dm", nick });
-          return provisionDirect(nick, id);
-        }
-      }
-    }
-    if (ui.directBusy) return;
-    const intent = ++navIntent;
-    const requestingScope = rs.currentScope;
-    ui.directBusy = nick; ui.error = "";
-    try {
-      const response = await fetch(`/api/dms/${encodeURIComponent(nick)}`, { method: "POST", credentials: "same-origin" });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error || `Could not open DM (${response.status})`);
-      if (rs.currentScope !== requestingScope || rs.stopped) return;
-      // Refresh the authoritative list even when a newer navigation already superseded this open,
-      // so the Contact moves to DMs after success instead of lingering until reload. connect()
-      // re-selects the current route, so it never yanks a reader who navigated away.
-      await connect();
-      if (rs.currentScope !== requestingScope || rs.stopped) return;
-      const available = ui.directs.find((item: { nick: string }) => foldIdentifier(item.nick) === foldIdentifier(nick));
-      if (!available) throw new Error("The server did not authorize this direct message.");
-      // A newer navigation (another conversation, a back/forward) keeps the reader where they are.
-      if (navIntent !== intent) return;
-      nav.open({ kind: "dm", nick: available.nick });
-    } catch (error) {
-      if (navIntent === intent && rs.currentScope === requestingScope && !rs.stopped) ui.error = error instanceof Error ? error.message : "Could not open DM.";
-    } finally { if (ui.directBusy === nick) ui.directBusy = ""; }
+    if (item) { rs.navIntent += 1; nav.open({ kind: "room", room: item.wireTarget }); }
   }
   // People for the `@` picker: current room members first, then contacts. Only rooms have members;
   // DMs and threads fall back to contacts.
@@ -1542,9 +1351,9 @@ export function createClient(Alpine: any) {
     presence.watch([...ui.directs.map((item: { nick: string }) => item.nick), ...ui.contacts, ...ui.roomMembers]);
   }
 
-  function openHome(): void { navIntent += 1; nav.tab("home"); }
+  function openHome(): void { rs.navIntent += 1; nav.tab("home"); }
   function goBack(): void {
-    navIntent += 1;
+    rs.navIntent += 1;
     if (nav.canGoBack()) { nav.back(); transcript.noFade(); return; }
     nav.tab("home");
   }
@@ -1552,32 +1361,32 @@ export function createClient(Alpine: any) {
   function canGoBack(): boolean { return historyAvailability(ui.navIndex, ui.navLength).back; }
   function canGoForward(): boolean { return historyAvailability(ui.navIndex, ui.navLength).forward; }
   function goForward(): void {
-    navIntent += 1;
+    rs.navIntent += 1;
     if (!canGoForward()) return;
     nav.forward();
     transcript.noFade();
   }
-  function openDms(): void { navIntent += 1; nav.tab("dms"); }
-  function openMore(): void { navIntent += 1; nav.tab("more"); }
+  function openDms(): void { rs.navIntent += 1; nav.tab("dms"); }
+  function openMore(): void { rs.navIntent += 1; nav.tab("more"); }
   function openProfile(): void {
-    navIntent += 1;
+    rs.navIntent += 1;
     nav.open({ kind: "profile" });
     void welcome.load();
   }
   function openSettings(): void {
-    navIntent += 1;
+    rs.navIntent += 1;
     nav.open({ kind: "settings" });
   }
   function openChannels(): void {
-    navIntent += 1;
+    rs.navIntent += 1;
     nav.open({ kind: "channels" });
   }
   function openInvitations(): void {
-    navIntent += 1;
+    rs.navIntent += 1;
     nav.open({ kind: "invitations" });
   }
   function openIrc(): void {
-    navIntent += 1;
+    rs.navIntent += 1;
     nav.open({ kind: "irc" });
   }
   // After the derived-password migration, people with password IRC clients, and admins with
@@ -1633,11 +1442,11 @@ export function createClient(Alpine: any) {
   }
 
   function openAgents(): void {
-    navIntent += 1;
+    rs.navIntent += 1;
     nav.open({ kind: "agents" });
   }
   function openAdmin(): void {
-    navIntent += 1;
+    rs.navIntent += 1;
     nav.open({ kind: "admin" });
   }
   // Mention profiles open immediately; IRC details and app profiles load independently.
@@ -1647,7 +1456,7 @@ export function createClient(Alpine: any) {
     const parent = ui.activeThread?.parent;
     if (!parent) return;
     const root = ui.activeThread?.root;
-    navIntent += 1;
+    rs.navIntent += 1;
     if (/^#dm-/i.test(parent)) {
       const direct = ui.directs.find((item: any) => foldIdentifier(item.channel) === foldIdentifier(parent));
       if (direct) { nav.open({ kind: "dm", nick: direct.nick, ...(root ? { focusMessageId: root } : {}) }); return; }
@@ -2310,7 +2119,7 @@ export function createClient(Alpine: any) {
     ui.sendError = "";
     try {
       await queueConversationText(conversation.conversationId, text);
-      navIntent += 1;
+      rs.navIntent += 1;
       nav.open({ kind: "dm", nick: direct.nick });
     } catch {
       ui.sendError = "Could not save that message. It is still in your box.";
@@ -2528,7 +2337,7 @@ export function createClient(Alpine: any) {
     rs.sync?.ensure(rs.authorized);
     if (rs.roomId !== id) return;
     const direct = ui.directs.find((entry: any) => foldIdentifier(entry.channel) === foldIdentifier(thread.parent));
-    navIntent += 1;
+    rs.navIntent += 1;
     nav.open(direct ? { kind: "dm", nick: direct.nick } : { kind: "room", room: thread.parent });
   }
 
