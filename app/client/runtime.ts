@@ -3747,9 +3747,17 @@ export function createClient(Alpine: any) {
     const text = String(ui.composer ?? "");
     // An /invite pick fills in the command; Enter then runs it and shows the Add note.
     if (inviteToken(text) !== null) { replaceComposerText(`/invite @${nick} `); return; }
-    const token = mentionToken(text);
+    const input = document.querySelector<HTMLElement>("#input");
+    const caret = input ? editor.composerSelectionOffset(input) : text.length;
+    const token = mentionToken(text, caret);
     if (!token) return;
-    replaceComposerText(text.slice(0, token.start) + "@" + nick + " ");
+    // Replace only the token at the caret, so text after it survives, and leave the caret after the nick.
+    const after = text.slice(caret);
+    const insert = "@" + nick + (after.startsWith(" ") ? "" : " ");
+    const updated = text.slice(0, token.start) + insert + after;
+    replaceComposerText(updated);
+    if (input) editor.setComposerSelection(input, editor.displayOffsetAtSource(updated, token.start + insert.length));
+    emoji.syncCaret();
   }, { signal: lifecycle.signal });
   window.addEventListener("slirc:help-pick", (event) => {
     const row = (event as CustomEvent<{ row?: HelpTopic }>).detail?.row;

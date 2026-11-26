@@ -11,6 +11,25 @@ test("mentionToken finds the trailing @token only", () => {
   expect(mentionToken("no at here")).toBeNull();
 });
 
+test("mentionToken reads the token ending at the caret, not the end of the draft", () => {
+  const text = "hi @cla see you";
+  expect(mentionToken(text, 7)).toEqual({ query: "cla", start: 3 });
+  expect(mentionToken(text, 4)).toEqual({ query: "", start: 3 });
+  expect(mentionToken("@cla existing", 4)).toEqual({ query: "cla", start: 0 });
+  expect(mentionToken(text, 2)).toBeNull();
+  expect(mentionToken(text, 99)).toBeNull();
+});
+
+test("the mention picker opens for an @token before existing text", async () => {
+  (globalThis as any).window ??= new EventTarget();
+  const { mentionPickerComponent } = await import("../client/composer-pickers.ts");
+  const component = mentionPickerComponent() as any;
+  Object.assign(component, { composer: "@ad see you", emoji: { caret: 3 }, account: "me", roomMembers: ["ada", "bob"], roomMembersPublic: false, contacts: [], directs: [], messages: [], agentProfiles: {} });
+  expect(component.matches()).toEqual(["ada"]);
+  component.emoji.caret = 11;
+  expect(component.matches()).toEqual([]);
+});
+
 test.each([
   ["puts room members before contacts and dedupes", "", ["bob", "ada"], ["ada", "carol"], ["bob", "ada", "carol"]],
   ["filters by folded prefix", "EV", ["adam", "Eve", "steve"], [], ["Eve"]],

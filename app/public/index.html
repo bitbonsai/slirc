@@ -741,7 +741,7 @@
     </template>
   </div>
 
-  <div class="command-palette mention-palette" x-data="mentionPicker" x-ref="list" x-effect="composer; dismissed; roomMembers.length; contacts.length; directs.length; messages.length; $nextTick(() => sync())" role="listbox" aria-label="People" :style="matches().length ? commandPaletteStyle() : 'display:none'" x-cloak x-show="matches().length" x-on:mousedown.prevent>
+  <div class="command-palette mention-palette" x-data="mentionPicker" x-ref="list" x-effect="composer; emoji.caret; dismissed; roomMembers.length; contacts.length; directs.length; messages.length; $nextTick(() => sync())" role="listbox" aria-label="People" :style="matches().length ? commandPaletteStyle() : 'display:none'" x-cloak x-show="matches().length" x-on:mousedown.prevent>
     <template x-for="(nick, i) in matches()" :key="nick">
       <button type="button" :class="i === index && 'active'" role="option" :aria-selected="i === index" x-on:click="choose(nick)"><span class="mention-avatar" aria-hidden="true"><img :src="avatarUrl(nick)" alt="" /></span><span x-text="label(nick)"></span><code class="mention-nick" x-show="label(nick) !== nick" x-text="'@' + nick"></code></button>
     </template>
