@@ -7,7 +7,7 @@ import { streamSSE } from "hono/streaming";
 import { bodyLimit } from "hono/body-limit";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { serveStatic } from "hono/bun";
-import { needsOnboarding, onboardingDestination, queueOnboarding } from "./onboarding.ts";
+import { onboardingDestination } from "./onboarding.ts";
 import { claimWelcomeJob, enqueueWelcomeJob, founderAccount, isFounder, markWelcomeDelivered, releaseWelcomeJob, setWelcomeEnabled, welcomeEnabled, welcomeJobs } from "./founder-welcome.ts";
 import { bulkMailRoom, reserveSignup } from "./mail-count.ts";
 import { createPeek, peekable, type PeekMessage } from "./peek.ts";
@@ -65,6 +65,7 @@ import { polls } from "./routes/polls.ts";
 import { channels } from "./routes/channels.ts";
 import { untrustedMediaHeaders, readBoundedJson, workspaceIconVersion } from "./http/media.ts";
 import { uploads } from "./routes/uploads.ts";
+import { sendOnboarding } from "./http/onboarding.ts";
 export { untrustedMediaHeaders } from "./http/media.ts";
 export { agentSessionCapabilities, AGENT_POLL_MAX_WAIT_S, AGENT_SSE_KEEPALIVE_MS } from "./http/agent-support.ts";
 export { sessionByToken } from "./http/session.ts";
@@ -648,23 +649,6 @@ app.get("/avatars/:account", async (c) => {
   c.header("Cache-Control", cache);
   return c.body(file.stream());
 });
-
-// First verified sign-in: the help bot opens a DM with the tour. Returns whether the DM channel was
-// really provisioned, so a signed-in person can be sent there; a disabled or failed helper never
-// fakes that and never blocks the login. The "direct" event lets a tab that loaded before the DM
-// existed pick it up, with its unread welcome, without a reload.
-async function sendOnboarding(nick: string): Promise<boolean> {
-  if (!enabledHelpers().includes("help") || !needsOnboarding(nick)) return false;
-  try {
-    const direct = await openDirectConversation(nick, "help");
-    queueOnboarding(nick, direct.channel);
-    publish(nick, "direct", { channel: direct.channel });
-    return true;
-  } catch (error) {
-    console.error(`onboarding DM failed for ${nick}:`, error);
-    return false;
-  }
-}
 
 // Best effort: an invite that cannot open the DM is still a joined channel.
 async function ensureDirectConversation(nick: string, other: string): Promise<void> {
