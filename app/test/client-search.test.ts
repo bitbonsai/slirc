@@ -274,3 +274,19 @@ test("Images and Links filters narrow results, alone or with words", () => {
   expect(searchMessages(all, "docs", { kind: "links", origin }).hits.map((h) => h.id)).toEqual(["ln"]);
   expect(searchMessages(all, "", { origin }).hits).toEqual([]);
 });
+
+test("image hits carry a thumbnail and link hits a card with host and preview", () => {
+  const room = conversationId("room", "#search");
+  const at = (n: number) => `2026-11-24T10:0${n}:00.000Z`;
+  const origin = "https://slirc.test";
+  const upload = makeMessage({ id: "up", conversationId: room, text: "/uploads/abc123?type=image", time: at(1) });
+  const card = makeMessage({ id: "ln", conversationId: room, text: "see https://example.test/page", time: at(2) });
+  const bare = makeMessage({ id: "bare", conversationId: room, text: "see https://other.test/page", time: at(3) });
+  const embeds = { "https://example.test/page": { image: "https://example.test/og.png" } };
+  const links = Object.fromEntries(searchMessages([card, bare], "see", { origin, embeds }).hits.map((h) => [h.id, h.link]));
+  expect(links.ln?.thumb).toContain("example.test");
+  expect(links.ln?.host).toBe("example.test");
+  expect(links.bare?.thumb).toBe("");
+  expect(links.bare?.host).toBe("other.test");
+  expect(searchMessages([upload], "", { kind: "images", origin }).hits[0]!.thumb).toBe("https://slirc.test/uploads/abc123?type=image");
+});

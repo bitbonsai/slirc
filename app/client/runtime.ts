@@ -1028,10 +1028,11 @@ export function createClient(Alpine: any) {
         isNotes,
         exhausted: isNotes ? true : (targetSync?.isExhausted(targetId) ?? false),
         search: async (query: string, kind: SearchKind | null = null) => {
-          if (isNotes) return searchNotes(notes.list, String(ui.account ?? ""), String(ui.nick ?? ""), query, { kind });
+          if (isNotes) return searchNotes(notes.list, String(ui.account ?? ""), String(ui.nick ?? ""), query, { kind, embeds: ui.embeds });
           if (!targetDb) return { hits: [], total: 0, parsed: { from: null, terms: [] } };
           return searchConversation(targetDb, targetId, query, {
             kind,
+            embeds: ui.embeds,
             threads: ui.threads,
             conversations: authorized,
             greeting: ui.greeting,

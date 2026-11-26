@@ -2831,7 +2831,12 @@
             <span class="palette-copy search-hit-body">
               <span class="search-hit-head"><strong x-text="row.authorNick"></strong><span class="search-hit-time" x-text="row.timeLabel"></span></span>
               <span class="search-hit-snippet"><template x-for="(seg, j) in row.segments" :key="j"><span :class="seg.hit && 'search-hit-mark'" x-text="seg.text"></span></template></span>
+              <span class="search-hit-card" x-show="row.link">
+                <img class="search-hit-card-img" x-show="row.link && row.link.thumb" :src="(row.link && row.link.thumb) || null" alt="" loading="lazy" x-on:error="$el.hidden = true" />
+                <span class="search-hit-card-copy"><strong x-text="row.link && (row.link.title || row.link.host)"></strong><small x-text="row.link && row.link.host"></small></span>
+              </span>
             </span>
+            <img class="search-hit-thumb" x-show="row.thumb" :src="row.thumb || null" alt="" loading="lazy" x-on:error="$el.hidden = true" />
           </button>
         </template>
         <p class="palette-empty" x-show="hasQuery && !searching && !hits.length" role="status">No matches in loaded messages.</p>

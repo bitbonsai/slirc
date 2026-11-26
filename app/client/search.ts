@@ -9,6 +9,8 @@ import type { ThreadGrant } from "./access.ts";
 import { isHiddenThreadAnnouncement } from "./threads.ts";
 import { isLegacyThreadAnnouncement } from "./reply-threads.ts";
 import { inlineMedia } from "./media.ts";
+import { embedImageUrl } from "./render.ts";
+import type { EmbedMeta } from "./embed.ts";
 import { isDailyGreeting } from "../shared/service-bots.ts";
 
 export const SEARCH_RESULT_LIMIT = 50;
@@ -32,6 +34,15 @@ export interface SearchHit {
   time: string;
   timeLabel: string;
   segments: SnippetSegment[];
+  thumb: string;
+  link: SearchLink | null;
+}
+
+export interface SearchLink {
+  url: string;
+  host: string;
+  title: string;
+  thumb: string;
 }
 
 export interface SearchResult {
@@ -45,6 +56,7 @@ export type SearchKind = "images" | "links";
 export interface SearchOptions {
   kind?: SearchKind | null;
   origin?: string;
+  embeds?: Record<string, EmbedMeta>;
   threads?: readonly ThreadGrant[];
   conversations?: readonly AuthorizedConversation[];
   greeting?: boolean;
@@ -101,6 +113,26 @@ const ANY_URL = /https?:\/\/\S+/i;
 export function messageHasKind(message: Message, kind: SearchKind, origin = "http://localhost"): boolean {
   const image = inlineMedia(message.text, origin).length > 0 || IMAGE_URL.test(message.text);
   return kind === "images" ? image : !image && ANY_URL.test(message.text);
+}
+
+// A picture to show beside a hit: our upload, a GIF or a bare image link.
+export function messageThumb(message: Message, origin: string): string {
+  const media = inlineMedia(message.text, origin).find((item) => item.kind !== "video");
+  if (media) return media.href;
+  const image = IMAGE_URL.exec(message.text);
+  if (image) return embedImageUrl(image[0]);
+  return "";
+}
+
+// The first link of a message that is not a picture, with what the client already knows of its preview.
+export function messageLink(message: Message, origin: string, embeds: Record<string, EmbedMeta> = {}): SearchLink | null {
+  if (messageHasKind(message, "images", origin)) return null;
+  const url = ANY_URL.exec(message.text)?.[0].replace(/[.,;:!?]+$/, "");
+  if (!url) return null;
+  let host = url;
+  try { host = new URL(url).hostname.replace(/^www\./, ""); } catch { /* keep the raw text */ }
+  const meta = embeds[url];
+  return { url, host, title: meta?.title ?? "", thumb: meta?.image ? embedImageUrl(meta.image) : "" };
 }
 
 export function matchesSearchMessage(message: Message, parsed: ParsedSearchQuery, allowEmpty = false): boolean {
@@ -225,13 +257,16 @@ export function searchMessages(
   const matched = visible.filter((message) => (!kind || messageHasKind(message, kind, origin)) && matchesSearchMessage(message, parsed, !!kind)).sort(newestFirst);
   const hits: SearchHit[] = matched.slice(0, limit).map((message) => {
     const time = effectiveMessageTime(message);
+    const link = messageLink(message, origin, options.embeds);
     return {
       id: message.id,
       focusId: message.serverId ?? message.id,
       authorNick: message.authorNick,
       time,
       timeLabel: formatSearchTime(time, now),
-      segments: buildSnippetSegments(message.text, parsed.terms),
+      segments: buildSnippetSegments(link ? message.text.replace(link.url, "").trim() : message.text, parsed.terms),
+      thumb: link ? "" : messageThumb(message, origin),
+      link,
     };
   });
 
