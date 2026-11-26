@@ -140,11 +140,9 @@ export function messageLink(message: Message, origin: string, embeds: Record<str
   return { url, host, title: meta?.title ?? (yt ? "YouTube" : ""), thumb: image ? embedImageUrl(image) : "" };
 }
 
-// "Reply in thread" for a reply, "Thread, N replies" for a message that started one.
+// Only a reply is marked: a message in the channel that has a thread is still an ordinary hit.
 export function threadLabel(message: Message, index: ReturnType<typeof buildReplyIndex>): string {
-  if (index.rootByMessageId.has(message.id)) return "Reply in thread";
-  const count = message.serverId ? index.repliesByRootId.get(message.serverId)?.length ?? 0 : 0;
-  return count ? `Thread, ${count} ${count === 1 ? "reply" : "replies"}` : "";
+  return index.rootByMessageId.has(message.id) ? "in thread" : "";
 }
 
 export function matchesSearchMessage(message: Message, parsed: ParsedSearchQuery, allowEmpty = false): boolean {

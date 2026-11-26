@@ -300,14 +300,14 @@ test("a YouTube link gets its thumbnail and title without a preview fetch", () =
   expect(hit.link?.thumb).toContain(encodeURIComponent("https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg"));
 });
 
-test("hits say when a message started a thread or is a reply in one", () => {
+test("only replies are marked as in a thread", () => {
   const room = conversationId("room", "#search");
   const root = makeMessage({ id: "root", conversationId: room, serverId: "s-root", text: "thread topic", time: "2026-11-24T10:00:00.000Z" });
   const one = makeMessage({ id: "r1", conversationId: room, serverId: "s-r1", text: "topic reply", time: "2026-11-24T10:01:00.000Z", replyTo: "s-root" });
   const two = makeMessage({ id: "r2", conversationId: room, serverId: "s-r2", text: "topic again", time: "2026-11-24T10:02:00.000Z", replyTo: "s-root" });
   const plain = makeMessage({ id: "p", conversationId: room, serverId: "s-p", text: "topic alone", time: "2026-11-24T10:03:00.000Z" });
   const labels = Object.fromEntries(searchMessages([root, one, two, plain], "topic").hits.map((h) => [h.id, h.thread]));
-  expect(labels).toEqual({ root: "Thread, 2 replies", r1: "Reply in thread", r2: "Reply in thread", p: "" });
+  expect(labels).toEqual({ root: "", r1: "in thread", r2: "in thread", p: "" });
 });
 
 test("long addresses are shortened in hits unless a search word is inside them", () => {
