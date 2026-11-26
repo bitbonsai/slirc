@@ -1,0 +1,64 @@
+name: PR check
+
+on:
+  pull_request:
+
+concurrency:
+  group: pr-check-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  BUN_VERSION: "1.4.5"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Cache Bun downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('app/bun.lock', 'app/agent/bun.lock', 'native/bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+
+      - name: Install
+        run: |
+          for dir in app app/agent native; do
+            (cd "$dir" && bun install --frozen-lockfile)
+          done
+
+      # Tests that need Ergo, podman, pi, codex or tmux skip themselves unless
+      # SLIRC_REQUIRE_* or SLIRC_CONTAINER_TESTS is set. Do not set them here.
+      - name: Test
+        run: bun run test
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Cache Bun downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('app/bun.lock', 'app/agent/bun.lock', 'native/bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+
+      - name: Install
+        run: cd app && bun install --frozen-lockfile
+
+      - name: Typecheck (fails on errors not in typecheck-baseline.txt)
+        run: cd app && bun run typecheck:ci
