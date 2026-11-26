@@ -9,7 +9,7 @@ import { serveStatic } from "hono/bun";
 import { onboardingDestination } from "./onboarding.ts";
 import { claimWelcomeJob, enqueueWelcomeJob, isFounder, markWelcomeDelivered, releaseWelcomeJob, setWelcomeEnabled, welcomeEnabled, welcomeJobs } from "./founder-welcome.ts";
 import { reserveSignup } from "./mail-count.ts";
-import { createPeek, peekable, type PeekMessage } from "./peek.ts";
+import { peekable } from "./peek.ts";
 import { openRoom } from "./welcome.ts";
 import { joinLinksHomeOnce, linksChannelsFor, linksHome } from "./links-collect.ts";
 import { linksEnabled } from "./links.ts";
@@ -20,7 +20,6 @@ import { emojiBudgetBytes, enabledHelpers, ergoOperUser, inactiveHelper, slircMo
 import { openDirectConversation } from "./direct.ts";
 import { ircKey } from "./irc-key.ts";
 import { setUserTimeZone, validTimeZone } from "./reminders.ts";
-import { pollById, pollView } from "./polls.ts";
 import { asciiFold, channelInfo, defaultChannel, closeDirectConversation, directConversation, directConversations, discoverableHuman, isMember, isOpenChannel, isValidNext, memberChannels, normalized, openChannels, reopenDirectConversation, sharedContacts, visibleChannels } from "./rooms.ts";
 import { canonicalMailbox, emailInviteByToken } from "./email-invites.ts";
 import { accountByEmail, accountByNick, allAccounts, cleanDisplayName, displayNameError, ircChannelExists, markVerified, provisionAccount, validEmail } from "./accounts.ts";
@@ -48,7 +47,7 @@ import { pairing } from "./routes/pairing.ts";
 import { agents } from "./routes/agents.ts";
 import { links } from "./routes/links.ts";
 import { codeHash, sendMagicLink, mailLimit } from "./http/mail.ts";
-import { avatarDir, knownAccount, avatarVersion, cacheGravatar, profileJson, accountDetails } from "./http/profiles.ts";
+import { avatarDir, knownAccount, cacheGravatar, profileJson, accountDetails } from "./http/profiles.ts";
 import { ircResetNotice } from "./http/irc-devices.ts";
 import { admin } from "./routes/admin.ts";
 import { polls } from "./routes/polls.ts";
@@ -62,7 +61,9 @@ import { joinlinks } from "./routes/join-links.ts";
 import { bots } from "./routes/bots.ts";
 import { irc } from "./routes/irc.ts";
 import { embeds } from "./routes/embeds.ts";
-import { embedCache, PLAYER_HOSTS } from "./routes/embeds.ts";
+import { PLAYER_HOSTS } from "./routes/embeds.ts";
+import { peekRoutes } from "./routes/peek.ts";
+import { peekAuthors } from "./routes/peek.ts";
 export { clientVersion, buildClient, assetVersion, versionShell } from "./http/assets.ts";
 export { untrustedMediaHeaders } from "./http/media.ts";
 export { agentSessionCapabilities, AGENT_POLL_MAX_WAIT_S, AGENT_SSE_KEEPALIVE_MS } from "./http/agent-support.ts";
@@ -944,60 +945,7 @@ app.post("/api/welcome/jobs/:id/release", async (c) => {
   return c.json({ ok: true });
 });
 
-// Signed-out preview of #open-chat on the public playground (peek.ts). Any other channel, and
-// every channel on a private workspace, is not found, signed in or not.
-const peekLimit = createLimiter({ limit: 120, windowMs: 10 * 60_000 });
-const peek = createPeek();
-// Folded nicks of the authors in the last peek answer: a signed-out visitor may load their avatars
-// and nobody else's, so /avatars never becomes a directory of the instance.
-let peekAuthors = new Set<string>();
-const PEEK_URL = /https?:\/\/[^\s<>"]+/g;
-// What the transcript needs beyond the text, read only from what the server already holds: the
-// poll cards' counts (no voter names, no "mine"), link previews a member already fetched, and the
-// photo version of each author who has one.
-function peekExtras(channel: string, messages: PeekMessage[]) {
-  const polls: Record<number, unknown> = {};
-  if (enabledHelpers().includes("poll")) {
-    for (const message of messages) {
-      if (message.poll?.kind !== "card" || message.nick.toLowerCase() !== "poll") continue;
-      const poll = pollById(message.poll.id);
-      if (!poll || normalized(poll.channel) !== channel) continue;
-      const view = pollView(poll, "", false);
-      polls[poll.id] = { ...view, mine: [], options: view.options.map(({ label, count }) => ({ label, count })) };
-    }
-  }
-  const embeds: Record<string, Record<string, string>> = {};
-  for (const message of messages) {
-    for (const found of message.text.match(PEEK_URL) ?? []) {
-      for (const url of new Set([found, found.replace(/[).,!?:;'\]]+$/, "")])) {
-        let href = url;
-        try { href = new URL(url).href; } catch { continue; }
-        const meta = embedCache.get(href) ?? embedCache.get(url);
-        if (meta && Object.keys(embeds).length < 32) embeds[url] = meta;
-      }
-    }
-  }
-  const avatars: Record<string, number> = {};
-  for (const nick of new Set(messages.map((message) => message.nick))) {
-    const version = avatarVersion(db.query("SELECT avatar_path, avatar_version FROM profiles WHERE account = ?").get(knownAccount(nick) || nick) as { avatar_path: string | null; avatar_version: number | null } | null);
-    if (version) avatars[nick.toLowerCase()] = version;
-  }
-  return { polls, embeds, avatars };
-}
-app.get("/api/peek/:channel", async (c) => {
-  c.header("Cache-Control", "no-store");
-  const channel = normalized(`#${c.req.param("channel").replace(/^#+/, "")}`);
-  if (!peekable(channel)) return c.json({ error: "channel not found" }, 404);
-  if (!peekLimit.check(peerKey(c))) return c.json({ error: "Too many requests. Try again later." }, 429);
-  try {
-    const messages = (await peek(channel)) ?? [];
-    peekAuthors = new Set(messages.map((message) => message.nick.toLowerCase()));
-    return c.json({ channel, messages, ...peekExtras(channel, messages) });
-  } catch (error) {
-    console.error(`peek failed for ${channel}:`, error instanceof Error ? error.message : error);
-    return c.json({ error: "Could not load messages." }, 503);
-  }
-});
+app.route("/", peekRoutes);
 
 app.get("/push/public-key", (c) => c.json({ publicKey: vapidKeys().publicKey }));
 
