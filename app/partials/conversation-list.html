@@ -36,7 +36,7 @@
         </div>
         <div class="profile-card">
           <button type="button" class="profile-main" x-ref="railProfile" x-on:click="openProfile()" :aria-label="'Your profile · ' + avatarStatusLabel(account)" x-tooltip>
-            <span class="profile-avatar avatar-status-host" :data-status="avatarStatus(account)" aria-hidden="true" :style="'background:' + ['#f5c2e7','#cba6f7','#eba0ac','#fab387','#f9e2af','#a6e3a1','#94e2d5','#89dceb','#74c7ec','#89b4fa','#b4befe'][([...((account || '').toLowerCase())].reduce((v, c) => Math.imul(31, v) + c.charCodeAt(0) | 0, 0) >>> 0) % 11] + ';color:#11111b'">
+            <span class="profile-avatar avatar-status-host" :data-status="avatarStatus(account)" aria-hidden="true" :style="messageView.avatarStyle(account)">
               <img :src="avatarUrl(account)" alt="" x-on:load="$el.hidden = false" x-on:error="$el.hidden = true" />
               <span x-text="(account || '?').slice(0, 1).toUpperCase()"></span>
             </span>

@@ -272,7 +272,7 @@
         </div>
         <div class="profile-card">
           <button type="button" class="profile-main" x-ref="railProfile" x-on:click="openProfile()" :aria-label="'Your profile · ' + avatarStatusLabel(account)" x-tooltip>
-            <span class="profile-avatar avatar-status-host" :data-status="avatarStatus(account)" aria-hidden="true" :style="'background:' + ['#f5c2e7','#cba6f7','#eba0ac','#fab387','#f9e2af','#a6e3a1','#94e2d5','#89dceb','#74c7ec','#89b4fa','#b4befe'][([...((account || '').toLowerCase())].reduce((v, c) => Math.imul(31, v) + c.charCodeAt(0) | 0, 0) >>> 0) % 11] + ';color:#11111b'">
+            <span class="profile-avatar avatar-status-host" :data-status="avatarStatus(account)" aria-hidden="true" :style="messageView.avatarStyle(account)">
               <img :src="avatarUrl(account)" alt="" x-on:load="$el.hidden = false" x-on:error="$el.hidden = true" />
               <span x-text="(account || '?').slice(0, 1).toUpperCase()"></span>
             </span>
@@ -424,7 +424,7 @@
             </section>
           </template>
           <template x-if="!agentOffline(message) && !polls.card(message) && !jobCards.card(message)">
-          <div class="msg" :class="[transcript.continuesPrevious(message, index) && 'cont', (message.state === 'saving' || message.state === 'queued' || message.state === 'sending') && 'pending', actions.actionMessageId === message.id && 'menu-open', replyThreadRootId && message.serverId === replyThreadRootId && 'thread-open', replyThreadFaded[message.serverId] && 'thread-fade', isAction(message) && 'action', notesOpen && 'note']" tabindex="-1" :data-message-id="message.id" x-on:keydown="actions.messageKeydown($event, message)" x-on:click="if (!getSelection()?.toString() && !$event.target.closest('button, a')) $event.currentTarget.focus()" x-on:touchstart.passive="actions.pressStart($event, message)" x-on:touchmove.passive="actions.pressMove($event)" x-on:touchend="actions.pressEnd($event)" x-on:touchcancel="actions.pressCancel()" x-on:contextmenu="actions.pressContextMenu($event, message)">
+          <div class="msg" :class="transcript.messageClass(message, index)" tabindex="-1" :data-message-id="message.id" x-on:keydown="actions.messageKeydown($event, message)" x-on:click="if (!getSelection()?.toString() && !$event.target.closest('button, a')) $event.currentTarget.focus()" x-on:touchstart.passive="actions.pressStart($event, message)" x-on:touchmove.passive="actions.pressMove($event)" x-on:touchend="actions.pressEnd($event)" x-on:touchcancel="actions.pressCancel()" x-on:contextmenu="actions.pressContextMenu($event, message)">
             <button x-show="message.state === 'confirmed' && message.serverId" type="button" class="message-more" :style="actions.popupAnchorStyles(message.id, 'more')" aria-label="More message actions" x-tooltip :aria-expanded="actions.actionMessageId === message.id" x-on:click.stop="actions.toggleThreadMenu(message)">
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
             </button>
