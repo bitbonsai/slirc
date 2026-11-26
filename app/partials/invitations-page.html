@@ -2,7 +2,7 @@
     <div class="mobile-screen-head" x-show="!isDesktop"><div class="home-brand"><a class="home-brand profile-back" href="/more" aria-label="Back to More" x-on:click.prevent="openMore()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a><strong>Invitations</strong></div></div>
     <div class="profile-page-body" :class="{ 'mobile-screen-body': !isDesktop }">
       <section class="profile-dialog-card profile-screen-card">
-        <div class="profile-heading" x-show="isDesktop"><div class="profile-modal-avatar"><img :src="avatarUrl(account)" alt="" /></div><div><h2><span x-text="me"></span><span class="admin-badge" x-show="isAdmin" role="img" aria-label="Administrator" x-html="lucideIcon('user-star')"></span></h2><p x-text="'@' + account"></p></div></div>
+<!-- include: account-heading -->
 <!-- include: account-navigation -->
         <section class="phone-offer bulk-invite-offer" x-show="isAdmin" aria-labelledby="bulk-invite-offer-title">
           <div class="phone-offer-intro">
