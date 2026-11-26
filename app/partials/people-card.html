@@ -1,4 +1,4 @@
-  <dialog x-data="peopleCard" id="whois-dialog" class="custom-modal" x-cloak x-effect="const open = !!people.whoisNick; if (open && !$el.open) $el.showModal(); else if (!open && $el.open) $el.close()" x-on:cancel.prevent="people.closeWhois()" x-on:click="if ($event.target === $el) people.closeWhois()">
+  <dialog x-data="peopleCard" id="whois-dialog" class="custom-modal" x-cloak x-modal="!!people.whoisNick" x-on:cancel.prevent="people.closeWhois()" x-on:click="if ($event.target === $el) people.closeWhois()">
     <section class="notice-card whois-card" role="dialog" aria-labelledby="whois-title" tabindex="-1" autofocus>
       <button type="button" class="profile-close" aria-label="Close" x-tooltip x-on:click="people.closeWhois()" x-html="lucideIcon('x')"></button>
       <div class="whois-heading">

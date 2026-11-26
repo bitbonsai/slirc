@@ -91,7 +91,7 @@
         </section>
       </section>
     </div>
-    <dialog class="custom-modal" aria-labelledby="admin-icon-crop-title" tabindex="-1" x-cloak x-effect="const show = !booting && authenticated && adminRoute && !!branding.crop; if (show && !$el.open) { $el.showModal(); $nextTick(() => $el.querySelector('.icon-crop-zoom input')?.focus()); } else if (!show && $el.open) $el.close()" x-on:cancel.prevent="branding.cancel()">
+    <dialog class="custom-modal" aria-labelledby="admin-icon-crop-title" tabindex="-1" x-cloak x-modal="!booting && authenticated && adminRoute && !!branding.crop" data-modal-focus=".icon-crop-zoom input" x-on:cancel.prevent="branding.cancel()">
       <section class="notice-card icon-crop-card">
         <h2 id="admin-icon-crop-title">Crop icon</h2>
         <p>Drag to move the image. Zoom with the slider.</p>
@@ -101,10 +101,10 @@
         <div class="pair-actions"><button type="button" class="btn-secondary" :disabled="!!branding.busy" x-on:click="branding.cancel()">Cancel</button><button type="button" class="btn-primary" :disabled="!!branding.busy" x-on:click="branding.save()" x-text="branding.busy === 'save' ? 'Saving…' : 'Save icon'">Save icon</button></div>
       </section>
     </dialog>
-    <dialog class="custom-modal" aria-labelledby="admin-bot-remove-title" tabindex="-1" x-on:keydown="adminStatus.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && adminRoute && adminStatus.botRemoveTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!adminStatus.botBusy) adminStatus.closeRemoveBot()">
+    <dialog class="custom-modal" aria-labelledby="admin-bot-remove-title" tabindex="-1" x-on:keydown="adminStatus.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && adminRoute && adminStatus.botRemoveTarget" x-on:cancel.prevent="if (!adminStatus.botBusy) adminStatus.closeRemoveBot()">
       <section class="notice-card"><h2 id="admin-bot-remove-title">Remove <span x-text="adminStatus.botRemoveTarget?.nick"></span>?</h2><p>Its IRC account stops working and it leaves every channel. Scripts using it lose access. You can create a new bot later.</p><p class="profile-error" role="alert" x-show="adminStatus.botsError" x-text="adminStatus.botsError"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="!!adminStatus.botBusy" x-on:click="adminStatus.closeRemoveBot()">Cancel</button><button type="button" class="btn-danger" :disabled="!!adminStatus.botBusy" x-on:click="adminStatus.confirmRemoveBot()" x-text="adminStatus.botBusy ? 'Removing…' : 'Remove'"></button></div></section>
     </dialog>
-    <dialog class="custom-modal" aria-labelledby="admin-agent-remove-title" tabindex="-1" x-on:keydown="adminStatus.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && adminRoute && adminStatus.removeTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!adminStatus.removing) adminStatus.closeRemoveAgent()">
+    <dialog class="custom-modal" aria-labelledby="admin-agent-remove-title" tabindex="-1" x-on:keydown="adminStatus.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && adminRoute && adminStatus.removeTarget" x-on:cancel.prevent="if (!adminStatus.removing) adminStatus.closeRemoveAgent()">
       <section class="notice-card"><h2 id="admin-agent-remove-title">Remove <span x-text="adminStatus.removeTarget?.name"></span>?</h2><p>This disconnects <span x-text="adminStatus.removeTarget?.owner"></span>'s agent, removes its DM and takes it out of every channel. They can pair a new one.</p><p class="profile-error" role="alert" x-show="adminStatus.agentsError" x-text="adminStatus.agentsError"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="adminStatus.removing" x-on:click="adminStatus.closeRemoveAgent()">Cancel</button><button type="button" class="btn-danger" :disabled="adminStatus.removing" x-on:click="adminStatus.confirmRemoveAgent()" x-text="adminStatus.removing ? 'Removing…' : 'Remove'"></button></div></section>
     </dialog>
   </div>

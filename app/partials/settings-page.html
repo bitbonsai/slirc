@@ -43,7 +43,7 @@
         </section>
       </section>
     </div>
-    <dialog class="custom-modal" aria-labelledby="settings-signout-title" tabindex="-1" x-on:keydown="settings.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && settingsRoute && settings.signOutTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!settings.sessionsBusy) settings.closeSignOut()">
+    <dialog class="custom-modal" aria-labelledby="settings-signout-title" tabindex="-1" x-on:keydown="settings.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && settingsRoute && settings.signOutTarget" x-on:cancel.prevent="if (!settings.sessionsBusy) settings.closeSignOut()">
       <section class="notice-card"><h2 id="settings-signout-title">Sign out browser?</h2><p>You will need to sign in again on <strong x-text="settings.signOutTarget?.label"></strong>. This browser stays signed in.</p><p class="profile-error" role="alert" x-show="settings.sessionsError" x-text="settings.sessionsError"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="settings.sessionsBusy" x-on:click="settings.closeSignOut()">Cancel</button><button type="button" class="btn-primary" :disabled="settings.sessionsBusy" x-on:click="settings.confirmSignOut()" x-text="settings.sessionsBusy ? 'Signing out…' : 'Sign out'"></button></div></section>
     </dialog>
   </div>

@@ -1865,7 +1865,7 @@
         </section>
       </section>
     </div>
-    <dialog class="custom-modal" aria-labelledby="settings-signout-title" tabindex="-1" x-on:keydown="settings.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && settingsRoute && settings.signOutTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!settings.sessionsBusy) settings.closeSignOut()">
+    <dialog class="custom-modal" aria-labelledby="settings-signout-title" tabindex="-1" x-on:keydown="settings.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && settingsRoute && settings.signOutTarget" x-on:cancel.prevent="if (!settings.sessionsBusy) settings.closeSignOut()">
       <section class="notice-card"><h2 id="settings-signout-title">Sign out browser?</h2><p>You will need to sign in again on <strong x-text="settings.signOutTarget?.label"></strong>. This browser stays signed in.</p><p class="profile-error" role="alert" x-show="settings.sessionsError" x-text="settings.sessionsError"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="settings.sessionsBusy" x-on:click="settings.closeSignOut()">Cancel</button><button type="button" class="btn-primary" :disabled="settings.sessionsBusy" x-on:click="settings.confirmSignOut()" x-text="settings.sessionsBusy ? 'Signing out…' : 'Sign out'"></button></div></section>
     </dialog>
   </div>
@@ -2110,7 +2110,7 @@
       </div>
     </div></section>
   </dialog>
-  <dialog id="poll-dialog" class="custom-modal poll-modal" :class="!isDesktop && 'sheet-modal'" aria-labelledby="poll-dialog-title" x-cloak x-effect="const show = authenticated && polls.dialogOpen; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="polls.closeDialog()" x-on:click="if ($event.target === $el) polls.closeDialog()">
+  <dialog id="poll-dialog" class="custom-modal poll-modal" :class="!isDesktop && 'sheet-modal'" aria-labelledby="poll-dialog-title" x-cloak x-modal="authenticated && polls.dialogOpen" x-on:cancel.prevent="polls.closeDialog()" x-on:click="if ($event.target === $el) polls.closeDialog()">
     <section class="poll-dialog-card" :class="isDesktop ? 'notice-card' : 'action-sheet'">
       <form class="poll-form" novalidate x-on:submit.prevent="polls.submit()">
         <div class="poll-dialog-head">
@@ -2153,7 +2153,7 @@
       </form>
     </section>
   </dialog>
-  <dialog id="poll-votes" class="custom-modal poll-modal" :class="!isDesktop && 'sheet-modal'" aria-labelledby="poll-votes-title" x-cloak x-effect="const show = authenticated && !!polls.votesFor; if (show && !$el.open) { $el.showModal(); $nextTick(() => $el.querySelector('.dialog-close')?.focus()); } else if (!show && $el.open) $el.close()" x-on:cancel.prevent="polls.closeVotes()" x-on:click="if ($event.target === $el) polls.closeVotes()">
+  <dialog id="poll-votes" class="custom-modal poll-modal" :class="!isDesktop && 'sheet-modal'" aria-labelledby="poll-votes-title" x-cloak x-modal="authenticated && !!polls.votesFor" data-modal-focus=".dialog-close" x-on:cancel.prevent="polls.closeVotes()" x-on:click="if ($event.target === $el) polls.closeVotes()">
     <section class="poll-dialog-card poll-votes-card" :class="isDesktop ? 'notice-card' : 'action-sheet'">
       <div class="poll-dialog-head">
         <h2 id="poll-votes-title">Votes</h2>
@@ -2484,7 +2484,7 @@
         </section>
       </section>
     </div>
-    <dialog class="custom-modal" aria-labelledby="agent-rename-title" tabindex="-1" x-on:keydown="agents.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && agentsRoute && agents.renameTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!agents.busy) agents.closeRename()">
+    <dialog class="custom-modal" aria-labelledby="agent-rename-title" tabindex="-1" x-on:keydown="agents.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && agentsRoute && agents.renameTarget" x-on:cancel.prevent="if (!agents.busy) agents.closeRename()">
       <form class="notice-card" x-on:submit.prevent="agents.confirmRename()"><h2 id="agent-rename-title">Rename agent</h2><p>Also renames the coding session when it is connected.</p><input type="text" class="agent-rename-input" maxlength="80" aria-label="Agent name" autofocus x-model="agents.renameValue" :disabled="agents.busy" /><p class="profile-error" role="alert" x-show="agents.error" x-text="agents.error"></p><div class="pair-actions"><button type="button" class="btn-secondary" :disabled="agents.busy" x-on:click="agents.closeRename()">Cancel</button><button type="submit" class="btn-primary" :disabled="agents.busy" x-text="agents.busy ? 'Saving…' : 'Save'"></button></div></form>
     </dialog>
   </div>
@@ -2543,7 +2543,7 @@
         </section>
       </section>
     </div>
-    <dialog class="custom-modal" aria-labelledby="irc-remove-title" tabindex="-1" x-on:keydown="irc.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && ircRoute && irc.removeTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!irc.busy) irc.closeRemove()">
+    <dialog class="custom-modal" aria-labelledby="irc-remove-title" tabindex="-1" x-on:keydown="irc.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && ircRoute && irc.removeTarget" x-on:cancel.prevent="if (!irc.busy) irc.closeRemove()">
       <section class="notice-card"><h2 id="irc-remove-title">Remove <span x-text="irc.removeTarget?.label"></span>?</h2><p x-text="irc.removeMessage()"></p><p class="profile-error" role="alert" x-show="irc.error" x-text="irc.error"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="irc.busy" x-on:click="irc.closeRemove()">Cancel</button><button type="button" class="btn-danger" :disabled="irc.busy" x-on:click="irc.confirmRemove()" x-text="irc.busy ? 'Removing…' : 'Remove'"></button></div></section>
     </dialog>
   </div>
@@ -2647,7 +2647,7 @@
         </section>
       </section>
     </div>
-    <dialog class="custom-modal" aria-labelledby="admin-icon-crop-title" tabindex="-1" x-cloak x-effect="const show = !booting && authenticated && adminRoute && !!branding.crop; if (show && !$el.open) { $el.showModal(); $nextTick(() => $el.querySelector('.icon-crop-zoom input')?.focus()); } else if (!show && $el.open) $el.close()" x-on:cancel.prevent="branding.cancel()">
+    <dialog class="custom-modal" aria-labelledby="admin-icon-crop-title" tabindex="-1" x-cloak x-modal="!booting && authenticated && adminRoute && !!branding.crop" data-modal-focus=".icon-crop-zoom input" x-on:cancel.prevent="branding.cancel()">
       <section class="notice-card icon-crop-card">
         <h2 id="admin-icon-crop-title">Crop icon</h2>
         <p>Drag to move the image. Zoom with the slider.</p>
@@ -2657,10 +2657,10 @@
         <div class="pair-actions"><button type="button" class="btn-secondary" :disabled="!!branding.busy" x-on:click="branding.cancel()">Cancel</button><button type="button" class="btn-primary" :disabled="!!branding.busy" x-on:click="branding.save()" x-text="branding.busy === 'save' ? 'Saving…' : 'Save icon'">Save icon</button></div>
       </section>
     </dialog>
-    <dialog class="custom-modal" aria-labelledby="admin-bot-remove-title" tabindex="-1" x-on:keydown="adminStatus.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && adminRoute && adminStatus.botRemoveTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!adminStatus.botBusy) adminStatus.closeRemoveBot()">
+    <dialog class="custom-modal" aria-labelledby="admin-bot-remove-title" tabindex="-1" x-on:keydown="adminStatus.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && adminRoute && adminStatus.botRemoveTarget" x-on:cancel.prevent="if (!adminStatus.botBusy) adminStatus.closeRemoveBot()">
       <section class="notice-card"><h2 id="admin-bot-remove-title">Remove <span x-text="adminStatus.botRemoveTarget?.nick"></span>?</h2><p>Its IRC account stops working and it leaves every channel. Scripts using it lose access. You can create a new bot later.</p><p class="profile-error" role="alert" x-show="adminStatus.botsError" x-text="adminStatus.botsError"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="!!adminStatus.botBusy" x-on:click="adminStatus.closeRemoveBot()">Cancel</button><button type="button" class="btn-danger" :disabled="!!adminStatus.botBusy" x-on:click="adminStatus.confirmRemoveBot()" x-text="adminStatus.botBusy ? 'Removing…' : 'Remove'"></button></div></section>
     </dialog>
-    <dialog class="custom-modal" aria-labelledby="admin-agent-remove-title" tabindex="-1" x-on:keydown="adminStatus.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && adminRoute && adminStatus.removeTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!adminStatus.removing) adminStatus.closeRemoveAgent()">
+    <dialog class="custom-modal" aria-labelledby="admin-agent-remove-title" tabindex="-1" x-on:keydown="adminStatus.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && adminRoute && adminStatus.removeTarget" x-on:cancel.prevent="if (!adminStatus.removing) adminStatus.closeRemoveAgent()">
       <section class="notice-card"><h2 id="admin-agent-remove-title">Remove <span x-text="adminStatus.removeTarget?.name"></span>?</h2><p>This disconnects <span x-text="adminStatus.removeTarget?.owner"></span>'s agent, removes its DM and takes it out of every channel. They can pair a new one.</p><p class="profile-error" role="alert" x-show="adminStatus.agentsError" x-text="adminStatus.agentsError"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="adminStatus.removing" x-on:click="adminStatus.closeRemoveAgent()">Cancel</button><button type="button" class="btn-danger" :disabled="adminStatus.removing" x-on:click="adminStatus.confirmRemoveAgent()" x-text="adminStatus.removing ? 'Removing…' : 'Remove'"></button></div></section>
     </dialog>
   </div>
@@ -2686,7 +2686,7 @@
     <p class="members-empty" x-show="!members.rows().length" x-text="members.emptyText()"></p>
     <button type="button" class="link-button members-retry" x-show="members.error()" x-on:click="members.request()">Try again</button>
   </aside>
-  <dialog class="custom-modal sheet-modal" aria-label="Members" x-cloak x-effect="const open = !isDesktop && members.open && members.canShow(); if (open && !$el.open) $el.showModal(); else if (!open && $el.open) $el.close()" x-on:cancel.prevent="members.close()" x-on:close="members.close()" x-on:click="if ($event.target === $el) members.close()">
+  <dialog class="custom-modal sheet-modal" aria-label="Members" x-cloak x-modal="!isDesktop && members.open && members.canShow()" x-on:cancel.prevent="members.close()" x-on:close="members.close()" x-on:click="if ($event.target === $el) members.close()">
     <section class="action-sheet members-sheet">
       <div class="sheet-head"><strong>Members</strong><span x-text="members.countLabel()"></span></div>
       <div class="members-sheet-list">
@@ -2984,7 +2984,7 @@
 
   <p class="profile-error" role="alert" x-cloak x-show="authenticated && pairing.approvalError" x-text="pairing.approvalError"></p>
   <p class="notify-banner pair-result" role="status" x-cloak x-show="authenticated && (pairing.pendingPair === 'approved' || pairing.pendingPair === 'denied')"><span style="flex:1;min-width:0" x-text="pairing.pendingPair === 'approved' ? 'Browser linked to this account.' : 'Sign-in request denied.'"></span><button type="button" class="notify-banner-close" aria-label="Dismiss notification" x-on:click="pairing.pendingPair = null"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></p>
-  <dialog x-data="devicePairing" class="custom-modal pair-modal" aria-labelledby="client-pair-title" x-cloak x-effect="const show = !booting && authenticated && pairing.pendingPair && typeof pairing.pendingPair === 'object'; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel="pairing.pendingPair = null"><section class="notice-card pair-card"><p class="pair-eyebrow">Link browser</p><h2 id="client-pair-title" tabindex="-1" autofocus>Approve this sign-in?</h2><p style="overflow-wrap:anywhere" x-text="pairRequestSummary(pairing.pendingPair, account)"></p><p>Only approve if you started this on that device. Check that the code matches the one it shows.</p><div class="pair-code"><small>Code</small><strong x-text="formatPairCode(pairing.pendingPair?.code)"></strong></div><p class="profile-error" role="alert" x-show="pairing.approvalError" x-text="pairing.approvalError"></p><div class="pair-actions"><button type="button" class="btn-primary" :disabled="pairing.approvalBusy" x-on:click="pairing.approvePair()">Approve</button><button type="button" class="btn-secondary" :disabled="pairing.approvalBusy" x-on:click="pairing.denyPair()">Deny</button></div></section></dialog>
+  <dialog x-data="devicePairing" class="custom-modal pair-modal" aria-labelledby="client-pair-title" x-cloak x-modal="!booting && authenticated && pairing.pendingPair && typeof pairing.pendingPair === 'object'" x-on:cancel="pairing.pendingPair = null"><section class="notice-card pair-card"><p class="pair-eyebrow">Link browser</p><h2 id="client-pair-title" tabindex="-1" autofocus>Approve this sign-in?</h2><p style="overflow-wrap:anywhere" x-text="pairRequestSummary(pairing.pendingPair, account)"></p><p>Only approve if you started this on that device. Check that the code matches the one it shows.</p><div class="pair-code"><small>Code</small><strong x-text="formatPairCode(pairing.pendingPair?.code)"></strong></div><p class="profile-error" role="alert" x-show="pairing.approvalError" x-text="pairing.approvalError"></p><div class="pair-actions"><button type="button" class="btn-primary" :disabled="pairing.approvalBusy" x-on:click="pairing.approvePair()">Approve</button><button type="button" class="btn-secondary" :disabled="pairing.approvalBusy" x-on:click="pairing.denyPair()">Deny</button></div></section></dialog>
 
   <div x-data="messageActions" class="reaction-picker" :class="actions.reactionSearch && 'searching'" x-cloak x-show="actions.openReactionId" :style="actions.pickerStyle()" x-on:mouseleave="if (!actions.reactionSearch) actions.closeReactionPicker()" x-on:mousedown.outside="actions.closeReactionPicker()" x-on:keydown.escape="actions.closeReactionPicker()">
     <template x-if="!actions.reactionSearch">
@@ -3010,7 +3010,7 @@
     </template>
   </div>
 
-  <dialog id="message-sheet" class="custom-modal sheet-modal" aria-label="Message actions" x-cloak x-on:contextmenu.prevent x-effect="const open = !isDesktop && !!actions.actionMessage(); if (open && !$el.open) $el.showModal(); else if (!open && $el.open) $el.close()" x-on:cancel.prevent="actions.reactionSearch ? actions.closeReactionSearch() : actions.closeMessageMenu(true)" x-on:click="if ($event.target === $el) actions.closeMessageMenu(false)">
+  <dialog id="message-sheet" class="custom-modal sheet-modal" aria-label="Message actions" x-cloak x-on:contextmenu.prevent x-modal="!isDesktop && !!actions.actionMessage()" x-on:cancel.prevent="actions.reactionSearch ? actions.closeReactionSearch() : actions.closeMessageMenu(true)" x-on:click="if ($event.target === $el) actions.closeMessageMenu(false)">
     <template x-if="actions.actionMessage()">
       <section class="action-sheet">
         <div class="sheet-head"><strong x-text="actions.actionMessage()?.authorNick"></strong><span x-text="formatTime(actions.actionMessage()?.time)"></span></div>
@@ -3121,7 +3121,7 @@
       </div>
     </section>
   </dialog>
-  <dialog class="custom-modal" aria-labelledby="agent-remove-title" tabindex="-1" x-on:keydown="agents.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && agents.removeTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!agents.busy) agents.closeRemove()">
+  <dialog class="custom-modal" aria-labelledby="agent-remove-title" tabindex="-1" x-on:keydown="agents.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && agents.removeTarget" x-on:cancel.prevent="if (!agents.busy) agents.closeRemove()">
     <section class="notice-card"><h2 id="agent-remove-title">Remove <span x-text="agents.removeTarget?.nick"></span>?</h2><p>This disconnects Slirc, removes the agent's DM and its threads, and revokes its credentials and channel access. It may not stop work already running locally.</p><p class="profile-error" role="alert" x-show="agents.error" x-text="agents.error"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="agents.busy" x-on:click="agents.closeRemove()">Cancel</button><button type="button" class="btn-danger" :disabled="agents.busy" x-on:click="agents.confirmRemove()" x-text="agents.busy ? 'Removing…' : 'Remove'"></button></div></section>
   </dialog>
 
@@ -3136,7 +3136,7 @@
     </section>
   </dialog>
 
-  <dialog x-data="peopleCard" id="whois-dialog" class="custom-modal" x-cloak x-effect="const open = !!people.whoisNick; if (open && !$el.open) $el.showModal(); else if (!open && $el.open) $el.close()" x-on:cancel.prevent="people.closeWhois()" x-on:click="if ($event.target === $el) people.closeWhois()">
+  <dialog x-data="peopleCard" id="whois-dialog" class="custom-modal" x-cloak x-modal="!!people.whoisNick" x-on:cancel.prevent="people.closeWhois()" x-on:click="if ($event.target === $el) people.closeWhois()">
     <section class="notice-card whois-card" role="dialog" aria-labelledby="whois-title" tabindex="-1" autofocus>
       <button type="button" class="profile-close" aria-label="Close" x-tooltip x-on:click="people.closeWhois()" x-html="lucideIcon('x')"></button>
       <div class="whois-heading">
@@ -3275,7 +3275,7 @@
       <p class="palette-foot"><span class="palette-hint"><kbd>&uarr;</kbd><kbd>&darr;</kbd> move</span><span class="palette-hint"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('corner-down-right')"></span> open</span><span class="palette-hint"><kbd>esc</kbd> close</span></p>
     </section>
   </dialog>
-  <dialog id="workspace-dialog" class="custom-modal" aria-labelledby="workspace-dialog-title" x-cloak x-effect="const show = authenticated && workspaceDialog; if (show && !$el.open) { $el.showModal(); $el.querySelector('#workspace-address')?.focus() } else if (!show && $el.open) $el.close()" x-on:cancel.prevent="closeWorkspaces()" x-on:click="if ($event.target === $el) closeWorkspaces()">
+  <dialog id="workspace-dialog" class="custom-modal" aria-labelledby="workspace-dialog-title" x-cloak x-modal="authenticated && workspaceDialog" data-modal-focus="#workspace-address" x-on:cancel.prevent="closeWorkspaces()" x-on:click="if ($event.target === $el) closeWorkspaces()">
     <section class="notice-card workspace-card">
       <h2 id="workspace-dialog-title">Workspaces</h2>
       <p>Each workspace keeps its own sign-in.</p>

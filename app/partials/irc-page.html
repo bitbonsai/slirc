@@ -46,7 +46,7 @@
         </section>
       </section>
     </div>
-    <dialog class="custom-modal" aria-labelledby="irc-remove-title" tabindex="-1" x-on:keydown="irc.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && ircRoute && irc.removeTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!irc.busy) irc.closeRemove()">
+    <dialog class="custom-modal" aria-labelledby="irc-remove-title" tabindex="-1" x-on:keydown="irc.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && ircRoute && irc.removeTarget" x-on:cancel.prevent="if (!irc.busy) irc.closeRemove()">
       <section class="notice-card"><h2 id="irc-remove-title">Remove <span x-text="irc.removeTarget?.label"></span>?</h2><p x-text="irc.removeMessage()"></p><p class="profile-error" role="alert" x-show="irc.error" x-text="irc.error"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="irc.busy" x-on:click="irc.closeRemove()">Cancel</button><button type="button" class="btn-danger" :disabled="irc.busy" x-on:click="irc.confirmRemove()" x-text="irc.busy ? 'Removing…' : 'Remove'"></button></div></section>
     </dialog>
   </div>

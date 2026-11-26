@@ -82,7 +82,7 @@
         </section>
       </section>
     </div>
-    <dialog class="custom-modal" aria-labelledby="agent-rename-title" tabindex="-1" x-on:keydown="agents.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && agentsRoute && agents.renameTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!agents.busy) agents.closeRename()">
+    <dialog class="custom-modal" aria-labelledby="agent-rename-title" tabindex="-1" x-on:keydown="agents.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && agentsRoute && agents.renameTarget" x-on:cancel.prevent="if (!agents.busy) agents.closeRename()">
       <form class="notice-card" x-on:submit.prevent="agents.confirmRename()"><h2 id="agent-rename-title">Rename agent</h2><p>Also renames the coding session when it is connected.</p><input type="text" class="agent-rename-input" maxlength="80" aria-label="Agent name" autofocus x-model="agents.renameValue" :disabled="agents.busy" /><p class="profile-error" role="alert" x-show="agents.error" x-text="agents.error"></p><div class="pair-actions"><button type="button" class="btn-secondary" :disabled="agents.busy" x-on:click="agents.closeRename()">Cancel</button><button type="submit" class="btn-primary" :disabled="agents.busy" x-text="agents.busy ? 'Saving…' : 'Save'"></button></div></form>
     </dialog>
   </div>
