@@ -73,6 +73,7 @@ import { createMembersPanel, memberResponseApplies, membersPanelVisible } from "
 import { createLinksView } from "@client/links-view.ts";
 import { addressIn } from "@client/links-query.ts";
 import { createMessageActions } from "@client/message-actions.ts";
+import { createMessageView } from "@client/message-view.ts";
 import { createComposerEditor } from "@client/composer-editor.ts";
 import { createLinkActions } from "@client/link-actions.ts";
 import { createClientState, type ClientSession } from "@client/client-state.ts";
@@ -638,7 +639,8 @@ export function createClient(Alpine: any) {
     },
   });
   Object.assign(ui, { greetingNote, library });
-  Object.assign(ui, { polls, jobCards, notes, replyThreads, openNotes, addPrompts, transcript, giphy, emoji, pairing, phoneOffer, scanner, signIn, profile, settings, channelCreate, newConversation, invitationsPage, bulkInvite, invitationAccept, admission, admissionFounder, irc, agents, adminStatus, branding, typing, members, menus, channelDrag, channelPrefs, directDelete, people, mediaView, actions, editor, links });
+  const messageView = createMessageView({ embeds: () => ui.embeds, linkSegments: ui.linkSegments, messageText: ui.messageText, isGiphyUrl, embedImageUrl, playerCard: mediaView.playerCard, isMediaError: mediaView.isMediaError, redactFor, stampedReaction: () => actions.stampedReaction });
+  Object.assign(ui, { polls, jobCards, notes, replyThreads, openNotes, addPrompts, transcript, giphy, emoji, pairing, phoneOffer, scanner, signIn, profile, settings, channelCreate, newConversation, invitationsPage, bulkInvite, invitationAccept, admission, admissionFounder, irc, agents, adminStatus, branding, typing, members, menus, channelDrag, channelPrefs, directDelete, people, mediaView, messageView, actions, editor, links });
 
   async function uploadMedia({ channel, kind, mime, data, accountId, width, height }: { channel: string; kind: "image" | "video"; mime: string; data: string; accountId: string; width?: number; height?: number }): Promise<string> {
     const response = await fetch("/api/uploads", {

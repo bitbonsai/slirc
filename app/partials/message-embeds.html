@@ -1,0 +1,103 @@
+<template x-for="(card, n) in messageView.previewCards(message)" :key="'og-' + n"
+  ><details
+    class="image-preview embed-card"
+    :open="!mediaView.isMediaCollapsed(message)"
+    x-on:toggle="mediaView.setMediaCollapsed(message, !$event.target.open)"
+    ><summary aria-label="Toggle link preview"
+      ><svg class="image-chevron" viewBox="0 0 24 24" aria-hidden="true"
+        ><path d="m6 9 6 6 6-6"
+        ></path
+      ></svg
+      ><svg class="image-icon" viewBox="0 0 24 24" aria-hidden="true"
+        ><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+        ></path
+        ><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+        ></path
+      ></svg
+    ></summary
+    ><div class="embed-og"
+      ><a :href="card.href" target="_blank" rel="noopener noreferrer"
+        ><img
+          class="thumb-img"
+          x-show="messageView.showsCardImage(card)"
+          :src="card.image"
+          loading="lazy"
+          width="112"
+          height="80"
+          alt=""
+          x-init="$el.complete && mediaView.markLoaded($el)"
+          x-on:load="mediaView.markLoaded($el)"
+          x-on:error="mediaView.recordMediaError(card.image)"
+        ><span class="embed-copy"
+          ><strong x-text="card.title"
+          ></strong
+          ><span x-show="card.description" x-text="card.description"
+          ></span
+          ><small x-text="card.site"
+          ></small
+        ></span
+      ></a
+    ></div
+  ></details
+></template
+><template x-for="(card, n) in messageView.playerCards(message)" :key="'embed-' + n"
+  ><details
+    class="image-preview embed-card"
+    :open="!mediaView.isMediaCollapsed(message)"
+    x-on:toggle="mediaView.setMediaCollapsed(message, !$event.target.open)"
+    ><summary aria-label="Toggle video preview"
+      ><svg class="image-chevron" viewBox="0 0 24 24" aria-hidden="true"
+        ><path d="m6 9 6 6 6-6"
+        ></path
+      ></svg
+      ><svg class="image-icon" viewBox="0 0 24 24" aria-hidden="true"
+        ><path d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2"
+        ></path
+        ><path d="m11 8 5 4-5 4Z"
+        ></path
+      ></svg
+    ></summary
+    ><button
+      type="button"
+      class="embed-thumb"
+      aria-label="Play YouTube video"
+      x-show="card.youtube"
+      x-on:click="mediaView.openPlayer(card.href)"
+      ><img
+        class="thumb-img"
+        loading="lazy"
+        width="16"
+        height="9"
+        x-show="card.thumb"
+        :src="card.thumb"
+        alt=""
+        x-init="$el.complete && mediaView.markLoaded($el)"
+        x-on:load="mediaView.markLoaded($el)"
+        x-on:error="$el.closest('.embed-thumb').style.display = 'none'"
+      ><span class="embed-play" aria-hidden="true"
+      ></span
+    ></button
+    ><button
+      type="button"
+      class="embed-player embed-thumb"
+      x-show="!card.youtube"
+      x-on:click="mediaView.openPlayer(card.href)"
+      ><img
+        class="thumb-img"
+        loading="lazy"
+        width="16"
+        height="9"
+        x-show="card.thumb"
+        :src="card.thumb"
+        alt=""
+        x-init="$el.complete && mediaView.markLoaded($el)"
+        x-on:load="mediaView.markLoaded($el)"
+      ><span class="embed-player-copy"
+        ><strong x-text="card.title"
+        ></strong
+        ><small x-text="card.site"
+        ></small
+      ></span
+    ></button
+  ></details
+></template>

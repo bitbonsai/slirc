@@ -1,0 +1,77 @@
+<template
+  x-for="(media, mi) in mediaView.messageMedia(message.text)"
+  :key="'media-' + message.id + '-' + mi"
+  ><span class="message-media-item" :class="'is-' + media.kind"
+    ><a
+      class="giphy-caption"
+      x-show="media.kind === 'giphy'"
+      :href="media.url"
+      :data-tooltip="media.url"
+      x-tooltip
+      target="_blank"
+      rel="noopener noreferrer"
+      x-text="media.label"
+    ></a
+    ><details
+      class="image-preview"
+      :open="!mediaView.isMediaCollapsed(message)"
+      x-on:toggle="mediaView.setMediaCollapsed(message, !$event.target.open)"
+      ><summary :aria-label="messageView.toggleLabel(media)"
+        ><svg class="image-chevron" viewBox="0 0 24 24" aria-hidden="true"
+          ><path d="m6 9 6 6 6-6"
+          ></path
+        ></svg
+        ><svg class="image-icon" viewBox="0 0 24 24" aria-hidden="true"
+          ><rect width="18" height="18" x="3" y="3" rx="2"
+          ></rect
+          ><circle cx="9" cy="9" r="2"
+          ></circle
+          ><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"
+          ></path
+        ></svg
+      ></summary
+      ><template x-if="media.kind === 'video'"
+        ><video
+          class="message-video"
+          :src="media.href + '#t=0.001'"
+          :width="media.width || null"
+          :height="media.height || null"
+          :style="mediaView.mediaAspectStyle(media.href, media.width, media.height)"
+          controls
+          playsinline
+          preload="metadata"
+          aria-label="Video"
+          x-on:click.stop
+        ></video
+      ></template
+      ><template x-if="media.kind !== 'video'"
+        ><button
+          type="button"
+          class="message-media"
+          x-on:click.stop="mediaView.openLightbox(media)"
+          :aria-label="messageView.openLabel(media)"
+          ><img
+            class="thumb-img"
+            :src="media.href"
+            :alt="media.alt"
+            :width="media.width || 640"
+            :height="media.height || 480"
+            x-effect="$el.complete && mediaView.markLoaded($el)"
+            x-on:load="mediaView.markLoaded($el); mediaView.recordMediaDims(media.href, $el.naturalWidth, $el.naturalHeight)"
+            x-on:error="mediaView.recordMediaError(media.href)"
+            :style="mediaView.mediaAspectStyle(media.href, media.width, media.height)"
+        ></button
+      ></template
+    ></details
+    ><a
+      class="media-fallback"
+      x-show="messageView.showsFallback(media)"
+      :href="media.url"
+      :data-tooltip="media.url"
+      x-tooltip
+      target="_blank"
+      rel="noopener noreferrer"
+      x-text="media.url"
+    ></a
+  ></span
+></template>
