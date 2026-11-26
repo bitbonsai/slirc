@@ -9,7 +9,7 @@ import { Composer } from "@client/drafts.ts";
 import { bindKeyboardDismiss } from "@client/keyboard-dismiss.ts";
 import { type ClientState } from "@client/client-state.ts";
 
-export function createComposerEditor(reactive: <T extends object>(value: T) => T, { core, nextTick, draftComposer, roomId, rememberText, updateDraftNavigation, send, cancelEdit, chooseCommand, closeGiphy, moveGiphy, onChatScroll, scrollToBottom, coarse, giphy, emoji, recallSent = () => false, onActivity, onBlur }: {
+export function createComposerEditor(reactive: <T extends object>(value: T) => T, { core, nextTick, draftComposer, roomId, rememberText, updateDraftNavigation, send, cancelEdit, chooseCommand, closeGiphy, moveGiphy, onChatScroll, scrollToBottom, coarse, giphy, emoji, recallSent = () => false, onActivity, onBlur, answerAddPrompt = () => false }: {
   core: Pick<ClientState, 'composer' | 'editingMessageId' | 'isDesktop' | 'mentionOpen' | 'slashOpen'>;
   nextTick: (callback?: () => void) => Promise<void>;
   draftComposer: () => Composer | null;
@@ -32,6 +32,8 @@ export function createComposerEditor(reactive: <T extends object>(value: T) => T
   onActivity: (text: string) => void;
   /** The composer lost focus: end our own typing state. */
   onBlur: () => void;
+  /** Enter or Escape in an empty composer answers an open Add note. True when it did. */
+  answerAddPrompt?: (key: string) => boolean;
 }) {
   let composerInputCaret: { input: HTMLElement; offset: number } | null = null;
   let cleanupLayout: (() => void) | null = null;
@@ -163,6 +165,12 @@ export function createComposerEditor(reactive: <T extends object>(value: T) => T
       ctrlKey: event.ctrlKey, metaKey: event.metaKey, altKey: event.altKey, shiftKey: event.shiftKey,
       text: String(core.composer ?? ""), menuOpen: giphy.giphyOpen || core.slashOpen || core.mentionOpen || emoji.isOpen(),
     }) && focusNewestMessage()) {
+      event.preventDefault();
+      return;
+    }
+    // An open Add note and an empty composer: Enter confirms it and Escape dismisses it, focus stays here.
+    if ((event.key === "Enter" || event.key === "Escape") && !event.shiftKey && !event.isComposing && !event.ctrlKey && !event.metaKey && !event.altKey
+      && !String(core.composer ?? "").trim() && answerAddPrompt(event.key)) {
       event.preventDefault();
       return;
     }

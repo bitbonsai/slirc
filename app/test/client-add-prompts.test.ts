@@ -253,3 +253,22 @@ test("an email invite reports an existing account, a failure, and no invites lef
   await prompts.offerEmail({ conversationId: "c-1", channel: "#dev-test", email: "di@example.test" });
   expect(prompts.forEnd("c-1").at(-1)).toMatchObject({ state: "done", text: "Verify your email before you invite di@example.test." });
 }));
+
+test("an open Add note answers Enter and Escape from an empty composer", () => withFetch(async (calls, respond) => {
+  respond((call) => call.method === "GET" ? Response.json({ channel: "#dev-test", nick: "ada2", kind: "human", member: false }) : Response.json({ channel: "#dev-test", nick: "ada2", added: true }));
+  const { prompts } = setup();
+  expect(prompts.answer("c-1", "Enter")).toBe(false);
+  await prompts.offer({ ...invite, nick: "ada2" });
+  // Another conversation's note and other keys are left alone.
+  expect(prompts.answer("c-2", "Enter")).toBe(false);
+  expect(prompts.answer("c-1", "a")).toBe(false);
+  expect(prompts.answer("c-1", "Enter")).toBe(true);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(calls.at(-1)).toMatchObject({ method: "POST", path: "/api/channels/%23dev-test/members", body: { nick: "ada2" } });
+  expect(prompts.forEnd("c-1")[0]).toMatchObject({ state: "done", text: "Added @ada2." });
+  // A finished note no longer takes the key, so Enter goes back to sending.
+  expect(prompts.answer("c-1", "Enter")).toBe(false);
+  await prompts.offer({ ...invite, nick: "ada2" });
+  expect(prompts.answer("c-1", "Escape")).toBe(true);
+  expect(prompts.forEnd("c-1")).toEqual([]);
+}));

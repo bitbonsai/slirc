@@ -212,6 +212,18 @@ export function createAddPrompts(reactive: <T extends object>(value: T) => T, { 
     void nextTick(restoreFocus);
   }
 
+  // An open note at the end of the transcript answers to the keyboard while the composer is empty:
+  // Enter confirms it, Escape dismisses it. True when the key was used.
+  function answer(conversationId: string | null, key: string): boolean {
+    if (!conversationId || (key !== "Enter" && key !== "Escape")) return false;
+    const prompt = forEnd(conversationId).find((item) => item.state === "ask");
+    if (!prompt) return false;
+    if (key === "Escape") { ignore(prompt); return true; }
+    if (!canAdd(prompt)) return false;
+    void add(prompt);
+    return true;
+  }
+
   function reset(): void { local.items = []; }
 
   // The note's sentence with the person pulled out, so the markup can show them as avatar + @nick.
@@ -224,5 +236,5 @@ export function createAddPrompts(reactive: <T extends object>(value: T) => T, { 
     return [{ text: prompt.text.slice(0, match.index) }, { nick: prompt.nick }, { text: prompt.text.slice(match.index + match[0].length) }].filter((part) => part.nick || part.text);
   }
 
-  return Object.assign(local, { forMessage, forEnd, offer, offerEmail, canAdd, label, add, ignore, segments, reset, destroy: reset });
+  return Object.assign(local, { forMessage, forEnd, offer, offerEmail, canAdd, label, add, ignore, answer, segments, reset, destroy: reset });
 }
