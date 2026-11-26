@@ -40,7 +40,6 @@ export function registerComponents(Alpine: any, client: ReturnType<typeof create
   Alpine.data("conversationMenu", () => client.menus);
   Alpine.data("channelSettings", () => client.channelPrefs);
   Alpine.data("directDelete", () => client.directDelete);
-  Alpine.data("threadDelete", () => client.threadDelete);
   Alpine.data("peopleCard", () => client.people);
   Alpine.data("mediaView", () => client.mediaView);
   Alpine.data("messageActions", () => client.actions);

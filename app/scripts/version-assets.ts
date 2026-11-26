@@ -1,6 +1,6 @@
 // Replaces hand-bumped ?v= cache-busting query strings with short content hashes computed from
 // each asset's own bytes, so a forgotten manual bump can no longer leave a stale asset behind a
-// fresh index.html. Run via `bun run version` after touching any asset in the SHELL (app.js,
+// fresh index.html. Run via `bun run version` after touching any asset in the SHELL (client bundle inputs,
 // style.css, vendor files, icons); commit the
 // result. See AGENTS.md's sw.js cache-bump gotcha.
 import { createHash } from "node:crypto";

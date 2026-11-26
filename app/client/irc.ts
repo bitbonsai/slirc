@@ -17,11 +17,6 @@ export interface IrcMessage {
   params: string[];
 }
 
-export interface RawIrcMessage extends IrcMessage {
-  /** The exact line between framing, before parsing. Bound memory is judged on this length. */
-  raw: string;
-}
-
 // IRCv3 message-tag escapes: \: -> ; \s -> space \\ -> \ \r \n -> CR LF. A trailing lone backslash
 // is dropped. Same table the server-side parser uses, kept local so the browser bundle never pulls
 // node:net/node:tls through app/src/irc.ts.

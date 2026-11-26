@@ -7,7 +7,6 @@ import { publish } from "./live.ts";
 import { acceptedHarness } from "./agent-connect.ts";
 import { canonicalHarness } from "../agent/src/harnesses/index.ts";
 
-export const AGENT_PROTOCOL = 1;
 export const LEASE_MS = 45_000;
 export const MAX_REQUEST_TEXT = 8_000;
 export const MAX_CONTEXT = 20_000;
@@ -206,19 +205,6 @@ export async function provisionBinding(binding: Binding): Promise<Binding> {
   // Same live event a human DM fires, so the owner's open tabs list the new agent without a reload.
   if (ready.changes) publish(binding.owner_nick, "direct", { channel: normalized(dm) });
   return db.query("SELECT * FROM agent_session_bindings WHERE id = ?").get(binding.id) as Binding;
-}
-
-export function recoverBinding(secret: string, harness: string, sessionId: string, sessionFile: string): Binding | null {
-  if (!/^[A-Za-z0-9_-]{43}$/.test(secret)) return null;
-  const binding = db.query(`SELECT * FROM agent_session_bindings WHERE secret_hash=? AND harness=? AND session_id=? AND session_file=? AND status<>'revoked'`)
-    .get(hashAgentSecret(secret), harness, sessionId, sessionFile) as Binding | null;
-  if (!binding || accountByStableId(binding.owner_account_id) !== binding.owner_nick.toLowerCase()) return null;
-  return binding;
-}
-
-function accountByStableId(id: string): string | null {
-  const row = db.query("SELECT lower(nick) AS nick FROM accounts WHERE account_id=? AND removed_at IS NULL").get(id) as { nick: string } | null;
-  return row?.nick || null;
 }
 
 // Immutable binding authority: the stored owner account id still maps to the owner nick, and the

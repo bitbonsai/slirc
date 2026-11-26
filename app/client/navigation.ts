@@ -2,7 +2,7 @@
 // owns history/popstate and the durable store owns drafts. Late JOIN/history/provisioning events have
 // no path into this module — only explicit open/back/forward/pop calls select a screen.
 //
-// Route semantics mirror the shipped PWA (app.js `linkedRoom()` / `linkedMessage()`):
+// Route semantics (what `/`, `/dms` and the other URLs below open):
 //   `/`, `/dms`, `/more`                         tabs
 //   `/#room`                                     a room (a `#t-*` thread room is a room too)
 //   `/?room=%23room&msg=<id>`                    a room focused on one message (deep link)
@@ -87,7 +87,7 @@ export const NOTES_CONVERSATION_ID = "notes";
 
 const BAD_ESCAPE = /%(?![0-9a-fA-F]{2})/;
 const CONTROL = /[\x00-\x1f\x7f]/;
-const CHANNEL = /^#[a-z0-9][a-z0-9_-]{0,63}$/i; // same shape linkedRoom() accepts
+const CHANNEL = /^#[a-z0-9][a-z0-9_-]{0,63}$/i; // a room name the URL may carry
 const NICK = /^[a-z0-9][a-z0-9_-]{0,31}$/i; // same shape the `/dm/:nick` server route allows
 const MESSAGE_ID = /^[a-z0-9_-]{1,512}$/i; // same shape linkedMessage() accepts
 const JOIN_TOKEN = /^[A-Za-z0-9_-]{1,128}$/; // email-invite and copied room-link tokens

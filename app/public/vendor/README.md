@@ -5,7 +5,7 @@ Pinned: `alpinejs@3.17.1` `dist/module.esm.js`
 Source: https://cdn.jsdelivr.net/npm/alpinejs@3.17.1/dist/module.esm.js
 
 Served locally from `/vendor/alpine.js` and imported as an ES module by
-`app.js` (which calls `Alpine.start()`). No CDN at runtime.
+`client/main.ts` (which calls `Alpine.start()`). No CDN at runtime.
 
 To bump: download the new pinned build over `alpine.js`, update this file,
 and bump the shell cache version in `sw.js`.
@@ -17,7 +17,7 @@ Pinned: `nue-glow@0.2.5` `index.js`
 Source: https://github.com/nuejs/nue/tree/master/packages/nueglow (MIT)
 
 Served locally from `/vendor/nueglow.js` and imported as an ES module by
-`app.js`. Emits semantic HTML (`<b>`, `<em>`, `<sup>`, …) instead of a
+`client/presentation.ts`. Emits semantic HTML (`<b>`, `<em>`, `<sup>`, …) instead of a
 theme; `.fence` CSS in `style.css` maps those tags to the app palette.
 
 To bump: download the pinned `index.js` over `nueglow.js`, update this file,
@@ -29,8 +29,8 @@ Pinned: `qrcode-generator@1.4.4` (Kazuhiko Arase, MIT)
 
 Source: https://github.com/kazuhikoarase/qrcode-generator
 
-Served locally from `/vendor/qrcode.js`, loaded as a classic script before
-`app.js` so it attaches to `window.qrcode` (it is UMD, not an ES module).
+Served locally from `/vendor/qrcode.js`, loaded as a classic script from
+`partials/index.html` so it attaches to `window.qrcode` (it is UMD, not an ES module).
 Used by the invite page to render join links as QR codes.
 
 To bump: download the new pinned min.js over `qrcode.js`, update this file,

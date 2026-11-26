@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomInt } from "node:crypto";
 import { db } from "./db.ts";
 import { configuredAppOrigin } from "./request-security.ts";
-import { canonicalHarness, harnesses, harnessById, releasedHarnesses } from "../agent/src/harnesses/index.ts";
+import { canonicalHarness, harnessById, releasedHarnesses } from "../agent/src/harnesses/index.ts";
 import { VERSION as AGENT_VERSION } from "../agent/src/version.ts";
 import { workspaceArg } from "../agent/src/workspace.ts";
 
@@ -19,7 +19,6 @@ const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 // dev) and harnesses people are offered (released only). Both come from the agent package's registry.
 export const acceptedHarness = (id: unknown) => typeof id === "string" && !!harnessById(id);
 export const offeredHarnesses = () => releasedHarnesses().map((harness) => ({ id: harness.id, name: harness.name, ...(harness.terminalOnly ? { terminal: true } : {}) }));
-export const allHarnessNames = () => harnesses.map((harness) => harness.name);
 
 export function instanceHost(): string {
   const host = process.env.APP_HOST?.trim();

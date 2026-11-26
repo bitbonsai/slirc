@@ -1,6 +1,6 @@
 # Slirc troubleshooting notes
 
-Read only the section needed for the task. Root [AGENTS.md](../AGENTS.md) owns current workflow and safety boundaries. These notes include legacy-client and default-stack details; confirm the active client, host and profile before using a command. Nothing here authorizes deployment, a reset or a restart.
+Read only the section needed for the task. Root [AGENTS.md](../AGENTS.md) owns current workflow and safety boundaries. These notes include old-client and default-stack details; confirm the active client, host and profile before using a command. Nothing here authorizes deployment, a reset or a restart.
 
 ## Operations
 
@@ -30,7 +30,7 @@ Read only the section needed for the task. Root [AGENTS.md](../AGENTS.md) owns c
 - Allow up to 8 seconds per legacy mapping, plus at most 30 seconds for the host checkpoint, app shutdown (up to 30 seconds), and the existing roughly 60-second health window. Image building happens before the pause. No legacy rows means no IRC probes. Both the image entrypoint and server refuse startup while NULL mappings remain; `/auth/me` performs no legacy migration or IRC proof.
 - On ordinary proof failure the script removes its migration container and resumes the same old app automatically. After an interrupted SSH session or host failure, inspect the printed old-container ID, restart policy, image, mounts and any migration container before recovery. Stop/remove only that migration container if it is still running, then restore the recorded policy with `podman update --restart=<recorded-policy> <old-id>` and resume with `podman start <old-id>`. Never run two app writers during verification. A failure after Compose replacement or during health checks requires an operator rollback using the printed previous image and the same app-only Compose file/env/mounts; do not restart Ergo or revert SQLite data. Verify `/healthz`, `/api/version`, and Ergo start time after recovery. A later `just deploy` rechecks all remaining NULL rows, including any created by the resumed old app.
 - `just deploy-ergo` is a separately authorized restart and checks app uptime. `deploy-landing` and `deploy-docs` update the checkout served by Caddy, not the app process. All recipes require a clean committed tree.
-- Production oper setup must precede features that use it. Use configured `ERGO_OPER_USER`/`ERGO_OPER_PASS`, the least required oper capabilities, and verify OPER. HistServ deletion of other users' items additionally needs `history`; never substitute human IRC credentials.
+- Production oper setup must precede features that use it. Use configured `ERGO_OPER_USER`/`ERGO_OPER_PASS`, the least required oper capabilities, and verify OPER. HistServ deletion of other users' items also needs `history`; never substitute human IRC credentials.
 - Keep the production Ergo image on the pinned multi-architecture digest. The isolated profile can use a different local image; do not confuse that with a production pin change.
 - `npm publish` for `app/agent` rebuilds tracked `dist/slirc-agent.js`; account for that output before deployment. Never sync env by printing secrets in an agent transcript.
 
@@ -84,9 +84,9 @@ Read only the section needed for the task. Root [AGENTS.md](../AGENTS.md) owns c
 - Browser sessions and consumed magic links expire. Local dev `/auth/request` can provide a dev link; keep auth local and do not expose tokens. No agent-browser session can mutate a different user's browser IndexedDB without attachment.
 - Synthetic reconnect checks must start held requests after pagehide/pageshow setup, since pagehide clears state. WebSocket wrappers must preserve static OPEN/CLOSED constants.
 
-## Phone and legacy PWA
+## Phone and PWA
 
-These details often concern the legacy JavaScript client. Verify applicability before porting behavior to the TypeScript client.
+These details came from the old JavaScript client. The TypeScript client is the only one now; confirm each still applies before relying on it.
 
 - Headless device width does not enable `(pointer: coarse)`. Dev `?phone=1` widens CSS queries and selects phone JS paths; `?phone=0` clears it. This is a layout aid, not a real touch/Safari test.
 - Safari standalone with status-bar `black-translucent` can leave a bottom dead zone. Use `black`; Apple meta changes may require removing and re-adding the home-screen app.
@@ -95,7 +95,7 @@ These details often concern the legacy JavaScript client. Verify applicability b
 - Duplicate visible `view-transition-name` values abort transitions. Keep only one header displayed. Safari can fire popstate on load or return from another app; guests must not stack room history entries. Use one popstate handler and preserve hierarchical Back.
 - Pull-to-refresh must be excluded inside dialogs. Nonpassive touchmove plus preventDefault keeps Safari overscroll from stealing it; overscroll-behavior alone may not be enough.
 - Plain HTTP has no service worker in this app; waiting forever on `navigator.serviceWorker.ready` hangs. Use a timeout/fallback. Web Locks and randomUUID also need an appropriate secure context.
-- Legacy SW caches the URL `/index.html`, even though the server now maps it to legacy HTML when that client is selected. Do not make filename cleanup serve the wrong shell to old boot handoffs.
+- Old service workers cache the URL `/index.html`. Keep serving the current shell there, so an old cache never gets a different document.
 - Asset version tooling covers both shells and dependencies. Safari can refill a new cache with stale HTTP-cached assets unless install fetch uses `cache: "reload"`; HTML and SW responses need appropriate revalidation. Never reload over pending work just to apply an update.
 - Historical boot delays were dominated by Alpine walking hidden DOM and animation layer churn. Keep boot classes on the intended root, spinner outside Alpine traversal, and expensive closed panels unmounted. Measure before adding more loading machinery.
 

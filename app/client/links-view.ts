@@ -681,5 +681,3 @@ export function createLinksView(reactive: <T extends object>(value: T) => T, dep
     status: () => (local.loaded ? `${local.total.toLocaleString("en-US")} ${local.total === 1 ? "link" : "links"}` : ""),
   });
 }
-
-export type LinksView = ReturnType<typeof createLinksView>;

@@ -127,12 +127,6 @@ export function threadAnnouncementDisplayText(text: string, origin: string): str
   return match[1]! + new URL(match[2]!, origin).href;
 }
 
-// The person who started a thread, or an admin, may delete it. The server checks the same rule.
-export function canDeleteThread(thread: Pick<ThreadGrant, "createdBy"> | null | undefined, account: string, isAdmin: boolean): boolean {
-  if (!thread) return false;
-  return isAdmin || (!!thread.createdBy && foldIdentifier(thread.createdBy) === foldIdentifier(account));
-}
-
 // The server makes admins IRC channel operators in channels and the threads under them, so Ergo
 // accepts an admin's own REDACT there. DMs, private groups, threads under those, and a thread this
 // client cannot place go through the server's moderation route instead.

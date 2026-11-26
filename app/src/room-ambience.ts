@@ -29,7 +29,6 @@ export function dueNote(now = Date.now(), last = lastNoteDay()): boolean {
 }
 
 export const welcomeNote = (room = openRoom()) => `Welcome to ${room}. This room is public, so anyone can read along. Sign in with your email to say hi.`;
-export const WELCOME_NOTE = welcomeNote();
 export const noteLine = (room = openRoom()) => welcomeNote(room);
 
 // The gif search of the day. Friday is always the same one; the rest rotate.
@@ -67,12 +66,6 @@ export function replacePreviousGif(message: ParsedMessage, send: (line: string) 
   if (!previous || previous === msgid) return null;
   send(`REDACT ${channel} ${previous} :replaced by today's gif`);
   return previous;
-}
-
-// The one-time cleanup: every welcome gif in a channel's history except the newest.
-export function staleWelcomeGifs(items: ParsedMessage[]): ParsedMessage[] {
-  const gifs = items.filter(isWelcomeGif).sort((a, b) => (a.tags.time || "").localeCompare(b.tags.time || ""));
-  return gifs.slice(0, -1);
 }
 
 export async function giphyUrl(query: string, apiKey = process.env.GIPHY_API_KEY, fetcher: typeof fetch = fetch): Promise<string | null> {

@@ -66,7 +66,6 @@ import { createTypingIndicators, typingAccount, typingLine } from "@client/typin
 import { createConversationMenu } from "@client/conversation-menu.ts";
 import { createChannelSettings } from "@client/channel-settings.ts";
 import { createDirectDelete } from "@client/direct-delete.ts";
-import { createThreadDelete } from "@client/thread-delete.ts";
 import { createPeopleCard } from "@client/people-card.ts";
 import { createPresence } from "@client/presence.ts";
 import { createMediaView } from "@client/media-view.ts";
@@ -581,7 +580,6 @@ export function createClient(Alpine: any) {
   });
   const channelPrefs = createChannelSettings(Alpine.reactive, { core: ui, nextTick, session, closeMenu: openPopup, onDeleted: (channel) => channelDeleted(channel) });
   const directDelete = createDirectDelete(Alpine.reactive, { core: ui, nextTick, session, authorized: () => authorized, nav, connect, closeMenu: openPopup });
-  const threadDelete = createThreadDelete(Alpine.reactive, { core: ui, nextTick, session, closeMenu: openPopup, onDeleted: (thread) => { void deleteThreadAnnouncement(thread); forgetThread(thread); } });
   const presence = createPresence(Alpine.reactive, wireSend);
   const people = createPeopleCard(Alpine.reactive, { core: ui, openPopup, sendWhois: (nick) => { if (socket?.readyState !== WebSocket.OPEN) return false; socket.send(`WHOIS ${nick}\r\n`); return true; }, activeChannel: () => activeConversation()?.wireTarget ?? "", openRoom, openDirect: (nick) => openDirect(nick, true), focusComposer: () => { void Alpine.nextTick(() => maybeFocusComposer(true)); }, conversations: () => authorized, directs: () => ui.directs, channelDetails: () => ui.channelDetails, threads: () => ui.threads });
   // Right members rail: reads the runtime's one authorized fetch and the existing presence controller.
@@ -640,7 +638,7 @@ export function createClient(Alpine: any) {
     },
   });
   Object.assign(ui, { greetingNote, library });
-  Object.assign(ui, { polls, jobCards, notes, replyThreads, openNotes, addPrompts, transcript, giphy, emoji, pairing, phoneOffer, scanner, signIn, profile, settings, channelCreate, newConversation, invitationsPage, bulkInvite, invitationAccept, admission, admissionFounder, irc, agents, adminStatus, branding, typing, members, menus, channelDrag, channelPrefs, directDelete, threadDelete, people, mediaView, actions, editor, links });
+  Object.assign(ui, { polls, jobCards, notes, replyThreads, openNotes, addPrompts, transcript, giphy, emoji, pairing, phoneOffer, scanner, signIn, profile, settings, channelCreate, newConversation, invitationsPage, bulkInvite, invitationAccept, admission, admissionFounder, irc, agents, adminStatus, branding, typing, members, menus, channelDrag, channelPrefs, directDelete, people, mediaView, actions, editor, links });
 
   async function uploadMedia({ channel, kind, mime, data, accountId, width, height }: { channel: string; kind: "image" | "video"; mime: string; data: string; accountId: string; width?: number; height?: number }): Promise<string> {
     const response = await fetch("/api/uploads", {
@@ -1997,7 +1995,7 @@ export function createClient(Alpine: any) {
     ui.greetingNoteSeen = true;
     ui.threads = [];
     ui.activeThread = null;
-    mediaView.reset(); menus.close(); channelDrag.reset(); directDelete.reset(); threadDelete.reset(); people.reset(); presence.reset();
+    mediaView.reset(); menus.close(); channelDrag.reset(); directDelete.reset(); people.reset(); presence.reset();
     channelPrefs.closeChannelSettings();
     pairing.pairLookupDraft = "";
     ui.starred = []; ui.channelOrder = []; ui.mutedRooms = []; ui.channelDetails = []; ui.openRooms = {}; ui.ircConnection = null;
@@ -2607,16 +2605,6 @@ export function createClient(Alpine: any) {
     const direct = ui.directs.find((entry: any) => foldIdentifier(entry.channel) === foldIdentifier(thread.parent));
     navIntent += 1;
     nav.open(direct ? { kind: "dm", nick: direct.nick } : { kind: "room", room: thread.parent });
-  }
-
-  // The thread's announcement in the parent would otherwise point at a thread that is gone. Found by
-  // its stable correlation id; skipped when this client never loaded it.
-  async function deleteThreadAnnouncement(thread: ThreadGrant): Promise<void> {
-    const parent = authorized.find((item) => item.kind !== "thread" && foldIdentifier(item.wireTarget) === foldIdentifier(thread.parent));
-    if (!db || !outbox || !parent) return;
-    const announcement = await db.messages.where("[conversationId+clientId]").equals([parent.conversationId, threadOperationId("announce", thread.channel)]).first();
-    if (!announcement || !canDelete(announcement)) return;
-    await outbox.enqueueRedact({ ...redactOperation(announcement, isOwn(announcement) ? "deleted by author" : "deleted by admin"), kind: deleteKind(announcement) }).catch(() => {});
   }
 
   // --- Message editing -----------------------------------------------------------------------
@@ -3845,6 +3833,6 @@ export function createClient(Alpine: any) {
     },
   });
 
-  return { ui, transcript, peek, giphy, emoji, pairing, phoneOffer, scanner, signIn, profile, welcome, settings, channelCreate, newConversation, addPrompts, invitationsPage, bulkInvite, invitationAccept, admission, admissionFounder, irc, agents, adminStatus, typing, members, menus, channelDrag, channelPrefs, directDelete, threadDelete, people, mediaView, actions, editor, links,
+  return { ui, transcript, peek, giphy, emoji, pairing, phoneOffer, scanner, signIn, profile, welcome, settings, channelCreate, newConversation, addPrompts, invitationsPage, bulkInvite, invitationAccept, admission, admissionFounder, irc, agents, adminStatus, typing, members, menus, channelDrag, channelPrefs, directDelete, people, mediaView, actions, editor, links,
     connect, onPageHide, onPageShow, openPopup, pullRefresh };
 }

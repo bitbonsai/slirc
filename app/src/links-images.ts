@@ -197,12 +197,6 @@ export async function rereadCopyWithoutComments(id: number, options: { fetcher?:
   return "cleaned";
 }
 
-export function forgetImage(id: number): void {
-  db.query("DELETE FROM link_images WHERE link_id = ?").run(id);
-  db.query("DELETE FROM link_posts WHERE link_id = ?").run(id);
-  db.query("DELETE FROM link_copies WHERE link_id = ?").run(id);
-}
-
 // The numeric id in an X post's address.
 export function postId(raw: string): string | null {
   const url = safeUrl(raw);
