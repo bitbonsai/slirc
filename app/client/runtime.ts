@@ -82,6 +82,8 @@ import { createClientState, type ClientSession } from "@client/client-state.ts";
 import { createView } from "@client/view.ts";
 import { LINK_MISSING } from "@client/core/routing.ts";
 import { createRuntimeState } from "@client/core/runtime-state.ts";
+import { createAccountReset } from "@client/core/account-reset.ts";
+import { createBoot } from "@client/core/boot.ts";
 import { createWindowEvents } from "@client/core/window-events.ts";
 import { createWorkspaceDialog } from "@client/features/workspace-dialog.ts";
 import { createReactions } from "@client/features/reactions.ts";
@@ -136,63 +138,7 @@ export function createClient(Alpine: any) {
   const COARSE = matchMedia("(pointer: coarse)").matches || document.cookie.includes("slirc_phone=1");
   const isDesktop = !COARSE;
 
-  // Immutable account id from the latest /auth/me, kept even when access is denied for zero
-  // conversations. The join acceptance compares this instead of the mutable scope key.
-  let painted = false;
-  const paintWaiters: Array<() => void> = [];
   // The latest connect run, so a live event can wait for it instead of superseding it mid-flight.
-  let renderEpoch = 0;
-
-  root.classList.add("booting");
-
-  function setBooting(on: boolean): void {
-    ui.booting = on;
-    root.classList.toggle("booting", on);
-  }
-
-  // Boot is released by real state, not a timer: unauthenticated/denied/error the moment auth/me
-  // answers, authenticated only after the cached projection can actually paint.
-  function releaseBoot(): void {
-    if (ui.booting) setBooting(false);
-  }
-
-  // After the shell reveals, put the caret in a visible composer so typing works without a click.
-  // Never steal focus from an already-used control, a dialog, or a hidden composer, and never
-  // scroll-jump (the browser still decides whether a phone keyboard is allowed).
-  function maybeFocusComposer(force = false): void {
-    if (!ui.authenticated || ui.profileRoute || ui.settingsRoute || ui.channelsRoute || ui.ircRoute || ui.agentsRoute || ui.adminRoute || ui.admissionRoute || ui.booting) return;
-    if (!ui.isDesktop && ui.mobileNav !== null) return;
-    if (document.querySelector("dialog[open]")) return;
-    const active = document.activeElement;
-    if (!force && active && active !== document.body && active !== document.documentElement) return;
-    const input = document.querySelector<HTMLElement>("#input");
-    if (!input || !input.getClientRects().length || getComputedStyle(input).visibility === "hidden") return;
-    input.focus({ preventScroll: true });
-  }
-
-  function revealShell(): void {
-    releaseBoot();
-    maybeFocusComposer();
-  }
-
-  function applyChrome(): void {
-    // Desktop-only rail class; the phone uses mobileNav instead.
-    document.body.classList.toggle("rooms-docked", ui.isDesktop && ui.roomsOpen);
-  }
-
-  function paintNow(): void {
-    if (painted) return;
-    painted = true;
-    for (const resolve of paintWaiters.splice(0)) resolve();
-  }
-
-  function whenPainted(ms = 1_200): Promise<void> {
-    if (painted) return Promise.resolve();
-    return new Promise<void>((resolve) => {
-      paintWaiters.push(resolve);
-      globalThis.setTimeout(resolve, ms); // a slow/empty cache still reveals the shell
-    });
-  }
 
   const history: HistoryAdapter = {
     // navigation.ts routes are app-root; the client page lives at the root.
@@ -261,6 +207,8 @@ export function createClient(Alpine: any) {
   const { reactionsReady, chooseReaction } = createReactions({ state: rs, ui, actions: () => actions, activeConversation: (...args) => activeConversation(...args), hint: (...args) => hint(...args) });
   const { refreshWorkspaceChoices, pickWorkspace } = createWorkspaceDialog({ ui, signal: lifecycle.signal });
   createWindowEvents({ state: rs, ui, signal: lifecycle.signal, transcript: () => transcript, editor: () => editor, emoji: () => emoji, giphy: () => giphy, openJump: (...args) => openJump(...args), canSearchChannel: (...args) => canSearchChannel(...args), openChannelSearch: (...args) => openChannelSearch(...args), selectConversation: (...args) => selectConversation(...args), openRoom: (...args) => openRoom(...args), openDirect: (...args) => openDirect(...args), replaceComposerText: (...args) => replaceComposerText(...args), chooseCommandByName: (...args) => chooseCommandByName(...args) });
+  const { setBooting, releaseBoot, maybeFocusComposer, revealShell, applyChrome, resetPainted, paintNow, whenPainted } = createBoot({ ui, root });
+  const { resetForAccountChange, resetAccountUi } = createAccountReset({ state: rs, ui, provisioning, agentRefreshes, controllers: () => ({ people, channelDrag, iphoneApp, profile, settings, channelCreate, newConversation, polls, jobCards, addPrompts, invitationsPage, admission, admissionFounder, irc, agents, adminStatus, branding, typing, reminderNotice, welcome, members, presence, bulkInvite, notes, replyThreads, mediaView, menus, directDelete, channelPrefs, pairing, actions, editor, giphy, transcript, mediaSender }), stopWelcomeDrain: (...args) => stopWelcomeDrain(...args), clearRoomMembers: (...args) => clearRoomMembers(...args), applyUnreadChrome: (...args) => applyUnreadChrome(...args), closeReplyThread: (...args) => closeReplyThread(...args) });
   Object.assign(ui, {
     commandPaletteStyle: () => commandPaletteStyle(ui.isDesktop),
     giphyPanelStyle: () => giphyPanelStyle(ui.isDesktop),
@@ -404,7 +352,7 @@ export function createClient(Alpine: any) {
   const phoneOffer = createPhoneOffer(Alpine.reactive, { onPhone: () => { ui.hasPhone = true; } });
   const scanner = createQrScanner(Alpine.reactive, { origin: () => location.origin, onSignedIn: () => { void connect(); }, navigate: (url) => { void openWorkspaceLink(url, window as never); } });
   const agentBack = createAgentBackToast();
-  const pairing = createDevicePairing(Alpine.reactive, { core: ui, nextTick, session, suspended: () => rs.suspended, viewEpoch: () => renderEpoch, email: () => signIn.email,
+  const pairing = createDevicePairing(Alpine.reactive, { core: ui, nextTick, session, suspended: () => rs.suspended, viewEpoch: () => rs.renderEpoch, email: () => signIn.email,
     onOfferRedeemed: (data) => phoneOffer.redeemed(data),
     onNotes: () => { void notes.load(); },
     onReplyThreads: () => { void replyThreads.load(); },
@@ -628,13 +576,12 @@ export function createClient(Alpine: any) {
 
   const unsubscribeNav = nav.$state.subscribe(applyNav);
   applyNav(nav.$state.get());
-  let pendingInitialRoute = "";
   {
     // A pairing link (/agents#connect=…) opens the Allow card on Agents, after sign-in if need be.
     const connectToken = stashConnectToken();
     const initialRoute = connectToken ? "/agents" : routeFromMount(location.pathname, location.hash, location.search);
     const parsed = parseRoute(initialRoute, instance);
-    pendingInitialRoute = parsed ? "" : initialRoute;
+    rs.pendingInitialRoute = parsed ? "" : initialRoute;
     const initial: Screen = parsed ?? { kind: "tab", tab: "home" };
     nav.open(initial, { replace: true });
   }
@@ -680,70 +627,6 @@ export function createClient(Alpine: any) {
     openReplyThread(message);
   }
 
-  function resetAccountUi(): void {
-    document.dispatchEvent(new CustomEvent("slirc:theme-account", { detail: { accountId: "" } }));
-    transcript.cancelConversationTransition();
-    // A pending first-contact DM belongs to the account that opened it; never carry it across.
-    rs.pendingDms.clear(); provisioning.clear(); ui.pendingDm = false; ui.pendingDmState = ""; ui.pendingDmError = "";
-    ui.authenticated = false;
-    ui.workspaceChoices = [];
-    ui.profileRoute = false;
-    ui.settingsRoute = false;
-    ui.channelsRoute = false;
-    ui.invitationsRoute = false;
-    ui.ircRoute = false;
-    ui.agentsRoute = false;
-    ui.adminRoute = false;
-    iphoneApp.reset(); profile.resetProfile(); settings.reset(); channelCreate.reset(); newConversation.reset(); polls.reset(); jobCards.reset(); addPrompts.reset(); invitationsPage.reset(); bulkInvite.reset(); admission.reset(); admissionFounder.reset(); irc.reset(); agents.reset(); adminStatus.reset(); branding.reset(); typing.reset(); reminderNotice.reset(); welcome.reset(); stopWelcomeDrain();
-    ui.me = "";
-    ui.account = "";
-    notes.reset(); replyThreads.reset(); ui.notesOpen = false;
-    ui.currentConversationId = null;
-    ui.drafts = [];
-    ui.isAdmin = false;
-    ui.isFounder = false;
-    ui.hasPhone = false;
-    ui.greeting = true;
-    ui.greetingNoteSeen = true;
-    ui.threads = [];
-    ui.activeThread = null;
-    mediaView.reset(); menus.close(); channelDrag.reset(); directDelete.reset(); people.reset(); presence.reset();
-    channelPrefs.closeChannelSettings();
-    pairing.pairLookupDraft = "";
-    ui.starred = []; ui.channelOrder = []; ui.mutedRooms = []; ui.channelDetails = []; ui.openRooms = {}; ui.ircConnection = null;
-    ui.channels = []; ui.directs = []; ui.contacts = []; ui.agentProfiles = {}; ui.agentRequests = []; agentRefreshes.clear(); ui.accountIds = {}; clearRoomMembers(); members.reset(); document.body.classList.toggle("members-docked", false); ui.embeds = {};
-    ui.messages = [];
-    ui.composer = "";
-    ui.consent = {};
-    ui.reactions = {};
-    ui.redactions = {};
-    ui.unread = {}; applyUnreadChrome();
-    actions.reset();
-    ui.threadBusy = "";
-    ui.pendingThread = null;
-    ui.threadError = "";
-    closeReplyThread();
-    ui.sendEnabled = false;
-    ui.sendOwner = false;
-    ui.sendReason = "sending unavailable";
-    ui.sendError = "";
-    ui.draftNote = "";
-    ui.capsNote = "";
-    ui.error = "";
-    editor.composerTall = false;
-    ui.editingMessageId = "";
-    ui.editServerId = "";
-    ui.editConversationId = "";
-    ui.editSavedText = "";
-    ui.editSavedRevision = null;
-    // A scope switch/teardown must not leave the media or Giphy UI stuck busy.
-    ui.mediaBusy = false;
-    mediaSender.cancelCompress();
-    giphy.resetSearch();
-    ui.mediaError = "";
-    ui.media = null;
-  }
-
   async function logout(): Promise<void> {
     if (rs.signingOut) return;
     rs.signingOut = true;
@@ -776,7 +659,7 @@ export function createClient(Alpine: any) {
     }
     transcript.cancelConversationTransition();
     rs.stopped = true;
-    renderEpoch += 1;
+    rs.renderEpoch += 1;
     pairing.clearPairRequest();
     try { await rs.outbox?.onDisconnected(); } catch { /* teardown still closes the sender */ }
     closeSocket();
@@ -859,7 +742,7 @@ export function createClient(Alpine: any) {
     signedInHint(access.ok);
     if (!access.ok) {
       transcript.cancelConversationTransition();
-      renderEpoch += 1;
+      rs.renderEpoch += 1;
       transcript.reset();
       pairing.clearPairRequest();
       pairing.stop();
@@ -897,7 +780,7 @@ export function createClient(Alpine: any) {
     peek.stop();
     const key = scopeKey(access.scope);
     const changedAccount = key !== rs.currentScope;
-    if (changedAccount) { people.reset(); channelDrag.reset(); rs.pendingDms.clear(); provisioning.clear(); iphoneApp.reset(); profile.resetProfile(); settings.reset(); channelCreate.reset(); newConversation.reset(); polls.reset(); jobCards.reset(); addPrompts.reset(); invitationsPage.reset(); admission.reset(); admissionFounder.reset(); irc.reset(); agents.reset(); adminStatus.reset(); branding.reset(); typing.reset(); reminderNotice.reset(); welcome.reset(); stopWelcomeDrain(); members.reset(); presence.reset(); clearRoomMembers(); ui.openRooms = {}; ui.ircConnection = null; ui.agentProfiles = {}; ui.agentRequests = []; agentRefreshes.clear(); }
+    if (changedAccount) resetForAccountChange();
     ui.authenticated = true;
     refreshWorkspaceChoices();
     pairing.clearPairRequest();
@@ -953,9 +836,9 @@ export function createClient(Alpine: any) {
     const openChannelList = (Array.isArray((me as any).openChannels) ? (me as any).openChannels : [])
       .filter((channel: unknown): channel is string => typeof channel === "string" && channel.startsWith("#"));
     ui.openRooms = Object.fromEntries(openChannelList.map((channel: string) => [channel, true]));
-    if (pendingInitialRoute && openChannelList.length) {
-      const reparsed = parseRoute(pendingInitialRoute, instance, openChannelList);
-      pendingInitialRoute = "";
+    if (rs.pendingInitialRoute && openChannelList.length) {
+      const reparsed = parseRoute(rs.pendingInitialRoute, instance, openChannelList);
+      rs.pendingInitialRoute = "";
       if (reparsed && nav.$state.get().screen.kind === "tab" && nav.$state.get().screen.tab === "home") {
         nav.open(reparsed, { replace: true });
       }
@@ -1014,7 +897,7 @@ export function createClient(Alpine: any) {
     transcript.cancelConversationTransition();
     rs.projection?.dispose();
     rs.unreadProjection?.dispose(); rs.unreadProjection = null; cancelMarkRead();
-    renderEpoch += 1;
+    rs.renderEpoch += 1;
     transcript.reset();
     rs.composerTextByConversation.clear(); transcript.reset();
     ui.messages = []; ui.composer = ""; ui.direct = false; ui.drafts = [];
@@ -1029,7 +912,7 @@ export function createClient(Alpine: any) {
     ui.editingMessageId = ""; ui.editAttachments = []; ui.editServerId = ""; ui.editConversationId = ""; ui.editSavedText = ""; ui.editSavedRevision = null;
     rs.outbox?.stop();
     rs.db?.close();
-    painted = false;
+    resetPainted();
     rs.scope = access.scope;
     rs.roomId = access.conversation.conversationId;
     clearDraftFocus();

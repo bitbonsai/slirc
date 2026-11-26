@@ -31,6 +31,10 @@ export interface RuntimeState {
   // BFCache freeze: socket closed, durable state kept for resume.
   suspended: boolean;
   signingOut: boolean;
+  // Bumped on every account scope open, sign-out and page hide, so a view of an older scope can tell.
+  renderEpoch: number;
+  // A deep link the router could not parse before the open channel list arrived; /auth/me retries it.
+  pendingInitialRoute: string;
   // The open scope's conversation and unread projections over its database.
   projection: ConversationProjection | null;
   unreadProjection: UnreadProjection | null;
@@ -65,6 +69,8 @@ export function createRuntimeState(): RuntimeState {
     stopped: false,
     suspended: false,
     signingOut: false,
+    renderEpoch: 0,
+    pendingInitialRoute: "",
     projection: null,
     unreadProjection: null,
     connecting: Promise.resolve(),
