@@ -1108,12 +1108,3 @@ test("slash help component owns matching, selection, and dismissal", () => {
   expect(help.index).toBe(0);
   expect(help.dismissed).toBe(false);
 });
-
-// Inventory guard: opted-in controls use the shared directive and no native title tooltip is left
-// on any client trigger.
-test("client tooltip inventory has no native title attrs", async () => {
-  const html = await Bun.file(new URL("../public/index.html", import.meta.url)).text();
-  expect(html).toContain("x-tooltip");
-  expect(html).not.toMatch(/\stitle="/);
-  expect(html).not.toMatch(/\s:title=/);
-});

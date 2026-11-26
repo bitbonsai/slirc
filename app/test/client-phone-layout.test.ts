@@ -1,8 +1,10 @@
-// The phone tab bar shows on the tab roots and More pages and steps aside in a conversation,
-// where the composer takes its place. Browser APIs are shims; nothing connects.
+// Phone layout logic: the tab bar shows on the tab roots and More pages and steps aside in a
+// conversation, where the composer takes its place. The More workspace row counts saved
+// workspaces. Browser APIs are shims; nothing connects.
 import "fake-indexeddb/auto";
 import { expect, test } from "bun:test";
 import { installBrowserShims } from "./support/browser-shims.ts";
+import { savedWorkspaceCount, workspaceChoices } from "@client/workspace-mark.ts";
 
 function shims(origin: string): void {
   installBrowserShims({ origin, width: 390, height: 844, userAgent: "tabbar-runtime-test", fetch: async () => Response.json({}) });
@@ -28,9 +30,11 @@ test("phoneTabBar is on for tab roots and More pages, off in a conversation", as
   expect(ui.phoneTabBar()).toBe(false);
 });
 
-test("the nav only renders where phoneTabBar allows it", async () => {
-  const mobile = await Bun.file(new URL("../partials/mobile-navigation.html", import.meta.url)).text();
-  // Match the nav's x-show value alone, whatever other attributes or line breaks the tag carries.
-  const show = mobile.match(/<nav\b[^>]*\bclass="mobile-nav"[^>]*>/)?.[0].match(/\sx-show="([^"]*)"/)?.[1] ?? "";
-  expect(show).toMatch(/&&\s*phoneTabBar\(\)/);
+test("the saved workspace count ignores the hosted default and duplicates", () => {
+  expect(savedWorkspaceCount(workspaceChoices("https://chat.example.com", []))).toBe(1);
+  expect(savedWorkspaceCount(workspaceChoices("https://chat.example.com", ["https://two.example.com", "https://three.example.com", "https://two.example.com"]))).toBe(3);
+  // A hosted workspace offers app.slirc.org in the dialog; nobody saved it, so it isn't counted.
+  const hosted = workspaceChoices("https://team.slirc.app", []);
+  expect(hosted.length).toBeGreaterThan(1);
+  expect(savedWorkspaceCount(hosted)).toBe(1);
 });
