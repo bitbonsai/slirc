@@ -1,7 +1,5 @@
-/* boot:start - mirrored verbatim into boot.html, which cannot link this file without putting a request on
-   the boot path. boot.test.ts compares the two blocks. Everything the boot screen needs to look identical
-   to the shell's first frame belongs in here: while it lived in two hand-written places the mark ended up a
-   different size, a few pixels off centre, restarting its pulse, and painting a broken-image placeholder. */
+/* boot:start - the tokens and boot screen the shell paints before anything else loads. assemble-html.ts
+   fails the build if this block goes missing, so keep it whole and in the first file. */
 :root {
   color-scheme: dark;
   --bg: #11111b;
