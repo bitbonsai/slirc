@@ -21,10 +21,11 @@ shared/irc.ts TS2345 Argument of type 'string | NonSharedBuffer' is not assignab
 src/admissions.ts TS2322 Type '{ status: string; admission?: undefined; fence?: undefined; } | { status: string; admission: { id: string; application_id: string; application_revision: number; generation: number; approved_email: string; ... 11 more ...; claim_name: string; }; fence: { ...; }; }' is not assignable to type '{ status: "claimed"; admission: AdmissionRow; fence: AdmissionFence; } | { status: "claim-mismatch" | "invalid" | "name-mismatch" | "spent"; }'.
 src/helper-bot.ts TS2339 Property 'text' does not exist on type '{ kind: "close" | "help" | "results"; } | { kind: "create"; text: string; }'.
 src/og.ts TS18047 'tag' is possibly 'null'.
-src/server.ts TS18048 'seen' is possibly 'undefined'.
-src/server.ts TS18048 'seen' is possibly 'undefined'.
-src/server.ts TS18048 'seen' is possibly 'undefined'.
-src/server.ts TS18048 'seen' is possibly 'undefined'.
+src/routes/agents.ts TS18048 'seen' is possibly 'undefined'.
+src/routes/agents.ts TS18048 'seen' is possibly 'undefined'.
+src/routes/agents.ts TS18048 'seen' is possibly 'undefined'.
+src/routes/agents.ts TS18048 'seen' is possibly 'undefined'.
+src/routes/agents.ts TS2769 No overload matches this call.
 src/server.ts TS2322 Type 'EmbedMeta' is not assignable to type 'Record<string, unknown>'.
 src/server.ts TS2339 Property 'email' does not exist on type '{}'.
 src/server.ts TS2339 Property 'greeting_note_seen' does not exist on type '{}'.
@@ -42,7 +43,6 @@ src/server.ts TS2345 Argument of type 'string | undefined' is not assignable to 
 src/server.ts TS2345 Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
 src/server.ts TS2345 Argument of type '{ data: RelaySocketData; headers?: Record<string, string> | undefined; }' is not assignable to parameter of type '{ headers?: HeadersInit | undefined; data?: undefined; }'.
 src/server.ts TS2345 Argument of type '{ width?: number | undefined; height?: number | undefined; }' is not assignable to parameter of type 'Record<string, string>'.
-src/server.ts TS2769 No overload matches this call.
 src/server.ts TS2769 No overload matches this call.
 src/server.ts TS2769 No overload matches this call.
 src/server.ts TS2769 No overload matches this call.
