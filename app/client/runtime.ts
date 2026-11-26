@@ -81,6 +81,7 @@ import { createLinkActions } from "@client/link-actions.ts";
 import { createClientState, type ClientSession } from "@client/client-state.ts";
 import { createView } from "@client/view.ts";
 import { createRuntimeState } from "@client/core/runtime-state.ts";
+import { createReplyThreadActions } from "@client/features/reply-thread-actions.ts";
 import { createSearch } from "@client/features/search.ts";
 import { createMediaUpload } from "@client/features/media-upload.ts";
 import { createDrafts } from "@client/features/drafts.ts";
@@ -261,6 +262,7 @@ export function createClient(Alpine: any) {
   const { refreshDrafts, updateDraftNavigation, draftWriter, draftsList, clearDraftFocus, focusLoadedDraft, openDraft, deleteDraft } = createDrafts({ state: rs, ui, nextTick: (...args) => nextTick(...args), editor: () => editor, openRoom: (...args) => openRoom(...args), openDirect: (...args) => openDirect(...args) });
   const { mediaSender, revokeMedia, pickMedia, removeMedia, cancelCompress, pasteMedia, onDragOver, onDragLeave, onDrop, restoreMediaDraft, sendMedia } = createMediaUpload({ state: rs, ui, emoji: () => emoji, editor: () => editor, transcript: () => transcript, refreshDrafts: (...args) => refreshDrafts(...args) });
   const { openJump, canSearchChannel, openChannelSearch, recallSent } = createSearch({ state: rs, ui, isDesktop, openPopup: (...args) => openPopup(...args), notes, library: () => library, polls: () => polls, isGroupRoom: (...args) => isGroupRoom(...args), isOpenRoom: (...args) => isOpenRoom(...args), unreadCount: (...args) => unreadCount(...args), roomLabelFor: (...args) => roomLabelFor(...args), conversationIdForDm: (...args) => conversationIdForDm(...args), contactList: (...args) => contactList(...args), activeChannelArchived: (...args) => activeChannelArchived(...args), offlineFolded: (...args) => offlineFolded(...args), replaceComposerText: (...args) => replaceComposerText(...args) });
+  const { replyThreadSummaryFor, replyThreadBroadcastParent, openReplyThread, showReplyThread, closeReplyThread, backFromReplyThread, activeReplyThreadRoot, activeReplyThreadReplies, replyThreadKeydown, sendReplyThread, abandonPendingThread } = createReplyThreadActions({ state: rs, ui, nextTick: (...args) => nextTick(...args), actions: () => actions, members: () => members, replyThreads: () => replyThreads, transcript: () => transcript, emoji: () => emoji, editor: () => editor, openDirect: (...args) => openDirect(...args), openRoom: (...args) => openRoom(...args), queueConversationText: (...args) => queueConversationText(...args) });
   Object.assign(ui, {
     commandPaletteStyle: () => commandPaletteStyle(ui.isDesktop),
     giphyPanelStyle: () => giphyPanelStyle(ui.isDesktop),
@@ -1147,135 +1149,6 @@ export function createClient(Alpine: any) {
       return;
     }
     openReplyThread(message);
-  }
-
-  function replyThreadSummaryFor(message: Message | null | undefined): ReplyThreadSummary | null {
-    if (!message || ui.activeThread || ui.notesOpen) return null;
-    return replyThreadSummary(buildReplyIndex(ui.messages), message);
-  }
-
-  function replyThreadBroadcastParent(message: Message | null | undefined): Message | null {
-    if (!message || ui.activeThread || ui.notesOpen) return null;
-    return broadcastParent(buildReplyIndex(ui.messages), message);
-  }
-
-  function openReplyThread(target: Message | string | null | undefined): void {
-    const rootId = typeof target === "string" ? target : target?.serverId;
-    if (!rootId || ui.activeThread || ui.notesOpen) return;
-    actions.closeActions();
-    if (members.open) members.dismiss();
-    ui.replyThreadRootId = rootId;
-    ui.replyThreadFaded = { ...ui.replyThreadFaded, [rootId]: true };
-    ui.replyThreadError = "";
-    void replyThreads.refresh();
-    void Alpine.nextTick(() => {
-      const focusInput = () => {
-        if (ui.replyThreadRootId !== rootId) return;
-        const stream = document.querySelector<HTMLElement>("#reply-thread-stream");
-        if (stream) stream.scrollTop = stream.scrollHeight;
-        document.querySelector<HTMLTextAreaElement>("#reply-thread-input")?.focus({ preventScroll: true });
-      };
-      focusInput();
-      requestAnimationFrame(focusInput);
-    });
-  }
-
-  // A row in the THREADS group: show its channel or DM, then the thread over it.
-  function showReplyThread(entry: ReplyThreadItem): void {
-    const item = rs.authorized.find((candidate) => candidate.kind !== "thread" && foldIdentifier(candidate.wireTarget) === foldIdentifier(entry.channel));
-    if (!item) return;
-    if (ui.currentConversationId !== item.conversationId) {
-      if (item.kind === "dm" && entry.nick) void openDirect(entry.nick); else openRoom(item.wireTarget);
-    }
-    let tries = 0;
-    const open = () => {
-      if (ui.currentConversationId === item.conversationId) openReplyThread(entry.rootId);
-      else if ((tries += 1) < 40) setTimeout(open, 50);
-    };
-    open();
-  }
-
-  function closeReplyThread(): void {
-    ui.replyThreadRootId = "";
-    ui.replyThreadDraft = "";
-    ui.replyThreadBroadcast = false;
-    ui.replyThreadError = "";
-    document.body.classList.toggle("reply-thread-docked", false);
-  }
-
-  // Phone back arrow (and the iOS edge swipe that presses it): back to the channel, at the parent.
-  function backFromReplyThread(): void {
-    const rootId = ui.replyThreadRootId;
-    closeReplyThread();
-    if (rootId) transcript.focus(rootId);
-  }
-
-  function activeReplyThreadRoot(): Message | null {
-    if (!ui.replyThreadRootId) return null;
-    return replyThreadRoot(buildReplyIndex(ui.messages), ui.replyThreadRootId);
-  }
-
-  function activeReplyThreadReplies(): Message[] {
-    if (!ui.replyThreadRootId) return [];
-    return replyThreadReplies(buildReplyIndex(ui.messages), ui.replyThreadRootId);
-  }
-
-  function replyThreadKeydown(event: KeyboardEvent): void {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      closeReplyThread();
-      return;
-    }
-    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
-      event.preventDefault();
-      void sendReplyThread();
-    }
-  }
-
-  async function sendReplyThread(): Promise<void> {
-    const root = activeReplyThreadRoot();
-    const rootId = root?.serverId ?? ui.replyThreadRootId;
-    if (!rootId || !rs.roomId || !rs.outbox || !rs.scope) return;
-    const raw = String(ui.replyThreadDraft ?? "").trim();
-    if (!raw) return;
-    const wireText = emojiText(raw, emoji.custom);
-    const check = wireText.includes("\n") ? validateMultiline(wireText.split("\n")) : validateText(wireText);
-    if (!check.ok) {
-      ui.replyThreadError = check.error ?? "Cannot send that reply.";
-      return;
-    }
-    if (raw.includes("\n") && !rs.bridge?.enabled.has("draft/multiline")) {
-      ui.replyThreadError = "This server cannot send multiline messages.";
-      return;
-    }
-    ui.replyThreadError = "";
-    const broadcast = !!ui.replyThreadBroadcast;
-    try {
-      await queueConversationText(rs.roomId, raw, { replyTo: rootId, broadcast });
-      ui.replyThreadDraft = "";
-      ui.replyThreadBroadcast = false;
-      void Alpine.nextTick(() => {
-        const stream = document.querySelector<HTMLElement>("#reply-thread-stream");
-        if (stream) stream.scrollTop = stream.scrollHeight;
-      });
-    } catch (error) {
-      ui.replyThreadError = error instanceof Error ? error.message : "Could not send reply.";
-    }
-  }
-
-  // Back to the parent as it was: its label, and its draft with any thread text appended. Runs
-  // while the parent is still selected, so `composer` is the parent's.
-  function abandonPendingThread(): void {
-    const pending = ui.pendingThread;
-    if (!pending) return;
-    ui.pendingThread = null;
-    if (rs.roomId !== pending.conversationId) return;
-    ui.roomLabel = pending.roomLabel;
-    const text = pendingThreadFallbackText(pending.savedText, String(ui.composer ?? ""));
-    ui.composer = text;
-    if (text !== pending.savedText) rs.composer?.edit(text);
-    rs.composerTextByConversation.set(pending.conversationId, text);
-    editor.resizeComposer();
   }
 
   function reactionsReady(): boolean {
