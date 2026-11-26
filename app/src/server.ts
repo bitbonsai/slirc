@@ -57,6 +57,7 @@ import { bindProject, channelCandidates, formatGithubEvent, parseRepo, projectBi
 import { testflightUrl } from "./testflight.ts";
 import { ANIMATED_EMOJI_LIMITS, canReadUploadChannel, IMAGE_LIMITS, normalizeUploadImage, PhotoError, sniffAnimatedEmoji, withUploadSlot, WORKSPACE_ICON_LIMITS, workspaceIconRenditions } from "./photo.ts";
 import emojiRows from "../public/vendor/emoji.json" with { type: "json" };
+import { escapeHtml } from "../shared/escape-html.ts";
 
 assertDirectReadiness(db);
 
@@ -4856,7 +4857,6 @@ for (const doc of ["", "about", "agents", "bots", "channels", "clients", "compar
 }
 // First steps for a new member, linked from the help DM. Public, no account data: the page names
 // this instance and its IRC server, both from server config, never from the request Host.
-const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char] as string));
 app.get("/welcome", async (c) => {
   const irc = ircConnectionMeta();
   // Only released harnesses are named as working; the agent package's registry is the one list.
