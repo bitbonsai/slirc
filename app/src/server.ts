@@ -7,10 +7,10 @@ import { serveStatic } from "hono/bun";
 import { claimWelcomeJob, isFounder, markWelcomeDelivered, releaseWelcomeJob, setWelcomeEnabled, welcomeEnabled, welcomeJobs } from "./founder-welcome.ts";
 import { db, vapidKeys } from "./db.ts";
 import { assertDirectReadiness } from "./direct-readiness.ts";
-import { emojiBudgetBytes, inactiveHelper, slircMode } from "./config.ts";
+import { emojiBudgetBytes, slircMode } from "./config.ts";
 import { openDirectConversation } from "./direct.ts";
 import { ircKey } from "./irc-key.ts";
-import { channelInfo, closeDirectConversation, directConversation, discoverableHuman, isOpenChannel, memberChannels, openChannels, reopenDirectConversation, sharedContacts } from "./rooms.ts";
+import { channelInfo, isOpenChannel, memberChannels, openChannels } from "./rooms.ts";
 import { accountByNick, allAccounts, ircChannelExists } from "./accounts.ts";
 import { opAdmins } from "./admin-ops.ts";
 import { createChannel } from "./grants.ts";
@@ -32,7 +32,7 @@ import { agentSessionCapabilities } from "./http/agent-support.ts";
 import { pairing } from "./routes/pairing.ts";
 import { agents } from "./routes/agents.ts";
 import { links } from "./routes/links.ts";
-import { knownAccount, cacheGravatar, accountDetails } from "./http/profiles.ts";
+import { cacheGravatar } from "./http/profiles.ts";
 import { admin } from "./routes/admin.ts";
 import { polls } from "./routes/polls.ts";
 import { channels } from "./routes/channels.ts";
@@ -52,6 +52,7 @@ import { publicRoomPaths } from "./http/public-rooms.ts";
 import { ircConnectionMeta } from "./http/irc-connection.ts";
 import { auth } from "./routes/auth.ts";
 import { reminders } from "./routes/reminders.ts";
+import { dms } from "./routes/dms.ts";
 export { settleSignIns } from "./routes/auth.ts";
 export { clientVersion, buildClient, assetVersion, versionShell } from "./http/assets.ts";
 export { untrustedMediaHeaders } from "./http/media.ts";
@@ -231,60 +232,13 @@ app.route("/", reminders);
 
 app.route("/", polls);
 
-app.post("/api/dms/:nick", async (c) => {
-  const requester = verifiedHuman(c);
-  if (!requester) return c.json({ error: "verified account required" }, currentUser(c) ? 403 : 401);
-  const nick = requester.nick;
-  const other = knownAccount(c.req.param("nick"));
-  if (!other || other === nick || inactiveHelper(other)) return c.json({ error: "contact not found" }, 404);
-  const otherAccount = accountByNick(other);
-  // Same discovery gate as search and the accountId recipient path for humans; personal agents are
-  // owner-scoped so a guessed nick cannot start a DM with someone else's. Admin-managed helper bots
-  // keep their existing access. All checks run before any write.
-  if (otherAccount?.kind === "human") {
-    if (!discoverableHuman(nick, otherAccount.id)) return c.json({ error: "contact not found" }, 404);
-  } else if (otherAccount?.kind === "agent") {
-    if (!otherAccount.owner || otherAccount.owner.toLowerCase() !== nick.toLowerCase()) return c.json({ error: "contact not found" }, 404);
-  }
-  try {
-    const direct = await openDirectConversation(nick, other);
-    reopenDirectConversation(accountByNick(nick)!.id, direct.channel);
-    return c.json(direct);
-  } catch (error) {
-    console.error(`direct channel failed for ${nick} and ${other}:`, error);
-    return c.json({ error: directConversation(nick, other) ? "could not reopen direct message" : "could not start direct message" }, 500);
-  }
-});
-
-// Old #t- threads are retired; reply threads need no channel.
-app.post("/api/dms/:nick/threads", (c) => c.json({ error: "threads are now replies inside the conversation" }, 410));
-
-app.delete("/api/dms/:nick", (c) => {
-  const nick = currentUser(c);
-  const other = c.req.param("nick").trim();
-  const account = nick && accountByNick(nick);
-  if (!account || !/^[a-z0-9][a-z0-9_-]{0,31}$/i.test(other) || other.toLowerCase() === nick.toLowerCase()) return c.json({ error: "contact not found" }, 404);
-  try {
-    if (!closeDirectConversation(account.id, nick, other)) return c.json({ error: "direct message not found" }, 404);
-    return c.body(null, 204);
-  } catch (error) {
-    return appError(c, error, "Could not close direct message.");
-  }
-});
+app.route("/", dms);
 
 app.route("/", notes);
 
 app.route("/", auth);
 
 app.route("/", invitations);
-
-app.get("/api/contacts", (c) => {
-  const requester = verifiedHuman(c);
-  if (!requester) return c.json({ error: "verified account required" }, currentUser(c) ? 403 : 401);
-  const nick = requester.nick;
-  const contacts = sharedContacts(nick);
-  return c.json({ contacts, accountDetails: accountDetails(contacts) });
-});
 
 app.route("/", links);
 
