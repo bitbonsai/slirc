@@ -4,7 +4,6 @@ import { streamSSE } from "hono/streaming";
 import { bodyLimit } from "hono/body-limit";
 import { setCookie } from "hono/cookie";
 import { serveStatic } from "hono/bun";
-import { claimWelcomeJob, isFounder, markWelcomeDelivered, releaseWelcomeJob, setWelcomeEnabled, welcomeEnabled, welcomeJobs } from "./founder-welcome.ts";
 import { db, vapidKeys } from "./db.ts";
 import { assertDirectReadiness } from "./direct-readiness.ts";
 import { emojiBudgetBytes, slircMode } from "./config.ts";
@@ -53,6 +52,7 @@ import { ircConnectionMeta } from "./http/irc-connection.ts";
 import { auth } from "./routes/auth.ts";
 import { reminders } from "./routes/reminders.ts";
 import { dms } from "./routes/dms.ts";
+import { welcome } from "./routes/welcome.ts";
 export { settleSignIns } from "./routes/auth.ts";
 export { clientVersion, buildClient, assetVersion, versionShell } from "./http/assets.ts";
 export { untrustedMediaHeaders } from "./http/media.ts";
@@ -242,68 +242,7 @@ app.route("/", invitations);
 
 app.route("/", links);
 
-// Founder-only welcome control and queue. Everyone else gets 404, so the setting and the queue
-// are invisible and unusable to them; the opt-in is never inferred from role alone.
-app.get("/api/welcome", (c) => {
-  c.header("Cache-Control", "no-store");
-  const account = verifiedHuman(c);
-  if (!isFounder(account)) return c.json({ error: "not found" }, 404);
-  return c.json({ enabled: welcomeEnabled(), pending: welcomeJobs(account!).length });
-});
-
-app.put("/api/welcome", async (c) => {
-  c.header("Cache-Control", "no-store");
-  const account = verifiedHuman(c);
-  if (!isFounder(account)) return c.json({ error: "not found" }, 404);
-  const body = await c.req.json().catch(() => ({})) as { enabled?: unknown };
-  if (typeof body.enabled !== "boolean") return c.json({ error: "enabled must be a boolean" }, 400);
-  setWelcomeEnabled(account!, body.enabled);
-  return c.json({ enabled: welcomeEnabled() });
-});
-
-app.get("/api/welcome/jobs", (c) => {
-  c.header("Cache-Control", "no-store");
-  const account = verifiedHuman(c);
-  if (!isFounder(account)) return c.json({ error: "not found" }, 404);
-  // `enabled` lets the founder's client ack an already-sent row while refusing to claim or send
-  // once the switch is off.
-  return c.json({ enabled: welcomeEnabled(), jobs: welcomeJobs(account!) });
-});
-
-app.post("/api/welcome/jobs/:id/claim", (c) => {
-  c.header("Cache-Control", "no-store");
-  const account = verifiedHuman(c);
-  if (!isFounder(account)) return c.json({ error: "not found" }, 404);
-  if (!welcomeEnabled()) return c.json({ error: "welcomes are off" }, 409);
-  const claimId = claimWelcomeJob(account!, c.req.param("id"));
-  if (!claimId) return c.json({ error: "already claimed" }, 409);
-  return c.json({ claimId });
-});
-
-app.post("/api/welcome/jobs/:id/delivered", async (c) => {
-  c.header("Cache-Control", "no-store");
-  const account = verifiedHuman(c);
-  if (!isFounder(account)) return c.json({ error: "not found" }, 404);
-  const body = await c.req.json().catch(() => ({})) as { claimId?: unknown; msgid?: unknown };
-  const claimId = typeof body.claimId === "string" ? body.claimId : "";
-  const msgid = typeof body.msgid === "string" && body.msgid ? body.msgid : null;
-  if (!claimId) return c.json({ error: "claimId required" }, 400);
-  if (!markWelcomeDelivered(account!, c.req.param("id"), claimId, msgid)) return c.json({ error: "not the claim owner" }, 409);
-  return c.json({ ok: true });
-});
-
-// Only a refused or never-enqueued delivery returns a job to pending. An uncertain send keeps its
-// claim, so another device cannot silently re-send a message that may already exist.
-app.post("/api/welcome/jobs/:id/release", async (c) => {
-  c.header("Cache-Control", "no-store");
-  const account = verifiedHuman(c);
-  if (!isFounder(account)) return c.json({ error: "not found" }, 404);
-  const body = await c.req.json().catch(() => ({})) as { claimId?: unknown };
-  const claimId = typeof body.claimId === "string" ? body.claimId : "";
-  if (!claimId) return c.json({ error: "claimId required" }, 400);
-  if (!releaseWelcomeJob(account!, c.req.param("id"), claimId)) return c.json({ error: "not the claim owner" }, 409);
-  return c.json({ ok: true });
-});
+app.route("/", welcome);
 
 app.route("/", peekRoutes);
 
