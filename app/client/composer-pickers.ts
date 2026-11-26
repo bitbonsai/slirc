@@ -1,5 +1,5 @@
 import { foldIdentifier } from "@client/model.ts";
-import { inviteCandidates, inviteToken, mentionCandidates, mentionToken } from "@client/mentions.ts";
+import { inviteAtOnly, inviteCandidates, inviteToken, mentionCandidates, mentionToken } from "@client/mentions.ts";
 import { agentInviteMatches, agentLabel, mentionableNick, ownAgentNicks } from "@client/agent-roster.ts";
 import { hiddenCommands, slashSuggestions, type SlashCommand } from "@client/commands.ts";
 import { hasMoreRight } from "@client/presentation.ts";
@@ -182,7 +182,13 @@ export function mentionPickerComponent(openPopup?: OpenPopup): Record<string, un
       if (this.dismissed) return [];
       const invite = inviteToken(String(this.composer ?? ""));
       if (invite !== null) {
-        if (!invite) return [];
+        // A bare `@` has nothing to search yet: offer your own agents, direct peers and contacts.
+        if (!invite) {
+          if (!inviteAtOnly(String(this.composer ?? ""))) return [];
+          const known = [...ownAgentNicks(this.agentProfiles, String(this.account ?? "")), ...(Array.isArray(this.directs) ? this.directs.map((direct: { nick?: string }) => direct?.nick ?? "") : []), ...(Array.isArray(this.contacts) ? this.contacts : [])]
+            .filter((nick, i, all) => !!nick && all.findIndex((other) => foldIdentifier(other) === foldIdentifier(nick)) === i);
+          return inviteCandidates(known, [String(this.account ?? ""), ...(Array.isArray(this.roomMembers) ? this.roomMembers : [])]);
+        }
         // People search never lists agents, so your own come first, straight from the local roster.
         const agents = agentInviteMatches(this.agentProfiles, String(this.account ?? ""), invite);
         // Until the fresh answer lands, keep the last list narrowed to nicks that still fit.
@@ -265,7 +271,7 @@ export function mentionPickerComponent(openPopup?: OpenPopup): Record<string, un
       // Escape (or another popup opening) hides the list for the current token only; once that token
       // is gone, the next `@` or `/invite` opens it again.
       const text = String(this.composer ?? "");
-      if (this.dismissed && !inviteToken(text) && (!mentionToken(text, this.emoji?.caret ?? undefined) || inviteToken(text) === "")) this.reset();
+      if (this.dismissed && !inviteToken(text) && !inviteAtOnly(text) && (!mentionToken(text, this.emoji?.caret ?? undefined) || inviteToken(text) === "")) this.reset();
       const invite = this.dismissed ? null : inviteToken(String(this.composer ?? ""));
       if (!invite) { this._inviteAsked = ""; this.stopInviteSearch(); }
       else if (invite !== this._inviteAsked) { this._inviteAsked = invite; if (invite !== this.inviteFor) this.searchInvite(invite); }

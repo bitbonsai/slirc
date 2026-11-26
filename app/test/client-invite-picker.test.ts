@@ -134,3 +134,38 @@ test("erasing the partial nick after Escape opens the list again for the next on
   expect(queries).toEqual(["to"]);
   expect(component.matches()).toEqual(["tomas"]);
 }));
+
+test("a bare /invite @ lists your agents, direct peers and contacts, minus people already here", () => withPeople(() => ["eve"], async (queries) => {
+  const component = picker("/invite @");
+  Object.assign(component, {
+    roomMembers: ["ada"], contacts: ["carol", "ada"], directs: [{ nick: "dan" }, { nick: "bit" }],
+    agentProfiles: { bit: { nick: "bit", name: "Bit", owner: "bitbonsai" }, theirs: { nick: "theirs", name: "Theirs", owner: "someone" } },
+  });
+  component.sync();
+  await settle();
+  expect(component.matches()).toEqual(["bit", "dan", "carol"]);
+  // Nothing to search for yet, so no request goes out.
+  expect(queries).toEqual([]);
+  // A bare "/invite " with no @ stays closed, and typing on switches to people search.
+  component.composer = "/invite ";
+  expect(component.matches()).toEqual([]);
+  component.composer = "/invite @ev";
+  component.sync();
+  await settle();
+  expect(component.matches()).toEqual(["eve"]);
+}));
+
+test("Escape on a bare /invite @ keeps the list closed until the @ goes away", () => {
+  const component = picker("/invite @");
+  Object.assign(component, { directs: [{ nick: "dan" }] });
+  component.sync();
+  expect(component.matches()).toEqual(["dan", "carol"]);
+  component.dismiss();
+  component.sync();
+  expect(component.matches()).toEqual([]);
+  component.composer = "/invite ";
+  component.sync();
+  component.composer = "/invite @";
+  component.sync();
+  expect(component.matches()).toEqual(["dan", "carol"]);
+});

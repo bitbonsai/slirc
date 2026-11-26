@@ -15,6 +15,11 @@ export function mentionToken(text: string, caret = text.length): { query: string
 // past the nick is not a pick, so it stays null.
 const INVITE_TOKEN_RE = /^\/invite\s+@?([A-Za-z0-9_-]*)$/i;
 
+/** `/invite @` with nothing typed after the `@`: the list opens with people and agents you already know. */
+export function inviteAtOnly(text: string): boolean {
+  return /^\/invite\s+@$/i.test(text);
+}
+
 export function inviteToken(text: string): string | null {
   return INVITE_TOKEN_RE.exec(text)?.[1] ?? null;
 }
