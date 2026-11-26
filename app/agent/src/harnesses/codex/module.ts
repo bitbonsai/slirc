@@ -3,6 +3,7 @@ import { cpSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { harnessInfo } from "../../../../shared/harnesses.ts";
 import type { Env, Harness, Step } from "../types.ts";
 import { onPath } from "../pi/module.ts";
 import { codexVersion, unsupported, validId } from "./shared.ts";
@@ -83,19 +84,7 @@ function conflict(env: Env): string | undefined {
 }
 
 const codex: Harness = {
-  id: "codex",
-  name: "Codex",
-  released: true,
-  homepage: "https://developers.openai.com/codex/cli",
-  // Pasted into Codex, the command runs in Codex's sandbox without asking, and bunx or npx can't
-  // download there. From a terminal it sets up Codex and starts it with the pairing typed.
-  terminalOnly: true,
-  // Codex refuses an unknown /command before any hook sees it, so Slirc's has no slash.
-  sessionCommand: (workspace) => workspace ? `slirc ${workspace}` : "slirc",
-  // A thread open while the plugin is installed gets neither its hooks nor its tools. A new one
-  // in the same TUI gets both.
-  reloadHint: "/new",
-  reloadStartsNewSession: true,
+  ...harnessInfo.codex,
   // Codex gives its shell tool the thread id; the hooks read the same id as session_id.
   sessionKey: (env) => validId(env.CODEX_THREAD_ID) ? env.CODEX_THREAD_ID : undefined,
 

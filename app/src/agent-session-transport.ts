@@ -6,7 +6,7 @@ import { readPrivateChannelMode } from "./grants.ts";
 import { agentAudience, authorizedBindingById, bindingIrcPassword, MAX_CONTEXT, validLease, type Binding } from "./agent-session.ts";
 import { publish } from "./live.ts";
 import { configuredAppOrigin } from "./request-security.ts";
-import { harnessById } from "../agent/src/harnesses/index.ts";
+import { harnessInfoById as harnessById } from "../shared/harnesses.ts";
 import { isConcat, wireParts } from "../shared/multiline.ts";
 
 // Verified live state of one room the agent has joined. `verified` means Ergo reported +s and +i for

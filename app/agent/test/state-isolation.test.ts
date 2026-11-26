@@ -3,7 +3,7 @@ import { statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { stateDir } from "../src/adapter-core.ts";
-import { lastWorkspacePath, saveLastWorkspace } from "../src/workspace.ts";
+import { lastWorkspacePath, saveLastWorkspace } from "../../shared/workspace.ts";
 
 // test/support/isolate-state.ts (preloaded) keeps tests off the real Slirc state.
 const realLast = join(homedir(), ".local", "state", "slirc", "workspace");

@@ -5,7 +5,7 @@ import { createDirectConversation, directChannelName, directConversation, normal
 import { createDirectChannel, setAlwaysOn } from "./grants.ts";
 import { publish } from "./live.ts";
 import { acceptedHarness } from "./agent-connect.ts";
-import { canonicalHarness } from "../agent/src/harnesses/index.ts";
+import { canonicalHarness } from "../shared/harnesses.ts";
 
 export const LEASE_MS = 45_000;
 export const MAX_REQUEST_TEXT = 8_000;

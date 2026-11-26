@@ -3,6 +3,7 @@ import { cpSync, existsSync, readdirSync, readFileSync, realpathSync, rmSync, wr
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { harnessInfo } from "../../../../shared/harnesses.ts";
 import type { Env, Harness, Step } from "../types.ts";
 import { onPath } from "../pi/module.ts";
 import { compareVersions } from "../../version.ts";
@@ -110,21 +111,15 @@ function place(env: Env): void {
 }
 
 const claude: Harness = {
-  id: "claude",
-  name: "Claude Code",
-  released: true,
-  homepage: "https://claude.com/claude-code",
-  sessionCommand: (workspace) => workspace ? `/slirc ${workspace}` : "/slirc",
+  ...harnessInfo.claude,
   // Claude Code keeps a personal /slirc skill or command and gives the plugin's the next name.
   localCommand(env, workspace) {
     const own = [join(configDir(env), "skills", "slirc"), join(configDir(env), "commands", "slirc.md")].some((path) => existsSync(path));
     const name = own ? "/slirc-connect" : "/slirc";
     return workspace ? `${name} ${workspace}` : name;
   },
-  reloadHint: "/reload-plugins",
   // Claude Code sets this for its Bash tool: the same id the mod reads with $.session.id().
   sessionKey: (env) => env.CLAUDECODE === "1" && env.CLAUDE_CODE_SESSION_ID ? env.CLAUDE_CODE_SESSION_ID : undefined,
-  perFolder: true,
 
   detect(env) {
     const found = onPath(env, "claude");

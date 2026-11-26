@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { errorText, repoName, SessionClient, stateDir, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
 import { consents, takeArm } from "../../arm.ts";
 import { VERSION } from "../../version.ts";
-import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, workspaceArg } from "../../workspace.ts";
+import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, workspaceArg } from "../../../../shared/workspace.ts";
 
 // The Slirc listener for one Claude Code session. The Slirc mod spawns it with $.process.spawn at
 // session start, so it lives exactly as long as the mod's module in that one Claude Code process.

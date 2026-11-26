@@ -1,9 +1,12 @@
 import { createHash, randomBytes, randomInt } from "node:crypto";
 import { db } from "./db.ts";
 import { configuredAppOrigin } from "./request-security.ts";
-import { canonicalHarness, harnessById, releasedHarnesses } from "../agent/src/harnesses/index.ts";
-import { VERSION as AGENT_VERSION } from "../agent/src/version.ts";
-import { workspaceArg } from "../agent/src/workspace.ts";
+import { canonicalHarness, harnessInfoById as harnessById, releasedHarnessInfos as releasedHarnesses } from "../shared/harnesses.ts";
+import { workspaceArg } from "../shared/workspace.ts";
+// The published slirc-agent version. package.json is the one file the image takes from agent/.
+import agentPackage from "../agent/package.json" with { type: "json" };
+
+const AGENT_VERSION: string = agentPackage.version;
 
 // Pairing a coding session. The session asks (POST /api/agent/session/request) and gets a link and
 // an 8-character code that only its owner sees, in the harness UI. Whoever opens the link or types

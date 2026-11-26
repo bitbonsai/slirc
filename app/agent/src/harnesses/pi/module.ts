@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
+import { harnessInfo } from "../../../../shared/harnesses.ts";
 import type { Env, Harness, Step } from "../types.ts";
 
 // Pi loads Slirc as a Pi package: `pi install npm:slirc-agent` adds it to Pi's settings, and the
@@ -54,12 +55,7 @@ function conflict(env: Env): string | undefined {
 }
 
 const pi: Harness = {
-  id: "pi",
-  name: "Pi",
-  released: true,
-  homepage: "https://pi.dev",
-  sessionCommand: (workspace) => workspace ? `/slirc ${workspace}` : "/slirc",
-  reloadHint: "/reload",
+  ...harnessInfo.pi,
   // Pi's bash tool exports the session id (docs/environment-variables.md), Pi 1.5 on.
   sessionKey: (env) => env.PI_CODING_AGENT === "true" && env.PI_SESSION_ID ? env.PI_SESSION_ID : undefined,
 

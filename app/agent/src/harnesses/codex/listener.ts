@@ -6,7 +6,7 @@ import { hostname, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { errorText, repoName, SessionClient, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
 import { VERSION } from "../../version.ts";
-import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace } from "../../workspace.ts";
+import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace } from "../../../../shared/workspace.ts";
 import { alive, boundMark, dir, liveFile, short } from "./shared.ts";
 import { codexProcesses, owners } from "./owners.ts";
 

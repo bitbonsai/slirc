@@ -38,7 +38,7 @@ Small things, made well. Favor the smallest change that makes correct behavior u
 - `landing/demo.js` is cached 4h by browsers: bump `?v=` in `landing/index.html` whenever it changes.
 - Cloudflare gives `.js`/`.css` a 4h browser cache whatever the app sends. The shell's scripts, stylesheet, manifest and SVG refs get `?v=<content hash>` at serve time (`versionShell` in `server.ts`); a new first-party file loaded by the client by address (like the icon sprite) needs its version passed the same way, or returning members run new HTML with the old file.
 - `prepack` in `app/agent` rebuilds `dist/` on publish: pull first and reset or commit `app/agent/dist` cleanly. `npm view` lags 1-2 minutes after publish.
-- Harnesses live in `app/agent/src/harnesses/<id>/` behind one interface; the registry there is the only list the server, Agents page, docs and CLI read. Adding one: `app/agent/HARNESSES.md`.
+- Harnesses live in `app/agent/src/harnesses/<id>/` behind one interface; `app/shared/harnesses.ts` holds the data half (names, released, session commands) that the server, Agents page and docs read; `agent/src/harnesses/index.ts` lists the modules the CLI runs. Adding one: `app/agent/HARNESSES.md`.
 - `app/agent/dist` is tracked: after any `app/agent/src` change run `bun run build` there and commit dist.
 - `pkill -f <pattern>` over SSH can kill the SSH command itself (exit 255). Use a captured spawn PID or verified port owner, never a name-selected PID.
 - Rootless podman: Caddy's requests reach the app from the app container's own address. `SLIRC_TRUSTED_PROXIES` needs that address pinned (see `deploy/README.md`).

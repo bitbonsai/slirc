@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { helpFor, parseArgs } from "../src/args.ts";
-import { expandWorkspace, originFor, workspaceArg } from "../src/workspace.ts";
+import { expandWorkspace, originFor, workspaceArg } from "../../shared/workspace.ts";
 
 test("no subcommand means connect; connect is accepted too", () => {
   expect(parseArgs([])).toEqual({ name: "connect", workspace: "", unreleased: false, dryRun: false, extra: [] });
