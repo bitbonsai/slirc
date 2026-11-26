@@ -49,12 +49,13 @@ describe("direct image text", () => {
   });
 
   test("a collapsed photo does not reveal the raw URL", async () => {
-    const partial = await Bun.file(new URL("../partials/message-body.html", import.meta.url)).text();
-    const anchor = partial.match(/<a class="media-fallback"[^>]*>/)?.[0];
+    const partial = await Bun.file(new URL("../partials/message-media.html", import.meta.url)).text();
+    const anchor = partial.match(/<a\s+class="media-fallback"[^>]*>/)?.[0];
     expect(anchor).toBeDefined();
-    // The URL fallback exists only when the proxied image failed to load. Collapsing the photo is
-    // not a reason to print the validation-hidden URL back into the message.
-    expect(anchor).toContain("mediaView.isMediaError(media.href)");
+    // The URL fallback exists only when the proxied image failed to load (showsFallback checks that,
+    // see client-message-view.test.ts). Collapsing the photo is not a reason to print the
+    // validation-hidden URL back into the message.
+    expect(anchor).toContain("messageView.showsFallback(media)");
     expect(anchor).not.toContain("isMediaCollapsed");
   });
 });
@@ -265,8 +266,9 @@ describe("reserved thumbnail space", () => {
   });
 
   test("every thumbnail in the body is a reserved frame with a width and height", async () => {
-    const partial = await Bun.file(new URL("../partials/message-body.html", import.meta.url)).text();
-    const thumbs = partial.match(/<img class="thumb-img"[^>]*>/g) ?? [];
+    const read = (name: string) => Bun.file(new URL("../partials/" + name + ".html", import.meta.url)).text();
+    const partial = (await read("message-media")) + (await read("message-embeds"));
+    const thumbs = partial.match(/<img\s+class="thumb-img"[^>]*>/g) ?? [];
     expect(thumbs.length).toBe(4); // photo, card image, two player posters
     for (const thumb of thumbs) {
       expect(thumb).toContain("width=");
@@ -277,9 +279,9 @@ describe("reserved thumbnail space", () => {
     const photo = thumbs.find((tag) => tag.includes("media.href"))!;
     expect(photo).toContain('mediaView.mediaAspectStyle(media.href, media.width, media.height)');
     // A stored card keeps a fixed frame cropped to it, so a preview saved without a size cannot jump.
-    const card = thumbs.find((tag) => tag.includes("embeds[segment.href]"))!;
-    expect(card).toContain('width="112" height="80"');
-    expect(partial).toContain('<video class="message-video" :src="media.href + \'#t=0.001\'" :width="media.width || null" :height="media.height || null"');
+    const card = thumbs.find((tag) => tag.includes("card.image"))!;
+    expect(card).toMatch(/width="112"\s+height="80"/);
+    expect(partial).toMatch(/<video\s+class="message-video"\s+:src="media.href \+ '#t=0.001'"\s+:width="media.width \|\| null"\s+:height="media.height \|\| null"/);
   });
 
   test("the frame's quiet fill and fade stay out of the way when motion is reduced", async () => {

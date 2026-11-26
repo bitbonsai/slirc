@@ -43,15 +43,13 @@ describe("phone reply thread parent message", () => {
     expect(rootBlock).toContain('<strong x-text="message.authorNick"></strong>');
     expect(rootBlock).toContain('x-text="formatTime(message.time)"');
     expect(rootBlock).toContain("textSegments(messageText(message))");
-    expect(rootBlock).toContain('<template x-if="!isDesktop"><div class="reply-root-media"><template x-for="(media, mi) in mediaView.messageMedia(message.text)"');
-    // Same photo and GIF markup as the channel row, so the parent shows its attachments the same way.
-    const body = readFileSync(join(root, "partials/message-body.html"), "utf8");
-    const start = body.indexOf('<template x-for="(media, mi)');
-    expect(rootBlock).toContain(body.slice(start, body.indexOf('<template x-for="(segment, n) in linkSegments', start)));
+    expect(rootBlock).toMatch(/<template x-if="!isDesktop"><div class="reply-root-media"><template\s+x-for="\(media, mi\) in mediaView.messageMedia\(message.text\)"/);
+    // The channel row and the parent draw their photos and GIFs from one include.
+    for (const file of ["message-body", "reply-thread-panel"]) expect(readFileSync(join(root, "partials", file + ".html"), "utf8")).toContain("<!-- include: message-media -->");
   });
 
   test("reply count sits on a ruled divider under the parent", () => {
-    expect(panel).toContain("activeReplyThreadReplies().length === 1 ? '1 reply' : activeReplyThreadReplies().length + ' replies'");
+    expect(panel).toContain("messageView.replyCountLabel(activeReplyThreadReplies().length)");
     expect(phone).toMatch(/\.reply-thread-divider::after \{ content: ""; flex: 1; height: 1px; background: var\(--line\); \}/);
   });
 

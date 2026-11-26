@@ -1,0 +1,16 @@
+<template x-for="(segment, n) in textSegments(messageText(message))" :key="n"
+  ><span
+    ><!-- include: message-segment --><template x-if="segment.marker"
+      ><span class="list-item"
+        ><span class="list-marker" aria-hidden="true" x-text="segment.marker"
+        ></span
+        ><span class="list-text"
+          ><template x-for="(segment, p) in segment.parts" :key="p"
+            ><span
+            ><!-- include: message-segment --></span
+          ></template
+        ></span
+      ></span
+    ></template
+  ></span
+></template>
