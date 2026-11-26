@@ -81,6 +81,7 @@ import { createLinkActions } from "@client/link-actions.ts";
 import { createClientState, type ClientSession } from "@client/client-state.ts";
 import { createView } from "@client/view.ts";
 import { createRuntimeState } from "@client/core/runtime-state.ts";
+import { createWelcomeDrain } from "@client/features/welcome-drain.ts";
 import { createSlashCommands } from "@client/features/slash-commands.ts";
 import { createMessageEdit } from "@client/features/message-edit.ts";
 import { createReplyThreadActions } from "@client/features/reply-thread-actions.ts";
@@ -267,6 +268,7 @@ export function createClient(Alpine: any) {
   const { replyThreadSummaryFor, replyThreadBroadcastParent, openReplyThread, showReplyThread, closeReplyThread, backFromReplyThread, activeReplyThreadRoot, activeReplyThreadReplies, replyThreadKeydown, sendReplyThread, abandonPendingThread } = createReplyThreadActions({ state: rs, ui, nextTick: (...args) => nextTick(...args), actions: () => actions, members: () => members, replyThreads: () => replyThreads, transcript: () => transcript, emoji: () => emoji, editor: () => editor, openDirect: (...args) => openDirect(...args), openRoom: (...args) => openRoom(...args), queueConversationText: (...args) => queueConversationText(...args) });
   const { redactFor, redactLabel, confirmDelete, retryRedact, forgetThread, canEdit, canDelete, quoteMessage, startEdit, cancelEdit, saveEdit, editingMedia, removeEditingMedia } = createMessageEdit({ state: rs, ui, instance, notes, nav, hint: (...args) => hint(...args), mediaView: () => mediaView, actions: () => actions, transcript: () => transcript, emoji: () => emoji, editor: () => editor });
   const { replaceComposerText, chooseCommand, chooseCommandByName, hint, runSlash, queueConversationText, runRemind, runPollVote, messageLink, copyMessageLink } = createSlashCommands({ state: rs, ui, nav, transcript: () => transcript, editor: () => editor, giphy: () => giphy, addPrompts: () => addPrompts, library: () => library, polls: () => polls, emoji: () => emoji, actions: () => actions, people: () => people, openHelpDialog: (...args) => openHelpDialog(...args), reconnect: (...args) => reconnect(...args), logout: (...args) => logout(...args), activeConversation: (...args) => activeConversation(...args), isGroupRoom: (...args) => isGroupRoom(...args), openRoom: (...args) => openRoom(...args), send: (...args) => send(...args), loadRoomMembers: (...args) => loadRoomMembers(...args), connect: (...args) => connect(...args), openDirect: (...args) => openDirect(...args), replyThreadSummaryFor: (...args) => replyThreadSummaryFor(...args), currentParentWire: (...args) => currentParentWire(...args), openThreadForMessage: (...args) => openThreadForMessage(...args) });
+  const { drainWelcome, stopWelcomeDrain } = createWelcomeDrain({ state: rs, ui, connect: (...args) => connect(...args) });
   Object.assign(ui, {
     commandPaletteStyle: () => commandPaletteStyle(ui.isDesktop),
     giphyPanelStyle: () => giphyPanelStyle(ui.isDesktop),
@@ -1210,7 +1212,7 @@ export function createClient(Alpine: any) {
     ui.ircRoute = false;
     ui.agentsRoute = false;
     ui.adminRoute = false;
-    iphoneApp.reset(); profile.resetProfile(); settings.reset(); channelCreate.reset(); newConversation.reset(); polls.reset(); jobCards.reset(); addPrompts.reset(); invitationsPage.reset(); bulkInvite.reset(); admission.reset(); admissionFounder.reset(); irc.reset(); agents.reset(); adminStatus.reset(); branding.reset(); typing.reset(); reminderNotice.reset(); welcome.reset(); welcomeDraining = false;
+    iphoneApp.reset(); profile.resetProfile(); settings.reset(); channelCreate.reset(); newConversation.reset(); polls.reset(); jobCards.reset(); addPrompts.reset(); invitationsPage.reset(); bulkInvite.reset(); admission.reset(); admissionFounder.reset(); irc.reset(); agents.reset(); adminStatus.reset(); branding.reset(); typing.reset(); reminderNotice.reset(); welcome.reset(); stopWelcomeDrain();
     ui.me = "";
     ui.account = "";
     notes.reset(); replyThreads.reset(); ui.notesOpen = false;
@@ -1814,7 +1816,7 @@ export function createClient(Alpine: any) {
     peek.stop();
     const key = scopeKey(access.scope);
     const changedAccount = key !== rs.currentScope;
-    if (changedAccount) { people.reset(); channelDrag.reset(); rs.pendingDms.clear(); provisioning.clear(); iphoneApp.reset(); profile.resetProfile(); settings.reset(); channelCreate.reset(); newConversation.reset(); polls.reset(); jobCards.reset(); addPrompts.reset(); invitationsPage.reset(); admission.reset(); admissionFounder.reset(); irc.reset(); agents.reset(); adminStatus.reset(); branding.reset(); typing.reset(); reminderNotice.reset(); welcome.reset(); welcomeDraining = false; members.reset(); presence.reset(); clearRoomMembers(); ui.openRooms = {}; ui.ircConnection = null; ui.agentProfiles = {}; ui.agentRequests = []; agentRefreshes.clear(); }
+    if (changedAccount) { people.reset(); channelDrag.reset(); rs.pendingDms.clear(); provisioning.clear(); iphoneApp.reset(); profile.resetProfile(); settings.reset(); channelCreate.reset(); newConversation.reset(); polls.reset(); jobCards.reset(); addPrompts.reset(); invitationsPage.reset(); admission.reset(); admissionFounder.reset(); irc.reset(); agents.reset(); adminStatus.reset(); branding.reset(); typing.reset(); reminderNotice.reset(); welcome.reset(); stopWelcomeDrain(); members.reset(); presence.reset(); clearRoomMembers(); ui.openRooms = {}; ui.ircConnection = null; ui.agentProfiles = {}; ui.agentRequests = []; agentRefreshes.clear(); }
     ui.authenticated = true;
     refreshWorkspaceChoices();
     pairing.clearPairRequest();
@@ -2010,148 +2012,6 @@ export function createClient(Alpine: any) {
     // lose pending bytes.
     if (rs.roomId === access.conversation.conversationId) void restoreMediaDraft(access.conversation.conversationId);
     startSender();
-  }
-
-  // --- Founder welcome drain (client-driven) ------------------------------------------------
-  // The server holds one job per newly verified human. This founder's own browser opens the real
-  // DM and sends through the durable outbox. It may refresh the connection and reselect the
-  // conversation behind Profile, but it never navigates to a route and never touches drafts. The
-  // server claim is the cross-device mutex; the stable operation id refuses a duplicate local row
-  // in the same browser.
-  async function ensureWelcomeConversation(recipientNick: string, alive: () => boolean): Promise<string | null> {
-    if (!alive()) return null;
-    const find = () => {
-      const direct = ui.directs.find((item: { nick: string }) => foldIdentifier(item.nick) === foldIdentifier(recipientNick));
-      if (!direct) return null;
-      const item = rs.authorized.find((entry) => entry.kind === "dm" && entry.wireTarget === direct.channel);
-      return item?.conversationId ?? null;
-    };
-    const existing = find();
-    if (existing) return existing;
-    const direct = ui.directs.find((item: { nick: string }) => foldIdentifier(item.nick) === foldIdentifier(recipientNick));
-    if (!direct) {
-      const response = await fetch(`/api/dms/${encodeURIComponent(recipientNick)}`, { method: "POST", credentials: "same-origin" });
-      if (!response.ok) return null;
-    }
-    // Refresh grants (and, for a new pair, join the DM) without navigating. The next drain pass
-    // sees the authorized conversation; until then the claim is released for a safe retry.
-    await connect();
-    if (!alive()) return null;
-    return find();
-  }
-
-  async function readWelcomeOperation(opId: string): Promise<WelcomeOperation | null> {
-    if (!rs.db) return null;
-    const operation = await rs.db.operations.get(opId);
-    if (!operation) return null;
-    const message = await rs.db.messages.get(operation.messageId);
-    return { state: operation.state, serverId: message?.serverId ?? null };
-  }
-
-  async function waitWelcomeOutcome(opId: string, timeoutMs: number): Promise<WelcomeOutcome> {
-    const deadline = Date.now() + timeoutMs;
-    for (;;) {
-      const current = await readWelcomeOperation(opId);
-      if (!current) return "timeout";
-      if (current.state === "confirmed" || current.state === "failed" || current.state === "uncertain") return current;
-      if (Date.now() >= deadline) return "timeout";
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    }
-  }
-
-  async function dropWelcomeOperation(opId: string): Promise<void> {
-    const db = rs.db;
-    if (!db) return;
-    await db.transaction("rw", db.operations, db.messages, async () => {
-      await db.operations.delete(opId);
-      await db.messages.delete(opId);
-    });
-  }
-
-  // The exact local record of the claim this browser owns. Keyed only by the server job id, whose
-  // uniqueness comes from the one-per-recipient index.
-  const welcomeClaimKey = (jobId: string) => `slirc2-fw-claim:${jobId}`;
-  function readWelcomeClaim(jobId: string): string | null {
-    try { return globalThis.localStorage?.getItem(welcomeClaimKey(jobId)) ?? null; } catch { return null; }
-  }
-  function rememberWelcomeClaim(jobId: string, claimId: string): void {
-    try { globalThis.localStorage?.setItem(welcomeClaimKey(jobId), claimId); } catch { /* best effort */ }
-  }
-  function forgetWelcomeClaim(jobId: string): void {
-    try { globalThis.localStorage?.removeItem(welcomeClaimKey(jobId)); } catch { /* best effort */ }
-  }
-
-  let welcomeDraining = false;
-  async function drainWelcome(): Promise<void> {
-    // Capture the starting account scope. Every closure refuses once the scope moves, so a drain
-    // that outlives an account switch can never queue into the new account's database.
-    if (welcomeDraining || !rs.outbox || !rs.scope || !rs.db || rs.stopped || rs.signingOut) return;
-    const startDb = rs.db;
-    const startScope = rs.scope;
-    const startScopeKey = rs.currentScope;
-    const alive = () => !rs.stopped && !rs.signingOut && rs.db === startDb && rs.scope === startScope && rs.currentScope === startScopeKey;
-    welcomeDraining = true;
-    const guard = <T>(run: () => Promise<T>): Promise<T> => {
-      if (!alive()) return Promise.reject(new Error("account scope changed"));
-      return run().then((value) => {
-        if (!alive()) throw new Error("account scope changed");
-        return value;
-      });
-    };
-    try {
-      await drainFounderWelcome({
-        jobs: () => guard(async () => {
-          const response = await fetch("/api/welcome/jobs", { cache: "no-store", credentials: "same-origin" });
-          if (!response.ok) throw new Error(`welcome jobs failed (${response.status})`);
-          const body = await response.json().catch(() => ({})) as { enabled?: unknown; jobs?: unknown };
-          return { enabled: body.enabled === true, jobs: Array.isArray(body.jobs) ? body.jobs as WelcomeJob[] : [] } satisfies WelcomeFeed;
-        }),
-        claim: (jobId) => guard(async () => {
-          const response = await fetch(`/api/welcome/jobs/${encodeURIComponent(jobId)}/claim`, { method: "POST", credentials: "same-origin" });
-          if (response.status === 409) return null;
-          if (!response.ok) throw new Error(`welcome claim failed (${response.status})`);
-          const body = await response.json().catch(() => ({})) as { claimId?: unknown };
-          return typeof body.claimId === "string" ? body.claimId : null;
-        }),
-        delivered: async (jobId, claimId, msgid) => {
-          if (!alive()) throw new Error("account scope changed");
-          const response = await fetch(`/api/welcome/jobs/${encodeURIComponent(jobId)}/delivered`, {
-            method: "POST", credentials: "same-origin",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ claimId, msgid }),
-          });
-          if (!response.ok) throw new Error(`welcome delivered failed (${response.status})`);
-        },
-        release: async (jobId, claimId) => {
-          if (!alive()) throw new Error("account scope changed");
-          const response = await fetch(`/api/welcome/jobs/${encodeURIComponent(jobId)}/release`, {
-            method: "POST", credentials: "same-origin",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ claimId }),
-          });
-          if (!response.ok) throw new Error(`welcome release failed (${response.status})`);
-        },
-        conversation: (nick) => guard(() => ensureWelcomeConversation(nick, alive)),
-        readOperation: (opId) => guard(() => readWelcomeOperation(opId)),
-        enqueue: async (conversationId, opId, text) => {
-          if (!alive()) throw new Error("account scope changed");
-          if (!rs.outbox || !rs.scope) throw new Error("sender not ready");
-          // The revision is a send token, never a real draft: clearsDraft cannot match, so a
-          // founder's open draft, selection or focus is untouched.
-          const queued = queuedTextFor(conversationId, rs.scope.account, { text, revision: `welcome:${opId}` }, opId, Date.now());
-          await rs.outbox.enqueueText(queued);
-        },
-        waitOutcome: (opId, timeoutMs) => guard(() => waitWelcomeOutcome(opId, timeoutMs)),
-        drop: (opId) => guard(() => dropWelcomeOperation(opId)),
-        readClaim: readWelcomeClaim,
-        rememberClaim: rememberWelcomeClaim,
-        forgetClaim: forgetWelcomeClaim,
-        alive,
-        owner: { nick: rs.scope?.account, name: ui.me },
-      }, (message) => console.error("founder welcome:", message));
-    } finally {
-      welcomeDraining = false;
-    }
   }
 
   function startSender(): void {
