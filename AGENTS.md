@@ -42,7 +42,7 @@ Small things, made well. Favor the smallest change that makes correct behavior u
 - `app/agent/dist` is tracked: after any `app/agent/src` change run `bun run build` there and commit dist.
 - `pkill -f <pattern>` over SSH can kill the SSH command itself (exit 255). Use a captured spawn PID or verified port owner, never a name-selected PID.
 - Rootless podman: Caddy's requests reach the app from the app container's own address. `SLIRC_TRUSTED_PROXIES` needs that address pinned (see `deploy/README.md`).
-- `app/.dockerignore` drops `agent/` except files the server imports (harness registry, `version.ts`, `workspace.ts`, `package.json`). New server import from `../agent` must be whitelisted or prod crash-loops "Cannot find module" (16 Nov 2026). `scripts/deploy-app.py` now `bun build`s main.ts inside the image before downtime.
+- `app/.dockerignore` drops `agent/` except `agent/package.json` (the server reads the published version from it). Anything the server shares with the agent lives in `app/shared/`; a new server import from `../agent` crash-loops prod "Cannot find module" (16 Nov 2026). `scripts/deploy-app.py` `bun build`s main.ts inside the image before downtime.
 - Mac app loads Sparkle via `@rpath`: needs `LD_RUNPATH_SEARCH_PATHS = @executable_path/../Frameworks`. Xcode Debug runs hide its absence; Release quits with "Library missing".
 - WebKit (Safari, Mac app) skips `:focus-visible` on script focus after a mouse click, and Tab reaches only text fields. Arrow-key rows carry `.kb-focus`; `client/dialog-keys.ts` handles Tab/arrows in dialogs.
 - Pi writes a new session file only after first message: anything resolving it at `/slirc` time must not require it to exist.
