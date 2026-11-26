@@ -64,6 +64,8 @@ import { serializeIrcDeviceChange, IRC_RESET_CLIENTS, IRC_RESET_BOTS, ircResetNo
 import { admin } from "./routes/admin.ts";
 import { polls } from "./routes/polls.ts";
 import { channels } from "./routes/channels.ts";
+import { untrustedMediaHeaders, readBoundedJson, WORKSPACE_ICON_SCOPE, workspaceIconVersion } from "./http/media.ts";
+export { untrustedMediaHeaders } from "./http/media.ts";
 export { agentSessionCapabilities, AGENT_POLL_MAX_WAIT_S, AGENT_SSE_KEEPALIVE_MS } from "./http/agent-support.ts";
 export { sessionByToken } from "./http/session.ts";
 
@@ -619,18 +621,6 @@ app.patch("/profile", async (c) => {
     .run(account, fullName, about, availability, badge);
   return c.json(profileJson(account));
 });
-
-// Headers for bytes a member or a remote site chose: never sniffed, never run as a document
-// even when opened directly, and named with a fixed filename so nothing user-chosen lands there.
-export function untrustedMediaHeaders(type: string, name: string): Record<string, string> {
-  const ext = type.match(/^[a-z]+\/([a-z0-9]+)/i)?.[1]?.toLowerCase();
-  return {
-    "Content-Type": type,
-    "X-Content-Type-Options": "nosniff",
-    "Content-Security-Policy": "default-src 'none'; sandbox",
-    "Content-Disposition": `inline; filename="${ext ? `${name}.${ext}` : name}"`,
-  };
-}
 
 app.get("/avatars/:account", async (c) => {
   const requested = c.req.param("account");
@@ -1595,55 +1585,6 @@ const BUILTIN_EMOJI = new Set(emojiRows.map((row) => row[0]));
 // per-kind checks below bound what is actually retained.
 const MAX_UPLOAD_REQUEST_BYTES = Math.ceil((UPLOAD_LIMITS.video * 4) / 3) + 512 * 1024;
 
-// Read a JSON object with a hard byte cap, streaming so an absent or lying
-// Content-Length cannot allocate an unbounded buffer before the check. The
-// signal aborts a stalled read so an upload slot is never held forever.
-type BoundedJson = { ok: true; value: Record<string, unknown> } | { ok: false; status: 400 | 408 | 413; error: string };
-async function readBoundedJson(c: Context, maxBytes: number, signal: AbortSignal): Promise<BoundedJson> {
-  // An honest oversized header is rejected before reading; a lying one still hits
-  // the streamed cap below because we never trust it to size the buffer.
-  const declared = Number(c.req.header("content-length"));
-  if (Number.isFinite(declared) && declared > maxBytes) return { ok: false, status: 413, error: "file too large" };
-  const body = c.req.raw.body;
-  if (!body) return { ok: false, status: 400, error: "missing request body" };
-  if (signal.aborted) return { ok: false, status: 408, error: "upload timed out" };
-  const reader = body.getReader();
-  let timedOut = false;
-  const onAbort = () => { timedOut = true; void reader.cancel().catch(() => {}); };
-  signal.addEventListener("abort", onAbort, { once: true });
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (timedOut) return { ok: false, status: 408, error: "upload timed out" };
-      if (done) break;
-      if (!value) continue;
-      size += value.byteLength;
-      if (size > maxBytes) {
-        await reader.cancel().catch(() => {});
-        return { ok: false, status: 413, error: "file too large" };
-      }
-      chunks.push(value);
-    }
-  } catch {
-    if (timedOut) return { ok: false, status: 408, error: "upload timed out" };
-    return { ok: false, status: 400, error: "could not read request" };
-  } finally {
-    signal.removeEventListener("abort", onAbort);
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(new TextDecoder().decode(Buffer.concat(chunks)));
-  } catch {
-    return { ok: false, status: 400, error: "invalid request" };
-  }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return { ok: false, status: 400, error: "invalid request" };
-  }
-  return { ok: true, value: parsed as Record<string, unknown> };
-}
-
 app.post("/api/uploads", async (c) => {
   const nick = currentUser(c);
   const account = nick ? accountByNick(nick) : null;
@@ -1821,21 +1762,8 @@ app.delete("/api/emoji/:name", (c) => {
   return c.body(null, 204);
 });
 
-// The workspace icon replaces the letter tile in the sidebar, the Workspaces dialog and the Mac
-// picker. Its renditions live in uploads under the scope "workspace-icon", which is not a channel:
-// canReadUploadChannel refuses it, so /uploads/:id never serves them and room deletion never
-// touches them. GET /api/workspace-icon is the only read path. The icon is public by design, even
-// in a private workspace: another workspace's Workspaces dialog shows it to people who are not
-// signed in here, the way a favicon shows. Only admins write it.
-const WORKSPACE_ICON_SCOPE = "workspace-icon";
 const MAX_WORKSPACE_ICON_REQUEST_BYTES = Math.ceil((WORKSPACE_ICON_LIMITS.maxBytes * 4) / 3) + 4096;
 const iconCsrf = (c: any) => sameOriginJson(c, "X-Slirc-Admin");
-
-// The icon's version, the time it was saved, or "" when there is none.
-function workspaceIconVersion(): string {
-  const row = db.query("SELECT created_at FROM uploads WHERE channel = ? AND kind = 'icon-64'").get(WORKSPACE_ICON_SCOPE) as { created_at: number } | null;
-  return row ? String(row.created_at) : "";
-}
 
 function workspaceIconAdmin(c: Context) {
   const admin = verifiedHuman(c);
