@@ -1,6 +1,5 @@
 import { join } from "node:path";
 import { Hono, type Context } from "hono";
-import { streamSSE } from "hono/streaming";
 import { setCookie } from "hono/cookie";
 import { serveStatic } from "hono/bun";
 import { db } from "./db.ts";
@@ -12,14 +11,12 @@ import { accountByNick, allAccounts } from "./accounts.ts";
 import { sweepExpired } from "./pairing.ts";
 import { instanceHost, offeredHarnesses } from "./agent-connect.ts";
 import { type Binding } from "./agent-session.ts";
-import { ownerAgentRequestStates, syncAgentPresence, connectAgentTransport, resetAgentSessionState } from "./agent-session-transport.ts";
-import { subscribe } from "./live.ts";
+import { syncAgentPresence, connectAgentTransport, resetAgentSessionState } from "./agent-session-transport.ts";
 import { observeReplyLine } from "./reply-threads.ts";
 import { handleRelayUpgrade, relayWebsocketHandlers } from "./relay.ts";
 import { configuredAppOrigin, isAllowedClientOrigin } from "./request-security.ts";
-import { testflightUrl } from "./testflight.ts";
 import { escapeHtml } from "../shared/escape-html.ts";
-import { sessionByToken, session, currentUser, verifiedHuman, devLinks, appOrigin } from "./http/session.ts";
+import { sessionByToken, session, currentUser, devLinks, appOrigin } from "./http/session.ts";
 import { text } from "./http/common.ts";
 import { agentSessionCapabilities } from "./http/agent-support.ts";
 import { pairing } from "./routes/pairing.ts";
@@ -49,6 +46,7 @@ import { dms } from "./routes/dms.ts";
 import { welcome } from "./routes/welcome.ts";
 import { push } from "./routes/push.ts";
 import { projects } from "./routes/projects.ts";
+import { system } from "./routes/system.ts";
 export { settleSignIns } from "./routes/auth.ts";
 export { clientVersion, buildClient, assetVersion, versionShell } from "./http/assets.ts";
 export { untrustedMediaHeaders } from "./http/media.ts";
@@ -152,56 +150,9 @@ app.use("*", async (c, next) => {
   c.res = new Response(c.res.body, { status: c.res.status, statusText: c.res.statusText, headers });
 });
 
-app.get("/healthz", (c) => c.json({ status: "ok" }));
-// Report the hash of the client bundle actually served.
-app.get("/api/version", async (c) => {
-  c.header("Cache-Control", "no-store");
-  const build = await buildClient();
-  return c.json({ version: build?.version || "" });
-});
-
-// Native app links for admitted members. The TestFlight link is public once known, so it stays out
-// of the client bundle, HTML and docs: only signed-in, verified humans can read it here.
-app.get("/api/apps", (c) => {
-  c.header("Cache-Control", "no-store");
-  if (!currentUser(c)) return c.json({ error: "not signed in" }, 401);
-  if (!verifiedHuman(c)) return c.json({ error: "verified account required" }, 403);
-  return c.json({ testflight: testflightUrl(process.env.TESTFLIGHT_URL) });
-});
+app.route("/", system);
 
 app.route("/", pairing);
-
-// One stream per signed-in browser tab; pairing requests arrive here instead of waiting for a poll.
-app.get("/api/events", (c) => {
-  const nick = currentUser(c);
-  if (!nick) return c.json({ error: "not signed in" }, 401);
-  c.header("Cache-Control", "no-store");
-  return streamSSE(c, async (stream) => {
-    const queue: { event: string; data: unknown }[] = [];
-    let wake: (() => void) | null = null;
-    let open = true;
-    const unsubscribe = subscribe(nick, (event, data) => {
-      queue.push({ event, data });
-      wake?.();
-      wake = null;
-    });
-    stream.onAbort(() => {
-      open = false;
-      unsubscribe();
-      wake?.();
-      wake = null;
-    });
-    await stream.writeSSE({ event: "ready", data: "1" });
-    await stream.writeSSE({ event: "agent-requests", data: JSON.stringify(ownerAgentRequestStates(nick)) });
-    while (open) {
-      if (!queue.length) await new Promise<void>((resolve) => { wake = resolve; });
-      while (open && queue.length) {
-        const item = queue.shift() as { event: string; data: unknown };
-        await stream.writeSSE({ event: item.event, data: JSON.stringify(item.data) });
-      }
-    }
-  });
-});
 
 app.route("/", agents);
 
