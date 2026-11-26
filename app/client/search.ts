@@ -11,6 +11,7 @@ import { isLegacyThreadAnnouncement } from "./reply-threads.ts";
 import { inlineMedia } from "./media.ts";
 import { embedImageUrl, youtubeId } from "./render.ts";
 import type { EmbedMeta } from "./embed.ts";
+import { buildReplyIndex } from "./reply-threads.ts";
 import { isDailyGreeting } from "../shared/service-bots.ts";
 
 export const SEARCH_RESULT_LIMIT = 50;
@@ -36,6 +37,7 @@ export interface SearchHit {
   segments: SnippetSegment[];
   thumb: string;
   link: SearchLink | null;
+  thread: string;
 }
 
 export interface SearchLink {
@@ -136,6 +138,13 @@ export function messageLink(message: Message, origin: string, embeds: Record<str
   const yt = youtubeId(url);
   const image = meta?.image ?? (yt ? `https://i.ytimg.com/vi/${yt}/hqdefault.jpg` : "");
   return { url, host, title: meta?.title ?? (yt ? "YouTube" : ""), thumb: image ? embedImageUrl(image) : "" };
+}
+
+// "Reply in thread" for a reply, "Thread, N replies" for a message that started one.
+export function threadLabel(message: Message, index: ReturnType<typeof buildReplyIndex>): string {
+  if (index.rootByMessageId.has(message.id)) return "Reply in thread";
+  const count = message.serverId ? index.repliesByRootId.get(message.serverId)?.length ?? 0 : 0;
+  return count ? `Thread, ${count} ${count === 1 ? "reply" : "replies"}` : "";
 }
 
 export function matchesSearchMessage(message: Message, parsed: ParsedSearchQuery, allowEmpty = false): boolean {
@@ -257,6 +266,7 @@ export function searchMessages(
     return true;
   });
 
+  const replies = buildReplyIndex(messages);
   const matched = visible.filter((message) => (!kind || messageHasKind(message, kind, origin)) && matchesSearchMessage(message, parsed, !!kind)).sort(newestFirst);
   const hits: SearchHit[] = matched.slice(0, limit).map((message) => {
     const time = effectiveMessageTime(message);
@@ -270,6 +280,7 @@ export function searchMessages(
       segments: buildSnippetSegments(link ? message.text.replace(link.url, "").trim() : message.text, parsed.terms),
       thumb: link ? "" : messageThumb(message, origin),
       link,
+      thread: threadLabel(message, replies),
     };
   });
 

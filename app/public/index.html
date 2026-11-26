@@ -2829,7 +2829,7 @@
           <button type="button" tabindex="-1" role="option" class="search-hit" :id="'channel-search-option-' + i" :class="i === index && 'active'" :aria-selected="String(i === index)" x-on:mouseenter="index = i" x-on:click="choose(row)">
             <span class="palette-mark" aria-hidden="true"><span x-text="(row.authorNick || '?').slice(0, 1).toUpperCase()"></span><img :src="avatarUrl(row.authorNick)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span>
             <span class="palette-copy search-hit-body">
-              <span class="search-hit-head"><strong x-text="row.authorNick"></strong><span class="search-hit-time" x-text="row.timeLabel"></span></span>
+              <span class="search-hit-head"><strong x-text="row.authorNick"></strong><span class="search-hit-thread" x-show="row.thread" x-text="row.thread"></span><span class="search-hit-time" x-text="row.timeLabel"></span></span>
               <span class="search-hit-snippet"><template x-for="(seg, j) in row.segments" :key="j"><span :class="seg.hit && 'search-hit-mark'" x-text="seg.text"></span></template></span>
               <span class="search-hit-card" x-show="row.link">
                 <img class="search-hit-card-img" x-show="row.link && row.link.thumb" :src="(row.link && row.link.thumb) || null" alt="" loading="lazy" x-on:error="$el.hidden = true" />
@@ -2843,7 +2843,7 @@
       </div>
       <div class="palette-foot channel-search-foot" x-show="hasQuery || loadError">
         <span class="channel-search-status" role="status" x-show="hasQuery || loadError" x-text="statusText()"></span>
-        <button type="button" class="channel-search-older" x-show="hasQuery && !isNotes && !exhausted" :disabled="loadingOlder" x-on:click="loadOlder()" x-text="loadingOlder ? 'Loading…' : 'Load older'"></button>
+        <button type="button" class="channel-search-older" x-show="hasQuery && !isNotes && !exhausted" :aria-disabled="String(loadingOlder)" x-on:click="loadOlder(); $refs.search.focus()" x-text="loadingOlder ? 'Loading…' : 'Load older'"></button>
       </div>
     </section>
   </dialog>

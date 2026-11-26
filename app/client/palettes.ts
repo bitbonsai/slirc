@@ -173,6 +173,8 @@ export function channelSearchDialogComponent(): Record<string, unknown> {
     searching: false,
     loadingOlder: false,
     loadError: "",
+    wrapNote: "",
+    _wrapTimer: 0,
     hits: [] as SearchHit[],
     total: 0,
     index: 0,
@@ -230,6 +232,7 @@ export function channelSearchDialogComponent(): Record<string, unknown> {
     },
     statusText(this: any): string {
       if (this.loadError) return this.loadError;
+      if (this.wrapNote) return this.wrapNote;
       if (this.hasQuery && this.total > 0) {
         const count = this.total > this.hits.length
           ? `Showing ${this.hits.length} of ${this.total} matches`
@@ -302,13 +305,19 @@ export function channelSearchDialogComponent(): Record<string, unknown> {
       } catch {
         if (this.conversationId === targetId) this.loadError = "Could not load older messages.";
       } finally {
-        if (this.conversationId === targetId) this.loadingOlder = false;
+        if (this.conversationId === targetId) { this.loadingOlder = false; this.$refs.search?.focus(); }
       }
     },
     move(this: any, step: number): void {
       const count = this.hits.length;
       if (!count) return;
-      this.index = (this.index + step + count) % count;
+      const next = (this.index + step + count) % count;
+      if (step && count > 1 && ((step > 0 && next < this.index) || (step < 0 && next > this.index))) {
+        this.wrapNote = step > 0 ? "Back to the first result" : "On to the last result";
+        clearTimeout(this._wrapTimer);
+        this._wrapTimer = setTimeout(() => { this.wrapNote = ""; }, 1600) as unknown as number;
+      }
+      this.index = next;
       void this.$nextTick(() => this.$refs.list?.querySelector('[role="option"][aria-selected="true"]')?.scrollIntoView({ block: "nearest" }));
     },
     keydown(this: any, event: KeyboardEvent): void {
@@ -351,6 +360,8 @@ export function channelSearchDialogComponent(): Record<string, unknown> {
       this._searchFn = null;
       this._loadOlderFn = null;
       this._previewFn = null;
+      this.wrapNote = "";
+      clearTimeout(this._wrapTimer);
       if (this._dialog?.open) this._dialog.close();
       if (invoker?.isConnected) invoker.focus();
     },
