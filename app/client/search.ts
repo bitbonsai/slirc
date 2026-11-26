@@ -9,7 +9,7 @@ import type { ThreadGrant } from "./access.ts";
 import { isHiddenThreadAnnouncement } from "./threads.ts";
 import { isLegacyThreadAnnouncement } from "./reply-threads.ts";
 import { inlineMedia } from "./media.ts";
-import { embedImageUrl } from "./render.ts";
+import { embedImageUrl, youtubeId } from "./render.ts";
 import type { EmbedMeta } from "./embed.ts";
 import { isDailyGreeting } from "../shared/service-bots.ts";
 
@@ -132,7 +132,10 @@ export function messageLink(message: Message, origin: string, embeds: Record<str
   let host = url;
   try { host = new URL(url).hostname.replace(/^www\./, ""); } catch { /* keep the raw text */ }
   const meta = embeds[url];
-  return { url, host, title: meta?.title ?? "", thumb: meta?.image ? embedImageUrl(meta.image) : "" };
+  // YouTube's thumbnail address follows from the video id, so it needs no preview fetch.
+  const yt = youtubeId(url);
+  const image = meta?.image ?? (yt ? `https://i.ytimg.com/vi/${yt}/hqdefault.jpg` : "");
+  return { url, host, title: meta?.title ?? (yt ? "YouTube" : ""), thumb: image ? embedImageUrl(image) : "" };
 }
 
 export function matchesSearchMessage(message: Message, parsed: ParsedSearchQuery, allowEmpty = false): boolean {

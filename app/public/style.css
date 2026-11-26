@@ -2397,9 +2397,9 @@ dialog.custom-modal.sheet-modal { padding: 0 0 var(--kb, 0px); }
 .palette-foot kbd { display: inline-grid; place-items: center; min-width: 1.35rem; height: 1.25rem; margin-right: .1rem; padding: 0 .3rem; border: 1px solid var(--line); border-radius: var(--radius-xs); background: var(--bg); color: var(--text); font: 650 var(--text-2xs)/1 var(--ui); }
 :root { --search-hit-fill: color-mix(in srgb, var(--brand) 28%, transparent); --search-hit-ink: var(--text); }
 /* Channel search uses the shared palette glass and width, anchored under the header without dimming the transcript. */
-#channel-search-dialog { align-items: start; justify-items: center; padding-top: calc(var(--header-h) + .75rem); background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+#channel-search-dialog { align-items: start; justify-items: center; padding-top: calc(var(--header-h) + .75rem); background: transparent; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
 #channel-search-dialog > section { margin: 0 auto; }
-.channel-search-palette { background: var(--glass-tint); backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter); }
+.channel-search-palette { border-color: color-mix(in srgb, var(--brand) 70%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 16%, transparent), var(--shadow-lg); background: var(--glass-tint); backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter); }
 .channel-search-head { display: flex; align-items: center; gap: .55rem; padding: 0 .65rem 0 1rem; border-bottom: 1px solid color-mix(in srgb, var(--line) 75%, transparent); }
 .channel-search-head:not(.has-results) { border-bottom-color: transparent; }
 .channel-search-icon { display: inline-flex; flex: 0 0 auto; color: var(--muted); }

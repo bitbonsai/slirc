@@ -61,6 +61,7 @@ import { createAgentsPage, stashConnectToken } from "@client/agents-page.ts";
 import { agentOfflineCard, agentOfflineFolded, createAgentBackToast, type AgentOfflineCard } from "@client/agent-offline.ts";
 import { createAdminPage } from "@client/admin-page.ts";
 import { isApplePlatform, isJumpShortcut, isWorkspacesShortcut, jumpRows, type JumpRow } from "@client/jump.ts";
+import { embedMetaFromResponse, type EmbedMeta } from "@client/embed.ts";
 import { isChannelSearchShortcut, searchConversation, searchNotes, type SearchKind } from "@client/search.ts";
 import { recallStep, sentTexts, type Recall } from "@client/composer-history.ts";
 import { createTypingIndicators, typingAccount, typingLine } from "@client/typing.ts";
@@ -1020,6 +1021,7 @@ export function createClient(Alpine: any) {
     const label = isNotes ? "Notes" : (ui.roomLabel || String(ui.channel ?? ""));
     const targetDb = db;
     const targetSync = sync;
+    const previewTried = new Set<string>();
     openPopup();
     window.dispatchEvent(new CustomEvent("slirc:channel-search-open", {
       detail: {
@@ -1038,6 +1040,22 @@ export function createClient(Alpine: any) {
             greeting: ui.greeting,
             hidden: (message) => polls.hidesTally(message) || offlineFolded(message),
           });
+        },
+        // Cards for links this device has not rendered yet: ask the server once per link while the palette is open.
+        previews: async (urls: string[]) => {
+          const fresh = urls.filter((url) => !ui.embeds[url] && !previewTried.has(url)).slice(0, 12);
+          for (const url of fresh) previewTried.add(url);
+          const found: Record<string, EmbedMeta> = {};
+          await Promise.all(fresh.map(async (url) => {
+            try {
+              const response = await fetch("/api/embed", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) });
+              const meta = response.ok ? embedMetaFromResponse(await response.json()) : null;
+              if (meta) found[url] = meta;
+            } catch { /* the card stays a plain host line */ }
+          }));
+          if (!Object.keys(found).length) return false;
+          ui.embeds = { ...ui.embeds, ...found };
+          return true;
         },
         loadOlder: async () => {
           if (isNotes || !targetSync) return { loaded: 0, hasMore: false };

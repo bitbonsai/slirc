@@ -156,6 +156,7 @@ export interface ChannelSearchOpenDetail {
   isNotes: boolean;
   exhausted: boolean;
   search: (query: string, kind?: SearchKind | null) => Promise<SearchResult>;
+  previews?: (urls: string[]) => Promise<boolean>;
   loadOlder: () => Promise<LoadOlderResult>;
 }
 
@@ -181,6 +182,7 @@ export function channelSearchDialogComponent(): Record<string, unknown> {
     _onOpen: null as ((event: Event) => void) | null,
     _searchFn: null as ((query: string, kind?: SearchKind | null) => Promise<SearchResult>) | null,
     _loadOlderFn: null as (() => Promise<LoadOlderResult>) | null,
+    _previewFn: null as ((urls: string[]) => Promise<boolean>) | null,
     init(this: any): void {
       this._dialog = document.querySelector<HTMLDialogElement>("#channel-search-dialog");
       this._onOpen = (event: Event): void => {
@@ -194,6 +196,7 @@ export function channelSearchDialogComponent(): Record<string, unknown> {
         this.exhausted = detail.exhausted;
         this._searchFn = detail.search;
         this._loadOlderFn = detail.loadOlder;
+        this._previewFn = detail.previews ?? null;
         this.query = "";
         this.kind = null;
         this.hasQuery = false;
@@ -271,9 +274,20 @@ export function channelSearchDialogComponent(): Record<string, unknown> {
         this.hits = result.hits;
         this.total = result.total;
         this.index = 0;
+        void this.fillPreviews(seq);
       } finally {
         if (seq === this._seq) this.searching = false;
       }
+    },
+    // Link hits with no known preview ask the server once, then the list is searched again with the cards.
+    async fillPreviews(this: any, seq: number): Promise<void> {
+      if (!this._previewFn) return;
+      const urls = this.hits.flatMap((hit: SearchHit) => hit.link && !hit.link.title ? [hit.link.url] : []);
+      if (!urls.length || !(await this._previewFn(urls))) return;
+      if (seq !== this._seq || !this._dialog?.open) return;
+      const keep = this.index;
+      await this.runSearch();
+      this.index = Math.min(keep, Math.max(0, this.hits.length - 1));
     },
     async loadOlder(this: any): Promise<void> {
       if (this.isNotes || this.exhausted || this.loadingOlder || !this._loadOlderFn) return;
@@ -336,6 +350,7 @@ export function channelSearchDialogComponent(): Record<string, unknown> {
       this.index = 0;
       this._searchFn = null;
       this._loadOlderFn = null;
+      this._previewFn = null;
       if (this._dialog?.open) this._dialog.close();
       if (invoker?.isConnected) invoker.focus();
     },

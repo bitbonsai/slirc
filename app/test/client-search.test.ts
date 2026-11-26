@@ -290,3 +290,11 @@ test("image hits carry a thumbnail and link hits a card with host and preview", 
   expect(links.bare?.host).toBe("other.test");
   expect(searchMessages([upload], "", { kind: "images", origin }).hits[0]!.thumb).toBe("https://slirc.test/uploads/abc123?type=image");
 });
+
+test("a YouTube link gets its thumbnail and title without a preview fetch", () => {
+  const room = conversationId("room", "#search");
+  const video = makeMessage({ id: "yt", conversationId: room, text: "watch https://youtu.be/dQw4w9WgXcQ", time: "2026-11-24T10:00:00.000Z" });
+  const hit = searchMessages([video], "", { kind: "links", origin: "https://slirc.test" }).hits[0]!;
+  expect(hit.link?.title).toBe("YouTube");
+  expect(hit.link?.thumb).toContain(encodeURIComponent("https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg"));
+});
