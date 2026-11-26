@@ -3,9 +3,10 @@
   "version": "2.0.0",
   "private": true,
   "scripts": {
-    "test": "cd app && for f in test/*.test.ts; do bun test \"$f\" || exit 1; done && cd agent && for f in test/*.test.ts src/harnesses/*/*.test.ts; do bun test \"$f\" || exit 1; done && cd ../../native && bun test",
+    "test": "(cd app/agent && bun run build) && cd app && for f in test/*.test.ts; do bun test \"$f\" || exit 1; done && cd agent && for f in test/*.test.ts src/harnesses/*/*.test.ts; do bun test \"$f\" || exit 1; done && cd ../../native && bun test",
     "agent": "bun app/agent/src/cli.ts",
-    "agent:test": "cd app/agent && bun test",
+    "agent:test": "cd app/agent && bun run build && bun test",
+    "test:agent-proofs": "(cd app/agent && bun run build) && cd app && for f in test/agent-session-pi-proof.test.ts test/agent-session-codex-proof.test.ts; do SLIRC_AGENT_PROOFS=true bun test \"$f\" || exit 1; done && cd agent && SLIRC_AGENT_PROOFS=true bun test src/harnesses/codex/runtime.test.ts",
     "test:agent-e2e": "cd app && SLIRC_REQUIRE_PI=true bun test test/agent-session-pi-proof.test.ts",
     "test:agent-browser-e2e": "cd app && SLIRC_PI_BROWSER_E2E=true bun test test/e2e-agent-pi-browser.test.ts",
     "dev": "just dev",

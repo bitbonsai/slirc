@@ -6,7 +6,7 @@ import { VERSION } from "../src/version.ts";
 import { fakePi, type FakePi } from "./support/fake-pi.ts";
 import { fakeCodex } from "../src/harnesses/codex/fake-codex.ts";
 
-// The built CLI, run the way npx and bunx run it: by Node, and by Bun when there is no Node. Each
+// The built CLI (dist/ is tracked; root `bun run test` and `bun run agent:test` rebuild it once first), run the way npx and bunx run it: by Node, and by Bun when there is no Node. Each
 // case runs under both. A fake Slirc answers /api/agent/version and a fake pi stands in for Pi.
 const bin = resolve(import.meta.dir, "../dist/slirc-agent.js");
 const runtimes = [["bun", process.execPath], ["node", Bun.which("node")]].filter((entry): entry is [string, string] => !!entry[1]);
@@ -15,8 +15,6 @@ if (!Bun.which("node") && process.env.CI) throw new Error("node is required for 
 let expected = VERSION;
 let server: ReturnType<typeof Bun.serve>;
 beforeAll(async () => {
-  const built = Bun.spawnSync([process.execPath, "run", "build"], { cwd: resolve(import.meta.dir, ".."), stdout: "ignore", stderr: "pipe" });
-  if (built.exitCode !== 0) throw new Error(built.stderr.toString());
   server = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: (request) => new URL(request.url).pathname === "/api/agent/version"
     ? Response.json({ version: expected, enabled: true, harnesses: [{ id: "pi", name: "Pi" }] }) : new Response("no", { status: 404 }) });
 });
