@@ -30,6 +30,8 @@ export interface RuntimeState {
   // BFCache freeze: socket closed, durable state kept for resume.
   suspended: boolean;
   signingOut: boolean;
+  // Bumped by every connect run and every socket close, so a late /auth/me answer can tell it was superseded.
+  connectEpoch: number;
   // Bumped by every deliberate navigation, so a slow open that finished late can tell it was superseded.
   navIntent: number;
   capsOk: boolean;
@@ -57,6 +59,7 @@ export function createRuntimeState(): RuntimeState {
     stopped: false,
     suspended: false,
     signingOut: false,
+    connectEpoch: 0,
     navIntent: 0,
     capsOk: true,
     authorized: [],
