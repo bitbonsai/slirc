@@ -18,7 +18,7 @@
 //     checkpoint untouched. An empty complete batch is "caught up", never a failure.
 
 import Dexie from "dexie";
-import { isConcat, joinParts } from "../public/multiline.js";
+import { isConcat, joinParts } from "../shared/multiline.ts";
 import type { ClientDatabase } from "./db.ts";
 import { AGENT_OFFLINE_TAG } from "@client/agent-offline.ts";
 import { pollMark } from "@client/polls.ts";

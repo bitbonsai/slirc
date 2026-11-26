@@ -302,7 +302,7 @@ class MentionWatcher {
 // src/client.ts
 import { randomUUID } from "node:crypto";
 
-// ../src/irc.ts
+// ../shared/irc.ts
 import { connect as netConnect } from "node:net";
 import { connect as tlsConnect } from "node:tls";
 function unescapeTag(value) {
@@ -567,7 +567,7 @@ class IrcClient {
   }
 }
 
-// ../public/reactions.js
+// ../shared/reactions.ts
 function escapeTag(value) {
   return String(value).replace(/\\/g, "\\\\").replace(/;/g, "\\:").replace(/ /g, "\\s").replace(/\r/g, "\\r").replace(/\n/g, "\\n");
 }

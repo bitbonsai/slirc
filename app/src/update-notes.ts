@@ -6,7 +6,7 @@ import { randomBytes } from "node:crypto";
 import { db } from "./db.ts";
 import { HELPER_NICKS, UPDATES_NICK } from "../shared/service-bots.ts";
 import { enabledHelpers, slircMode } from "./config.ts";
-import { CONCAT_TAG, wireParts } from "../public/multiline.js";
+import { CONCAT_TAG, wireParts } from "../shared/multiline.ts";
 
 export const LAST_KEY = "update_notes_last_commit";
 

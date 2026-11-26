@@ -7,7 +7,7 @@ import { agentAudience, authorizedBindingById, bindingIrcPassword, MAX_CONTEXT, 
 import { publish } from "./live.ts";
 import { configuredAppOrigin } from "./request-security.ts";
 import { harnessById } from "../agent/src/harnesses/index.ts";
-import { isConcat, wireParts } from "../public/multiline.js";
+import { isConcat, wireParts } from "../shared/multiline.ts";
 
 // Verified live state of one room the agent has joined. `verified` means Ergo reported +s and +i for
 // a private channel (and every thread ancestor) before the JOIN was sent; a later MODE that drops
@@ -987,7 +987,7 @@ export function validTarget(binding: Binding, source: string, destination: strin
 }
 
 // Ergo's multiline max-bytes (4096 in every Slirc config): a larger batch is refused whole. Each
-// reply line is cut to fit Ergo's 512-byte line (see public/multiline.js) and the echo is matched
+// reply line is cut to fit Ergo's 512-byte line (see shared/multiline.ts) and the echo is matched
 // against those same parts.
 export const MAX_REPLY_BYTES = 4_000;
 export const replyParts = (text: string, target: string): { text: string; concat: boolean }[] => wireParts(text, target);

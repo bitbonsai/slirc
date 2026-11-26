@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
-import type { ParsedMessage } from "../../src/irc.ts";
+import type { ParsedMessage } from "../../shared/irc.ts";
 import { AgentListener, isOwnerMention, parseRoomMap, type ClaudeRunner, type ListenState } from "../src/listen.ts";
 
 const message = (account: string, text: string, room = "#slirc"): ParsedMessage => ({

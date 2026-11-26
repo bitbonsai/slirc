@@ -1,6 +1,6 @@
 // Text emoticons people still type by hand. IRC keeps the typed form; the PWA shows the emoji.
 // Only whole tokens match: preceded by start or space, followed by end, space, or sentence punctuation.
-const EMOTICONS = {
+const EMOTICONS: Record<string, string> = {
   ":)": "\u{1F642}", ":-)": "\u{1F642}", "=)": "\u{1F642}",
   ":D": "\u{1F600}", ":-D": "\u{1F600}", "=D": "\u{1F600}", "xD": "\u{1F606}", "XD": "\u{1F606}",
   ";)": "\u{1F609}", ";-)": "\u{1F609}",
@@ -16,16 +16,16 @@ const EMOTICON_RE = new RegExp(`(^|\\s)(${Object.keys(EMOTICONS).map((k) => k.re
 // Shortcode table for :shortcode: rendering. Rows are [shortcode, emoji, ...keywords], built by
 // scripts/build-emoji.ts. null until the client calls setEmojiTable, so emojify() quietly skips
 // shortcode replacement until then.
-let emojiByCode = null;
+let emojiByCode: Map<string, string> | null = null;
 
-export function setEmojiTable(rows) {
+export function setEmojiTable(rows: string[][]): void {
   emojiByCode = new Map(rows.map((row) => [row[0], row[1]]));
 }
 
 const SHORTCODE_RE = /:([a-z0-9_+-]{2,32}):/gi;
 
-export function emojify(text) {
-  let result = text.replace(EMOTICON_RE, (_, lead, face) => lead + EMOTICONS[face]);
-  if (emojiByCode) result = result.replace(SHORTCODE_RE, (full, code) => emojiByCode.get(code.toLowerCase()) ?? full);
+export function emojify(text: string): string {
+  let result = text.replace(EMOTICON_RE, (_: string, lead: string, face: string) => lead + EMOTICONS[face]);
+  if (emojiByCode) result = result.replace(SHORTCODE_RE, (full: string, code: string) => emojiByCode!.get(code.toLowerCase()) ?? full);
   return result;
 }

@@ -11,5 +11,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "public/**/*.ts", "client/**/*.ts"]
+  "include": ["src/**/*.ts", "shared/**/*.ts", "public/**/*.ts", "client/**/*.ts"]
 }

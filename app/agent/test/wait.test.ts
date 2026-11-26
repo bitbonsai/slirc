@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { ParsedMessage } from "../../src/irc.ts";
+import type { ParsedMessage } from "../../shared/irc.ts";
 import { mentionFrom, MentionWatcher } from "../src/wait.ts";
 
 const privmsg = (account: string, text: string, target = "#slirc", tags: Record<string, string> = {}): ParsedMessage => ({

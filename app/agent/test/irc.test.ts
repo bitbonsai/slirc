@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { IrcClient } from "../../src/irc.ts";
+import { IrcClient } from "../../shared/irc.ts";
 
 test("requests agent capabilities once after complete CAP listing", async () => {
   const lines: string[] = [];

@@ -14,7 +14,7 @@ import { operClient } from "./grants.ts";
 import { pageHistoryResult } from "./history.ts";
 import { type IrcClient, type ParsedMessage } from "./irc.ts";
 import { isOpenChannel, normalized } from "./rooms.ts";
-import { isConcat, joinParts } from "../public/multiline.js";
+import { isConcat, joinParts } from "../shared/multiline.ts";
 import { openRoom } from "./welcome.ts";
 
 export type PeekReaction = { emoji: string; count: number; accounts: string[] };

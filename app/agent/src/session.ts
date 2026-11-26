@@ -3,7 +3,7 @@ import { chmodSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } f
 import { createConnection, createServer, type Socket } from "node:net";
 import { homedir } from "node:os";
 import { join as joinPath } from "node:path";
-import type { IrcClient, ParsedMessage } from "../../src/irc.ts";
+import type { IrcClient, ParsedMessage } from "../../shared/irc.ts";
 import { acknowledge, CliError, connected, grantedRooms, join, sendText, sleep } from "./client.ts";
 import type { Credentials } from "./credentials.ts";
 import { ownerFromAgentNick } from "./listen.ts";

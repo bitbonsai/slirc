@@ -7,7 +7,7 @@ import { publish } from "./live.ts";
 import { createHmac } from "node:crypto";
 import { accountByNick, allAccounts, ergo } from "./accounts.ts";
 import { isDailyGreeting } from "../shared/service-bots.ts";
-import { isConcat } from "../public/multiline.js";
+import { isConcat } from "../shared/multiline.ts";
 import { agentMetadata } from "./agent-session.ts";
 
 export function vapidContact(env: NodeJS.ProcessEnv = process.env): string | null {

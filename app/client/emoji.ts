@@ -1,5 +1,5 @@
 import rows from "../public/vendor/emoji.json";
-import { emojify, setEmojiTable } from "../public/history.js";
+import { emojify, setEmojiTable } from "../shared/history.ts";
 import { hasUnclosedCodeFence, textSegments, type TextSegment } from "@client/render.ts";
 
 // Reuse the legacy table and converter. Accept the requested plural as an alias.

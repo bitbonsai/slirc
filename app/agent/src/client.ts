@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { IrcClient, type ParsedMessage } from "../../src/irc.ts";
-import { reactionLine } from "../../public/reactions.js";
+import { IrcClient, type ParsedMessage } from "../../shared/irc.ts";
+import { reactionLine } from "../../shared/reactions.ts";
 import type { Credentials } from "./credentials.ts";
 import { isPrivateHost } from "./host.ts";
 

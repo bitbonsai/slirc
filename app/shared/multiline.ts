@@ -12,14 +12,16 @@ export const IRC_LINE_BYTES = 512;
 export const MAX_SOURCE_BYTES = 1 + 32 + 1 + 20 + 1 + 64 + 1;
 export const CONCAT_TAG = "draft/multiline-concat";
 
+export type WirePart = { text: string; concat: boolean };
+
 const encoder = new TextEncoder();
-const byteLength = (text) => encoder.encode(text).length;
+const byteLength = (text: string) => encoder.encode(text).length;
 
 // The parts of `text` for one PRIVMSG target: one part per short line, several for a long one.
 // A part is never empty unless its whole line is, and a cut never splits a character.
-export function wireParts(text, target) {
+export function wireParts(text: string, target: string): WirePart[] {
   const budget = IRC_LINE_BYTES - 2 - MAX_SOURCE_BYTES - byteLength(`PRIVMSG ${target} :`);
-  const parts = [];
+  const parts: WirePart[] = [];
   for (const line of text.split("\n")) {
     let rest = line;
     let concat = false;
@@ -41,7 +43,7 @@ export function wireParts(text, target) {
 }
 
 // One message text from received parts, in order. `concat` is true when the part carried the tag.
-export function joinParts(parts) {
+export function joinParts(parts: WirePart[]): string {
   let text = "";
   parts.forEach((part, index) => {
     text += (index > 0 && !part.concat ? "\n" : "") + part.text;
@@ -49,6 +51,6 @@ export function joinParts(parts) {
   return text;
 }
 
-export function isConcat(tags) {
+export function isConcat(tags?: Record<string, string> | null): boolean {
   return !!tags && Object.prototype.hasOwnProperty.call(tags, CONCAT_TAG);
 }
