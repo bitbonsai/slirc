@@ -15,7 +15,7 @@ import type { ClientState } from "@client/client-state.ts";
 
 export interface SearchDeps {
   state: Pick<RuntimeState, "authorized" | "db" | "directories" | "roomId" | "stopped" | "sync">;
-  ui: Pick<ClientState, "account" | "authenticated" | "channel" | "channels" | "composer" | "directs" | "editingMessageId" | "embeds" | "greeting" | "messages" | "mobileNav" | "notesOpen" | "pendingDm" | "pendingThread" | "roomLabel" | "threads"> & { nick: any; view: ReturnType<typeof createView> };
+  ui: Pick<ClientState, "account" | "authenticated" | "channel" | "channels" | "composer" | "directs" | "editingMessageId" | "embeds" | "greeting" | "messages" | "mobileNav" | "notesOpen" | "pendingDm" | "pendingThread" | "roomLabel" | "threads"> & { nick?: string; view: ReturnType<typeof createView> };
   isDesktop: boolean;
   openPopup: ReturnType<typeof createPopupOpener>;
   notes: ReturnType<typeof createNotes>;

@@ -78,7 +78,7 @@ import { createMessageActions } from "@client/message-actions.ts";
 import { createMessageView } from "@client/message-view.ts";
 import { createComposerEditor } from "@client/composer-editor.ts";
 import { createLinkActions } from "@client/link-actions.ts";
-import { createClientState, type ClientSession } from "@client/client-state.ts";
+import { createClientState, type ClientSession, type ClientState } from "@client/client-state.ts";
 import { createView } from "@client/view.ts";
 import { LINK_MISSING } from "@client/core/routing.ts";
 import { createRuntimeState } from "@client/core/runtime-state.ts";
@@ -120,6 +120,19 @@ function socketUrl(): string {
   return `${scheme}//${location.host}/irc`;
 }
 
+// The shared state plus what the runtime adds onto it: the view value, the controllers it assigns
+// and the actions the templates call. Declared fields are typed; the rest stay open until each
+// action gets a type of its own.
+type RuntimeUi = ClientState & {
+  view: ReturnType<typeof createView>;
+  library: { on: boolean };
+  activeChannelArchived(): boolean;
+  openWorkspaces(): void;
+  avatarStatusLabel(nick: string): string;
+  nick?: string;
+  [key: string]: any;
+};
+
 export function createClient(Alpine: any) {
   const rs = createRuntimeState();
   // A workspace list carried from another workspace's dialog, before the router reads the fragment.
@@ -150,7 +163,7 @@ export function createClient(Alpine: any) {
     rs.navIntent += 1;
     nav.open(screen);
   };
-  const ui: any = Alpine.reactive(createClientState(isDesktop, COARSE));
+  const ui: RuntimeUi = Alpine.reactive(createClientState(isDesktop, COARSE));
   ui.view = createView(ui);
   const notes = createNotes(Alpine.reactive, { onChange: () => showNotes() });
   // The THREADS group in the sidebar: reply threads this person started or replied to.

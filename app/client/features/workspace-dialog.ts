@@ -4,8 +4,7 @@ import { canSwitchWorkspace, exposeWorkspaceDialog, openWorkspace, shellWorkspac
 import type { ClientState } from "@client/client-state.ts";
 
 export interface WorkspaceDialogDeps {
-  // `workspace` stays loose: the runtime seeds it without the icon fields workspaceRows reads.
-  ui: Pick<ClientState, "authenticated" | "workspaceBusy" | "workspaceChoices" | "workspaceDialog"> & { workspace: any; openWorkspaces: () => void };
+  ui: Pick<ClientState, "authenticated" | "workspace" | "workspaceBusy" | "workspaceChoices" | "workspaceDialog"> & { openWorkspaces: () => void };
   signal: AbortSignal;
 }
 
