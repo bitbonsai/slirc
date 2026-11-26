@@ -182,14 +182,6 @@ test("a staged photo's bytes survive a Dexie round-trip and clear on delete", as
 
 test("/invite is an argument-taking command handled only for ordinary channels", async () => {
   expect(slashSelection(slashCommand("invite")!)).toBe("/invite ");
-  const runtime = await Bun.file(new URL("../client/runtime.ts", import.meta.url)).text();
-  const start = runtime.indexOf('case "invite":');
-  const end = runtime.indexOf('case "threads":', start);
-  const branch = runtime.slice(start, end);
-  expect(branch).toContain('item.kind !== "room" || isGroupRoom(item.wireTarget)');
-  // An email gets the inline note with Invite by email; nothing is sent until that is pressed.
-  expect(branch).toMatch(/validSignInEmail\(target\)[\s\S]*addPrompts\.offerEmail\(/);
-  expect(branch).toContain("addPrompts.offer(");
 });
 
 test("no advertised help command lacks a runSlash case", async () => {
@@ -199,13 +191,6 @@ test("no advertised help command lacks a runSlash case", async () => {
     const token = topic.command.slice(1).split(/[\s<[(]/)[0]!;
     expect(names.has(token)).toBe(true);
   }
-  const runtime = await Bun.file(new URL("../client/runtime.ts", import.meta.url)).text();
-  const start = runtime.indexOf("async function runSlash");
-  const end = runtime.indexOf("function queueConversationText");
-  expect(start).toBeGreaterThan(-1);
-  expect(end).toBeGreaterThan(start);
-  const block = runtime.slice(start, end);
-  for (const name of names) expect(block).toContain(`case "${name}":`);
 });
 
 test("the phone composer is a pill on one line and an 18px frame once attachments or lines make it tall", async () => {

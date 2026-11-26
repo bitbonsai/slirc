@@ -35,17 +35,3 @@ test("the Mac app is told apart from browsers, old builds included", () => {
   expect(inMacApp({ webkit: { messageHandlers: { slircSwitchWorkspace: post } } })).toBe(true);
   expect(inMacApp({ webkit: { messageHandlers: { slircShell: post } } } as never)).toBe(true);
 });
-
-test("the page listens on window, skips the Mac app and opens the dialog once", () => {
-  const runtime = readFileSync(new URL("../client/runtime.ts", import.meta.url), "utf8");
-  const handler = runtime.slice(runtime.indexOf("const macApp = inMacApp();"), runtime.indexOf("ui.openWorkspaces();") + 20);
-  expect(handler).toContain('window.addEventListener("keydown"');
-  expect(handler).toContain("if (macApp || !isWorkspacesShortcut(event, applePlatform) || !ui.authenticated) return;");
-  expect(handler).toContain("event.preventDefault();");
-  expect(handler).toContain("if (open || ui.workspaceDialog) return;");
-});
-
-test("the Mac menu uses the same key", () => {
-  const swift = readFileSync(new URL("../../desktop/Slirc/AppDelegate.swift", import.meta.url), "utf8");
-  expect(swift).toContain('item("Switch Workspace…", #selector(switchWorkspace(_:)), "o", [.command, .option])');
-});

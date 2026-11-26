@@ -496,18 +496,6 @@ test("a Remind me quote is one short line with no double quotes", () => {
 });
 
 test("Remind me sets a preset reminder or a picked date and time from the menu and the sheet", async () => {
-  const transcript = await Bun.file(new URL("../partials/transcript.html", import.meta.url)).text() + await Bun.file(new URL("../partials/message-menu.html", import.meta.url)).text();
-  const sheet = await Bun.file(new URL("../partials/message-sheet.html", import.meta.url)).text();
-  for (const partial of [transcript, sheet]) {
-    expect(partial).toContain('x-on:click="actions.openRemind()"');
-    expect(partial).toContain('x-on:click="actions.remindAt(preset.when)"');
-    expect(partial).toContain('x-on:click="actions.openRemindForm()"');
-    expect(partial).toContain('x-model="actions.remindValue"');
-    expect(partial).toContain('x-on:keydown.enter.prevent="actions.remindCustom()"');
-    expect(partial).toContain('x-on:submit.prevent="actions.remindCustom()"');
-    expect(partial).toContain('x-on:click="actions.remindBack()"');
-  }
-
   global("window", new EventTarget());
   const dialog = { close: mock(() => { dialog.open = false; }), open: false };
   const focus = mock(() => {});

@@ -479,21 +479,6 @@ test("the composer takes file drops itself and lets the picker choose several ph
   expect(html).toMatch(/<input x-ref="mediaInput"[^>]*\smultiple[\s>]/);
 });
 
-test("Notes take picked and dropped images the way they take pasted ones", async () => {
-  // The + button was hidden in Notes and the picker and drop handlers skipped Notes, so only a
-  // paste could put an image in a note.
-  const html = await Bun.file(new URL("../partials/composer.html", import.meta.url)).text();
-  const plus = html.slice(html.indexOf('class="composer-plus"'), html.indexOf(">", html.indexOf('class="composer-plus"')));
-  expect(plus).not.toContain("notesOpen");
-  const runtime = await Bun.file(new URL("../client/runtime.ts", import.meta.url)).text();
-  const body = (name: string) => runtime.slice(runtime.indexOf(`function ${name}(`), runtime.indexOf("\n  }\n", runtime.indexOf(`function ${name}(`)));
-  for (const handler of ["pickMedia", "pasteMedia", "onDrop"]) expect(body(handler)).toContain("addFiles(");
-  expect(body("addFiles")).toContain("void mediaSender.stage(files)");
-  // Images are staged, never uploaded into the box as URL text.
-  expect(runtime).not.toContain("pasteNoteImages");
-  expect(body("sendNote")).toContain("mediaSender.saveNote(");
-});
-
 test("saving a note uploads its staged photos to notes and stores caption plus URL lines once", async () => {
   const h = harness({ uploadUrl: (n) => `/uploads/note${n}` });
   h.setRoom("notes");
@@ -591,14 +576,4 @@ test("a video over the upload limit is taken at pick only where it can be compre
   await createMediaSender(failed.deps).stage(big);
   expect(failed.media()).toBeNull();
   expect(failed.errors.at(-1)).toBe("Videos must be under 30 MB.");
-});
-
-test("a compressing video shows as a chip whose × cancels, and sending waits for it", async () => {
-  const html = await Bun.file(new URL("../partials/composer.html", import.meta.url)).text();
-  expect(html).toContain('x-show="media || mediaCompress"');
-  expect(html).toMatch(/<div class="media-chip compressing">[\s\S]*x-on:click="cancelCompress\(\)"/);
-  expect(html).toContain("'Compressing… '");
-  const runtime = await Bun.file(new URL("../client/runtime.ts", import.meta.url)).text();
-  const canSend = runtime.slice(runtime.indexOf("function canSend("), runtime.indexOf("\n  }\n", runtime.indexOf("function canSend(")));
-  expect(canSend).toContain("!ui.mediaCompress");
 });

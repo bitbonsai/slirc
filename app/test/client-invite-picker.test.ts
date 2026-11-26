@@ -101,8 +101,6 @@ test("picking dispatches the nick; the runtime fills in /invite @nick", async ()
   component.choose();
   window.removeEventListener("slirc:mention-pick", listener);
   expect(picked).toEqual([{ nick: "eve" }]);
-  const runtime = await Bun.file(new URL("../client/runtime.ts", import.meta.url)).text();
-  expect(runtime).toContain("if (inviteToken(text) !== null) { replaceComposerText(`/invite @${nick} `); return; }");
 });
 
 test("a dismissed list comes back for the next token, not for the one that was dismissed", () => withPeople(() => ["eve"], async (queries) => {

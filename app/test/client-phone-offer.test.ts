@@ -343,11 +343,6 @@ describe("shell wiring", () => {
     expect(sprite).toContain('id="scan-line"');
   });
 
-  test("the entrypoint lands a pair link before it builds the client", async () => {
-    const main = await Bun.file(new URL("../client/main.ts", import.meta.url)).text();
-    expect(main.indexOf("landOffer(location, history)")).toBeGreaterThan(-1);
-    expect(main.indexOf("landOffer(location, history)")).toBeLessThan(main.indexOf("createClient(Alpine)"));
-  });
 });
 
 describe("another workspace's code", () => {

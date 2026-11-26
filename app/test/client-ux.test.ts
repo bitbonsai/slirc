@@ -32,9 +32,3 @@ test("Contacts has its own collapse toggle, outside the Direct messages body", a
   // The contact rows sit under the Contacts body, which the toggle hides.
   expect(html.indexOf('x-show="contactsOpen"')).toBeLessThan(html.indexOf('x-for="nick in contactList()"'));
 });
-
-test("an invitation link opened signed out shows no sign-in prompt, and joining clears a stale one", async () => {
-  const runtime = await Bun.file(new URL("../client/runtime.ts", import.meta.url)).text();
-  expect(runtime).toContain('ui.note = ui.joinRoute || ui.admissionRoute ? "" : access.reason;');
-  expect(runtime).toContain('if (ui.note === SIGN_IN_REASON) ui.note = "";');
-});

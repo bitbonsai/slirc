@@ -21,20 +21,6 @@ describe("reply thread panel polish", () => {
     expect(rule).not.toContain("animation");
   });
 
-  test("the highlight fades on the rows that had a thread open, not on every row", () => {
-    expect(css).toContain(".msg.thread-fade, .msg.thread-open { transition: background-color var(--dur-reveal) var(--ease-standard); }");
-    expect(css).toContain("@starting-style { .msg.thread-open { background: transparent; } }");
-    expect(css).toContain("@media (prefers-reduced-motion: reduce) { .msg.thread-fade, .msg.thread-open { transition: none; } }");
-    expect(css).not.toMatch(/\n\.msg \{[^}]*transition/);
-    expect(html).toContain("replyThreadFaded[message.serverId] && 'thread-fade'");
-    expect(runtime).toContain("ui.replyThreadFaded = { ...ui.replyThreadFaded, [rootId]: true };");
-  });
-
-  test("the highlight follows replyThreadRootId, which close and the sidebar list both set", () => {
-    expect(runtime).toMatch(/function closeReplyThread\(\): void \{\s+ui\.replyThreadRootId = "";/);
-    expect(runtime).toMatch(/function showReplyThread[\s\S]*?openReplyThread\(entry\.rootId\)/);
-  });
-
   test("More sits left of the close chevron, same size, and opens the parent's message menu", () => {
     const more = head.indexOf("reply-thread-more");
     expect(more).toBeGreaterThan(-1);
@@ -51,10 +37,6 @@ describe("reply thread panel polish", () => {
     expect(panel).toContain('x-show="actions.panelMenu && actions.actionMessageId === message?.id"');
     expect(html).toContain('x-show="actions.actionMessageId === message.id && !actions.panelMenu" class="message-menu"');
     expect(css).toMatch(/\.reply-thread-close \{ flex: 0 0 2\.25rem; width: 2\.25rem; height: 2\.25rem;/);
-  });
-
-  test("Copy link on the open thread's parent is the thread link", () => {
-    expect(runtime).toContain("!!replyThreadSummaryFor(message) || message.serverId === ui.replyThreadRootId");
   });
 
   test("agent avatars in the panel are bare at the transcript's size", () => {

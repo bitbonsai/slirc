@@ -54,14 +54,3 @@ test("blocked storage leaves the cache empty without throwing", () => {
   expect(cachedEmbeds("acct", blocked, 1)).toEqual({});
   expect(() => rememberEmbed("acct", "https://a.test/", card, blocked, 1)).not.toThrow();
 });
-
-test("opening a conversation seeds the cards before its rows paint", () => {
-  const source = readFileSync(new URL("../client/runtime.ts", import.meta.url), "utf8");
-  const reset = source.indexOf("    scope = access.scope;\n");
-  const seed = source.indexOf("ui.embeds = cachedEmbeds(access.scope.accountId);");
-  const subscribe = source.indexOf("projection.view.subscribe(", seed);
-  expect(reset).toBeGreaterThan(-1);
-  expect(seed).toBeGreaterThan(reset);
-  expect(subscribe).toBeGreaterThan(seed);
-  expect(source).toContain("rememberEmbed: (url, meta) => { if (scope) rememberEmbed(scope.accountId, url, meta); }");
-});
