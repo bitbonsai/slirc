@@ -28,12 +28,21 @@ test("the boot screen and phone Home show a regenerated raster mark", async () =
   for (const [path] of marks.raster) expect([path, OLD_RASTERS.includes(await sha(path))]).toEqual([path, false]);
 });
 
-test("the iOS launch screen matches native/assets", async () => {
-  const set = "native/ios/App/App/Assets.xcassets/Splash.imageset";
+test("the iOS shell's Opening view carries the same two raster marks as the web boot screen", async () => {
+  for (const name of ["logo.webp", "logo-light.webp"]) expect([name, await sha(`native/www/${name}`)]).toEqual([name, await sha(`app/public/${name}`)]);
+});
+
+test("the iOS launch screen shows the bare mark at the boot screen's size, in light and dark", async () => {
+  const set = "native/ios/App/App/Assets.xcassets/LaunchMark.imageset";
   const { images } = await Bun.file(`${root}${set}/Contents.json`).json();
   expect(images.length).toBe(6);
-  for (const { filename, appearances } of images) {
-    const source = appearances ? "native/assets/splash-dark.png" : "native/assets/splash.png";
-    expect([filename, await sha(`${set}/${filename}`)]).toEqual([filename, await sha(source)]);
+  const generated = marks.raster.map(([raster]) => raster);
+  for (const { filename, scale } of images) {
+    const path = `${set}/${filename}`;
+    expect(generated).toContain(path);
+    // A PNG states its width and height in the header: the mark is 7rem (112 pt) at every scale.
+    const header = new DataView((await Bun.file(root + path).arrayBuffer()).slice(16, 24));
+    const px = 112 * Number.parseInt(scale);
+    expect([filename, header.getUint32(0), header.getUint32(4)]).toEqual([filename, px, px]);
   }
 });

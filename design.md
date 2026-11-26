@@ -61,7 +61,7 @@ All tokens live in `:root` of `app/public/style.css`, with light overrides in `:
 - Type, six steps, no 13px: `--text-2xs` 11px badges and counts; `--text-xs` 12px timestamps, hints, status, tooltips; `--text-sm` 14px UI body, inputs, menus, button labels; `--text-base` 16px messages; `--text-lg` 20px sheet and dialog heads; `--text-xl` 24px page heads. Exceptions: glyphs sized to fixed containers, 1.75rem and 2rem display sizes, em sizes inside code.
 - Spacing: `--space-1` .25rem to `--space-6` 2rem (.25, .5, .75, 1, 1.5, 2).
 - Radius, five steps: `--radius-xs` .25rem code and tiny marks; `--radius-sm` .4rem chips; `--radius-md` .55rem buttons, inputs, menu rows; `--radius-lg` .75rem menus, popovers, cards; `--radius-xl` 1rem dialogs and toasts; plus `--radius-pill` and `--radius-round`.
-- Motion, five steps: `--dur-micro` .1s, `--dur-fast` .15s, `--dur-base` .2s, `--dur-entrance` .3s, `--dur-reveal` .5s, easing `--ease-standard` `cubic-bezier(.2,.7,.2,1)`. Loops (spinners, pulses) keep their own durations. Component tokens: `--dur-boot-pop` 450ms, `--dur-boot-exit` 150ms, `--dur-reaction` 380ms.
+- Motion, five steps: `--dur-micro` .1s, `--dur-fast` .15s, `--dur-base` .2s, `--dur-entrance` .3s, `--dur-reveal` .5s, easing `--ease-standard` `cubic-bezier(.2,.7,.2,1)`. Loops (spinners, pulses) keep their own durations. Component tokens: `--dur-boot-exit` 150ms, `--dur-reaction` 380ms.
 - Shadows: `--shadow-sm`, `--shadow-md`, `--shadow-lg`; black alphas in dark, `var(--shadow)` in light.
 - Disabled: `--disabled-opacity` .5.
 
@@ -123,7 +123,7 @@ Controls use [Lucide](https://lucide.dev/), distributed under the [ISC licence](
 
 Blur tokens are 3px, 9px, and 18px. Every floating glass surface (menus, flyouts, popovers, palettes, pickers, tooltips, toasts, banners, pills, chips, sheets) uses `--glass-tint`, the panel at 74%, and `--glass-filter`. In dark the filter darkens what it blurs (`saturate(1.2) brightness(.75)`) so a panel always sits below the content it covers; light only blurs. Window chrome (header, docked rooms rail, members panel, composer, mobile nav, phone variants included) uses `--glass-chrome`, the panel at 60%, and dialogs stay near-solid at 96%. An element with a backdrop filter, a filter, or opacity below 1 is a backdrop root, and a blurred child inside it blurs nothing. A glass menu that opens from a blurred surface must render outside it: the composer + menu is teleported to the end of `body`, fixed at `--z-floating`, and placed by `placePlusMenu` in `app/client/popups.ts`. When blur fails to reach the content behind a panel, look for a backdrop root among its ancestors.
 
-The current shell disables transcript and list arrival animations and automatic view transitions that remain in shared CSS, so document effective shell behavior. Boot and reaction animations play once. Reduced motion removes nonessential animation.
+The current shell disables transcript and list arrival animations and automatic view transitions that remain in shared CSS, so document effective shell behavior. The boot mark never animates: the iOS launch screen, the shell's Opening view and the boot screen draw it at the same size and place, and the boot screen fades out once as a whole. Reaction animations play once. Reduced motion removes nonessential animation.
 
 Required behavior:
 

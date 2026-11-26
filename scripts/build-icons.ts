@@ -85,7 +85,16 @@ export const marks = {
     ["app/public/logo-light.webp", 384, "light"],
     ["app/public/logo.png", 192, "dark"],
     ["landing/slirc-mark.png", 512, "dark"],
+    // The iOS launch screen mark: the boot screen's size, 7rem (112 pt), in the three scales.
+    ...([["light", ""], ["dark", "-dark"]] as [Theme, string][]).flatMap(([theme, tag]): [string, number, Theme][] =>
+      [1, 2, 3].map((scale): [string, number, Theme] => [`native/ios/App/App/Assets.xcassets/LaunchMark.imageset/mark${tag}@${scale}x.png`, 112 * scale, theme])),
   ] as [string, number, Theme][],
+  // The iOS launch screen's top glow, the part of the page's --bg-glow that shows on a phone: a 1088 x 384 pt
+  // slice (3x), the 34rem radial gradient centred 10rem above the top edge. Everything outside it is flat --bg.
+  glow: [
+    ["native/ios/App/App/Assets.xcassets/LaunchGlow.imageset/glow.png", "#ffffff", "#eff1f5"],
+    ["native/ios/App/App/Assets.xcassets/LaunchGlow.imageset/glow-dark.png", "#1e1e2e", "#11111b"],
+  ] as [string, string, string][],
 };
 
 if (import.meta.main) {
@@ -129,8 +138,13 @@ if (import.meta.main) {
     return `<svg width="${w * 8}" height="${h * 8}" viewBox="${viewBoxes[crop]}" fill="none" xmlns="http://www.w3.org/2000/svg">\n${markBodies[theme]}\n</svg>\n`;
   };
   for (const [path, theme, crop] of marks.svg) await Bun.write(`${out}/${path}`, mark(theme, crop));
+  for (const [path, from, to] of marks.glow) {
+    mkdirSync(dirname(`${out}/${path}`), { recursive: true });
+    await $`magick -size 3264x1152 -define gradient:center=1632,-480 -define gradient:radii=1632,1632 radial-gradient:${from}-${to} ${out}/${path}`;
+  }
   for (const [path, size, theme] of marks.raster) {
     const target = `${out}/${path}`;
+    mkdirSync(dirname(target), { recursive: true });
     const png = path.endsWith(".png") ? target : "/tmp/slirc-mark.png";
     await Bun.write(`/tmp/slirc-mark-${theme}.svg`, mark(theme, "square"));
     await $`rsvg-convert -w ${size} -h ${size} /tmp/slirc-mark-${theme}.svg -o ${png}`;

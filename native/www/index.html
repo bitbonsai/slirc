@@ -26,7 +26,10 @@
     --text-base: 1rem;
     --text-lg: 1.25rem;
     --ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    /* The mark's size on every start screen: the iOS launch screen, this Opening view and the web boot screen. */
+    --boot-mark: 7rem;
   }
+  @media (max-width: 500px) { :root { --boot-mark: 5rem; } }
   /* Light values follow the system setting, as the web client does on first run. */
   @media (prefers-color-scheme: light) {
     :root {
@@ -53,12 +56,13 @@
   /* Hidden until we know whether a saved workspace opens straight away, so the form never flashes. */
   main { width: min(100%, 22rem); padding: 1.25rem; border: 1px solid var(--line); border-radius: var(--radius-xl); background: var(--panel); visibility: hidden; }
   main.ready { visibility: visible; }
-  /* Shown while a saved workspace is checked and opened, until the form or the workspace takes over. */
-  .opening { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 1rem; color: var(--muted); font-size: var(--text-sm); }
-  .opening img { margin: 0; animation: opening-pulse 1.6s ease-in-out infinite; }
+  /* Shown while a saved workspace is checked and opened, until the form or the workspace takes over.
+     Same box as the web boot screen (the small viewport, mark centred), so the mark stays where the
+     launch screen put it and where the boot screen will. The label hangs below it and never moves it. */
+  .opening { position: fixed; top: 0; left: 0; right: 0; height: 100svh; display: grid; place-items: center; }
+  .opening img { width: var(--boot-mark); height: var(--boot-mark); margin: 0; }
+  .opening span { position: absolute; top: calc(50% + var(--boot-mark) / 2 + 1rem); left: 0; right: 0; text-align: center; color: var(--muted); font-size: var(--text-sm); }
   main.ready ~ .opening { display: none; }
-  @keyframes opening-pulse { 50% { opacity: .45; } }
-  @media (prefers-reduced-motion: reduce) { .opening img { animation: none; } }
   img { display: block; height: 2.25rem; width: auto; margin: 0 auto 1.1rem; }
   h1 { margin: 0 0 .35rem; font-size: var(--text-lg); line-height: 1.25; }
   h1 span { color: var(--brand); }
@@ -127,11 +131,22 @@
 </main>
 <div class="opening" role="status">
   <picture>
-    <source srcset="brand-org-light.svg" media="(prefers-color-scheme: light)" />
-    <img src="brand-org-dark.svg" width="233" height="73" alt="Slirc" />
+    <source srcset="logo-light.webp" media="(prefers-color-scheme: light)" />
+    <img src="logo.webp" width="384" height="384" decoding="sync" alt="Slirc" />
   </picture>
   <span></span>
 </div>
+<script>
+  // The launch screen stays up until the mark above has painted, so it hands over with no gap. The
+  // app's SplashScreen setting lifts it after a few seconds if this never runs.
+  (() => {
+    const mark = document.querySelector(".opening img");
+    const hide = () => requestAnimationFrame(() => requestAnimationFrame(() => {
+      window.Capacitor?.Plugins?.SplashScreen?.hide?.({ fadeOutDuration: 0 })?.catch?.(() => {});
+    }));
+    mark.decode().then(hide, hide);
+  })();
+</script>
 <script src="hosts.js"></script>
 <script src="picker.js"></script>
 <script>
