@@ -144,7 +144,7 @@
             <span class="nick"><span x-text="message.authorNick"></span></span>
             <button type="button" class="message-avatar avatar-status-host" :data-status="channel === '#help' ? '' : avatarStatus(message.authorNick)" :aria-label="message.authorNick + (channel === '#help' ? '' : ' · ' + avatarStatusLabel(message.authorNick))" x-tooltip x-on:touchstart.stop="actions.pressStart($event, message, () => people.openWhois(message.authorNick))" x-on:click.stop="people.openWhois(message.authorNick)">
               <img loading="lazy" width="24" height="24" :src="avatarUrl(message.authorNick)" alt="" x-on:load="$el.hidden = false" x-on:error="$el.hidden = true" />
-              <span aria-hidden="true" :style="'background:' + ['#f5c2e7','#cba6f7','#eba0ac','#fab387','#f9e2af','#a6e3a1','#94e2d5','#89dceb','#74c7ec','#89b4fa','#b4befe'][([...((message.authorAccount || message.authorNick || '').toLowerCase())].reduce((v, c) => Math.imul(31, v) + c.charCodeAt(0) | 0, 0) >>> 0) % 11] + ';color:#11111b'" x-text="(message.authorNick || '?').slice(0, 1).toUpperCase()"></span>
+              <span aria-hidden="true" :style="messageView.avatarStyle(message.authorAccount || message.authorNick)" x-text="messageView.initial(message.authorNick)"></span>
             </button>
             <span class="mobile-time" x-text="formatTime(message.time)"></span>
             <!-- include: message-body -->
