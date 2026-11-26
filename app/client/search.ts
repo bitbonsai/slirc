@@ -8,6 +8,7 @@ import type { AuthorizedConversation } from "./sync.ts";
 import type { ThreadGrant } from "./access.ts";
 import { isHiddenThreadAnnouncement } from "./threads.ts";
 import { isLegacyThreadAnnouncement } from "./reply-threads.ts";
+import { inlineMedia } from "./media.ts";
 import { isDailyGreeting } from "../shared/service-bots.ts";
 
 export const SEARCH_RESULT_LIMIT = 50;
@@ -39,7 +40,11 @@ export interface SearchResult {
   parsed: ParsedSearchQuery;
 }
 
+export type SearchKind = "images" | "links";
+
 export interface SearchOptions {
+  kind?: SearchKind | null;
+  origin?: string;
   threads?: readonly ThreadGrant[];
   conversations?: readonly AuthorizedConversation[];
   greeting?: boolean;
@@ -89,8 +94,17 @@ export function formatSearchTime(iso: string, now: Date = new Date()): string {
   return time ? `${dateLabel} ${time}` : dateLabel;
 }
 
-export function matchesSearchMessage(message: Message, parsed: ParsedSearchQuery): boolean {
-  if (!hasSearchCriteria(parsed)) return false;
+const IMAGE_URL = /https?:\/\/\S+\.(?:png|jpe?g|gif|webp|avif)(?:[?#]\S*)?(?=\s|$)/i;
+const ANY_URL = /https?:\/\/\S+/i;
+
+// Images: our uploads, Giphy lines and bare image links. Links: any other message with a URL.
+export function messageHasKind(message: Message, kind: SearchKind, origin = "http://localhost"): boolean {
+  const image = inlineMedia(message.text, origin).length > 0 || IMAGE_URL.test(message.text);
+  return kind === "images" ? image : !image && ANY_URL.test(message.text);
+}
+
+export function matchesSearchMessage(message: Message, parsed: ParsedSearchQuery, allowEmpty = false): boolean {
+  if (!allowEmpty && !hasSearchCriteria(parsed)) return false;
   if (parsed.from) {
     const nick = message.authorNick.toLowerCase();
     const account = message.authorAccount.toLowerCase();
@@ -189,8 +203,10 @@ export function searchMessages(
   options: SearchOptions = {},
 ): SearchResult {
   const parsed = parseSearchQuery(rawQuery);
-  if (!hasSearchCriteria(parsed)) return { hits: [], total: 0, parsed };
+  const kind = options.kind ?? null;
+  if (!kind && !hasSearchCriteria(parsed)) return { hits: [], total: 0, parsed };
 
+  const origin = options.origin ?? globalThis.location?.origin ?? "http://localhost";
   const threads = options.threads ?? [];
   const conversations = options.conversations ?? [];
   const greeting = options.greeting ?? true;
@@ -206,7 +222,7 @@ export function searchMessages(
     return true;
   });
 
-  const matched = visible.filter((message) => matchesSearchMessage(message, parsed)).sort(newestFirst);
+  const matched = visible.filter((message) => (!kind || messageHasKind(message, kind, origin)) && matchesSearchMessage(message, parsed, !!kind)).sort(newestFirst);
   const hits: SearchHit[] = matched.slice(0, limit).map((message) => {
     const time = effectiveMessageTime(message);
     return {
@@ -229,7 +245,7 @@ export async function searchConversation(
   options: SearchOptions = {},
 ): Promise<SearchResult> {
   const parsed = parseSearchQuery(rawQuery);
-  if (!hasSearchCriteria(parsed)) return { hits: [], total: 0, parsed };
+  if (!options.kind && !hasSearchCriteria(parsed)) return { hits: [], total: 0, parsed };
   const rows = await db.messages.where("conversationId").equals(conversationId).toArray();
   return searchMessages(rows, rawQuery, options);
 }

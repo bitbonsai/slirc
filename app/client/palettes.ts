@@ -1,7 +1,7 @@
 import { HELP_TOPICS, filterHelpTopics, type HelpTopic } from "@client/help.ts";
 import { hiddenCommands } from "@client/commands.ts";
 import { rankJump, type JumpRow } from "@client/jump.ts";
-import { hasSearchCriteria, parseSearchQuery, type SearchHit, type SearchResult } from "@client/search.ts";
+import { hasSearchCriteria, parseSearchQuery, type SearchHit, type SearchKind, type SearchResult } from "@client/search.ts";
 import type { LoadOlderResult } from "@client/sync.ts";
 
 export function helpDialogComponent(): Record<string, unknown> {
@@ -155,7 +155,7 @@ export interface ChannelSearchOpenDetail {
   label: string;
   isNotes: boolean;
   exhausted: boolean;
-  search: (query: string) => Promise<SearchResult>;
+  search: (query: string, kind?: SearchKind | null) => Promise<SearchResult>;
   loadOlder: () => Promise<LoadOlderResult>;
 }
 
@@ -167,6 +167,7 @@ export function channelSearchDialogComponent(): Record<string, unknown> {
     isNotes: false,
     exhausted: false,
     query: "",
+    kind: null as SearchKind | null,
     hasQuery: false,
     searching: false,
     loadingOlder: false,
@@ -178,7 +179,7 @@ export function channelSearchDialogComponent(): Record<string, unknown> {
     _dialog: null as HTMLDialogElement | null,
     _invoker: null as HTMLElement | null,
     _onOpen: null as ((event: Event) => void) | null,
-    _searchFn: null as ((query: string) => Promise<SearchResult>) | null,
+    _searchFn: null as ((query: string, kind?: SearchKind | null) => Promise<SearchResult>) | null,
     _loadOlderFn: null as (() => Promise<LoadOlderResult>) | null,
     init(this: any): void {
       this._dialog = document.querySelector<HTMLDialogElement>("#channel-search-dialog");
@@ -194,6 +195,7 @@ export function channelSearchDialogComponent(): Record<string, unknown> {
         this._searchFn = detail.search;
         this._loadOlderFn = detail.loadOlder;
         this.query = "";
+        this.kind = null;
         this.hasQuery = false;
         this.searching = false;
         this.loadingOlder = false;
@@ -236,6 +238,11 @@ export function channelSearchDialogComponent(): Record<string, unknown> {
       if (this.exhausted) return `Start of ${this.label}`;
       return "Loaded messages only";
     },
+    toggleKind(this: any, kind: SearchKind): void {
+      this.kind = this.kind === kind ? null : kind;
+      void this.runSearch();
+      this.$refs.search?.focus();
+    },
     clear(this: any): void {
       this.query = "";
       void this.runSearch();
@@ -249,7 +256,7 @@ export function channelSearchDialogComponent(): Record<string, unknown> {
     async runSearch(this: any): Promise<void> {
       const seq = ++this._seq;
       const parsed = parseSearchQuery(this.query);
-      this.hasQuery = hasSearchCriteria(parsed);
+      this.hasQuery = hasSearchCriteria(parsed) || !!this.kind;
       if (!this.hasQuery || !this._searchFn) {
         this.hits = [];
         this.total = 0;
@@ -259,7 +266,7 @@ export function channelSearchDialogComponent(): Record<string, unknown> {
       }
       this.searching = true;
       try {
-        const result = await this._searchFn(this.query);
+        const result = await this._searchFn(this.query, this.kind);
         if (seq !== this._seq || !this._dialog?.open) return;
         this.hits = result.hits;
         this.total = result.total;
@@ -319,6 +326,7 @@ export function channelSearchDialogComponent(): Record<string, unknown> {
       this.isNotes = false;
       this.exhausted = false;
       this.query = "";
+      this.kind = null;
       this.hasQuery = false;
       this.searching = false;
       this.loadingOlder = false;

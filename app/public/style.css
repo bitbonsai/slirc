@@ -2415,8 +2415,13 @@ dialog.custom-modal.sheet-modal { padding: 0 0 var(--kb, 0px); }
 .search-hit-time { flex: 0 0 auto; color: var(--muted); font-size: var(--text-xs); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .search-hit-snippet { color: var(--muted); font: var(--text-sm)/1.45 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 .search-hit-mark { background: var(--search-hit-fill); color: var(--search-hit-ink); font-weight: 600; border-radius: var(--radius-xs); padding: 0 .14rem; }
-.channel-search-foot { justify-content: space-between; }
-.channel-search-hints { display: inline-flex; gap: .6rem; align-items: center; }
+.channel-search-foot { justify-content: flex-start; }
+.channel-search-filters { display: inline-flex; gap: .35rem; align-items: center; margin-right: auto; }
+.channel-search-chip { padding: .2rem .6rem; border: 1px solid var(--line); border-radius: var(--radius-round); background: transparent; color: var(--muted); font: 600 var(--text-xs)/1.2 var(--ui); cursor: pointer; transition: background var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard); }
+.channel-search-chip:hover { background: var(--panel-hi); color: var(--text); }
+.channel-search-chip[aria-pressed="true"] { border-color: color-mix(in srgb, var(--brand) 55%, transparent); background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--text); }
+.channel-search-chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .channel-search-chip { transition: none; } }
 .channel-search-status { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
 .channel-search-older { flex: 0 0 auto; padding: .15rem .45rem; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--brand); font: 600 var(--text-xs)/1.2 var(--ui); cursor: pointer; }
 .channel-search-older:hover:not(:disabled), .channel-search-older:focus-visible:not(:disabled) { background: color-mix(in srgb, var(--brand) 14%, transparent); }

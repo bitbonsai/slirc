@@ -61,7 +61,7 @@ import { createAgentsPage, stashConnectToken } from "@client/agents-page.ts";
 import { agentOfflineCard, agentOfflineFolded, createAgentBackToast, type AgentOfflineCard } from "@client/agent-offline.ts";
 import { createAdminPage } from "@client/admin-page.ts";
 import { isApplePlatform, isJumpShortcut, isWorkspacesShortcut, jumpRows, type JumpRow } from "@client/jump.ts";
-import { isChannelSearchShortcut, searchConversation, searchNotes } from "@client/search.ts";
+import { isChannelSearchShortcut, searchConversation, searchNotes, type SearchKind } from "@client/search.ts";
 import { recallStep, sentTexts, type Recall } from "@client/composer-history.ts";
 import { createTypingIndicators, typingAccount, typingLine } from "@client/typing.ts";
 import { createConversationMenu } from "@client/conversation-menu.ts";
@@ -1027,10 +1027,11 @@ export function createClient(Alpine: any) {
         label,
         isNotes,
         exhausted: isNotes ? true : (targetSync?.isExhausted(targetId) ?? false),
-        search: async (query: string) => {
-          if (isNotes) return searchNotes(notes.list, String(ui.account ?? ""), String(ui.nick ?? ""), query);
+        search: async (query: string, kind: SearchKind | null = null) => {
+          if (isNotes) return searchNotes(notes.list, String(ui.account ?? ""), String(ui.nick ?? ""), query, { kind });
           if (!targetDb) return { hits: [], total: 0, parsed: { from: null, terms: [] } };
           return searchConversation(targetDb, targetId, query, {
+            kind,
             threads: ui.threads,
             conversations: authorized,
             greeting: ui.greeting,

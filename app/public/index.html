@@ -2833,7 +2833,10 @@
         <p class="palette-empty" x-show="hasQuery && !searching && !hits.length" role="status">No matches in loaded messages.</p>
       </div>
       <div class="palette-foot channel-search-foot">
-        <span class="channel-search-hints" aria-hidden="true" x-show="!hasQuery && !loadError"><span class="palette-hint"><kbd>&uarr;</kbd><kbd>&darr;</kbd> move</span><span class="palette-hint"><kbd>&crarr;</kbd> jump</span><span class="palette-hint"><kbd>esc</kbd> close</span></span>
+        <span class="channel-search-filters" role="group" aria-label="Filter results">
+          <button type="button" class="channel-search-chip" :aria-pressed="String(kind === 'images')" x-on:click="toggleKind('images')">Images</button>
+          <button type="button" class="channel-search-chip" :aria-pressed="String(kind === 'links')" x-on:click="toggleKind('links')">Links</button>
+        </span>
         <span class="channel-search-status" role="status" x-show="hasQuery || loadError" x-text="statusText()"></span>
         <button type="button" class="channel-search-older" x-show="hasQuery && !isNotes && !exhausted" :disabled="loadingOlder" x-on:click="loadOlder()" x-text="loadingOlder ? 'Loading…' : 'Load older'"></button>
       </div>

@@ -259,3 +259,18 @@ test("search finds replies and skips legacy thread announcements", () => {
   const res = searchMessages([root, reply, announce], "release");
   expect(res.hits.map((hit) => hit.focusId).sort()).toEqual(["reply", "root"]);
 });
+
+test("Images and Links filters narrow results, alone or with words", () => {
+  const room = conversationId("room", "#search");
+  const at = (n: number) => `2026-11-24T10:0${n}:00.000Z`;
+  const upload = makeMessage({ id: "up", conversationId: room, text: "/uploads/abc123?type=image", time: at(1) });
+  const photo = makeMessage({ id: "ph", conversationId: room, text: "look https://cdn.test/cat.png", time: at(2) });
+  const link = makeMessage({ id: "ln", conversationId: room, text: "docs https://example.test/page", time: at(3) });
+  const plain = makeMessage({ id: "pl", conversationId: room, text: "docs only", time: at(4) });
+  const all = [upload, photo, link, plain];
+  const origin = "https://slirc.test";
+  expect(searchMessages(all, "", { kind: "images", origin }).hits.map((h) => h.id).sort()).toEqual(["ph", "up"]);
+  expect(searchMessages(all, "", { kind: "links", origin }).hits.map((h) => h.id)).toEqual(["ln"]);
+  expect(searchMessages(all, "docs", { kind: "links", origin }).hits.map((h) => h.id)).toEqual(["ln"]);
+  expect(searchMessages(all, "", { origin }).hits).toEqual([]);
+});
