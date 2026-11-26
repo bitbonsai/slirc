@@ -35,7 +35,6 @@ import { admissionForToken, admissionList, approveApplication, beginRedemption, 
 import { addCertificate, listCertificates, normalizeCertificateFingerprint, removeCertificate } from "./irc-certificates.ts";
 import { announceLines, canClose as canClosePoll, checkPoll, closePoll, createPoll, isClosed as pollClosed, openPoll, pollById, pollView, setVotes, tallyLines, voteIn, votes, type Poll } from "./polls.ts";
 import { agentCanReadChannel, asciiFold, channelInfo, defaultChannel, threadsFor, threadsOf, closeDirectConversation, deleteChannelTree, directConversation, directConversations, discoverableHuman, humanDiscovery, isMember, isOpenChannel, isValidNext, joinWorkspaceChannel, leaveChannel, memberChannels, normalized, openChannels, reopenDirectConversation, sharedContacts, threadChildren, visibleChannels } from "./rooms.ts";
-import { createThread } from "./threads.ts";
 import { canonicalMailbox, acceptEmailInvite, acceptEmailInviteById, beginConversationOperation, cancelEmailInvite, completeConversationOperation, createEmailInvite, emailInviteAllowance, emailInviteByToken, emailInviteLimit, inviteById, listEmailInvites, normalizeEmail, pendingEmailInvite, claimEmailInviteResend, finishEmailInviteResend, recordEmailInviteDelivery, reserveEmailInvites, settleEmailInvite } from "./email-invites.ts";
 import { AdmissionAttemptStaleError, accountByEmail, accountByNick, allAccounts, rotateIrcPassword, cleanDisplayName, displayNameError, ergo, ircChannelExists, isRemovedEmail, markRemoved, markVerified, provisionAccount, provisionAdmissionIdentity, reserveAdmissionIdentity, validEmail, type Account } from "./accounts.ts";
 import { helperSay, pollTag, queueHelperCatchUp, reminderOutcome, scheduleReminder, setPollChangeListener, tallyTag } from "./helper-bot.ts";
@@ -4153,7 +4152,6 @@ app.post("/api/messages/bot-edit", async (c) => {
 
 // Threads under a channel. IRC clients only ever see the #t- channel plus the announcement line; this table
 // exists so the PWA can nest threads under their parent and order them by activity.
-const THREAD_NAME = /^#t-[a-z0-9]{6}$/i;
 function canSeeChannel(nick: string, channel: string) {
   return isOpenChannel(channel) || isMember(nick, channel);
 }
