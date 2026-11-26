@@ -1285,7 +1285,6 @@ html.boot-landed .mobile-screen .mobile-row { animation: row-in var(--dur-entran
   .btn-primary, .btn-secondary, .btn-danger { transition: none; }
 }
 .public-help-composer .btn-primary { min-height: 2.75rem; padding: .75rem 1rem; font-size: var(--text-base); line-height: 1.45; }
-.session-expired .btn-primary { justify-self: start; font-size: var(--text-sm); }
 .btn-primary.busy, .btn-secondary.busy, .btn-danger.busy, button[disabled].busy { position: relative; color: transparent !important; }
 .btn-primary.busy::after, .btn-secondary.busy::after, .btn-danger.busy::after, button[disabled].busy::after { content: ""; position: absolute; inset: 0; margin: auto; width: 1rem; height: 1rem; border: 2px solid transparent; border-top-color: var(--on-brand); border-radius: var(--radius-round); animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -1934,7 +1933,6 @@ body.peeking .chat #messages { padding-bottom: calc(4.5rem + env(safe-area-inset
 .session-row small { color: var(--muted); font-size: var(--text-2xs); }
 .session-row strong b { padding: .12rem .35rem; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--brand); font-size: .62rem; text-transform: uppercase; }
 .session-row strong b.pending { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning); }
-.session-pending { margin-bottom: .6rem; }
 .install-banner { margin: .35rem .15rem 0; flex: 0 0 auto; }
 .install-banner .menu-icon { flex: 0 0 auto; width: 1.25rem; height: 1.25rem; color: var(--brand); }
 .install-steps { margin: 0 0 1.25rem; padding-left: 1.2rem; color: var(--text); line-height: 1.5; }
@@ -2295,16 +2293,6 @@ dialog.custom-modal.sheet-modal { padding: 0 0 var(--kb, 0px); }
 .email-sent .login-code-error { margin: 0; color: var(--danger); }
 .auth-card input { width: 100%; padding: .7rem .8rem; border: 1px solid var(--line); border-radius: var(--radius-md); outline: none; background: var(--bg); color: var(--text); font: inherit; font-size: var(--text-base); }
 .auth-card input:focus { border-color: var(--brand); }
-.session-pair { display: grid; justify-items: center; gap: .65rem; margin-top: .8rem; padding-top: .8rem; border-top: 1px solid var(--line); }
-.session-pair-button { min-height: 2.75rem; padding: 0 .8rem; border: 0; background: transparent; color: var(--brand); font: 700 var(--text-sm)/1 var(--ui); cursor: pointer; }
-.session-pair-panel { display: grid; grid-template-rows: 1fr; opacity: 1; transition: grid-template-rows var(--dur-entrance) ease-in-out, opacity var(--dur-base) ease-in-out; }
-.session-pair-panel.collapsed { grid-template-rows: 0fr; opacity: 0; pointer-events: none; }
-.session-pair-panel > div { display: grid; justify-items: center; gap: .65rem; min-height: 0; overflow: hidden; }
-.session-pair-panel p { margin: 0; color: var(--muted); font-size: var(--text-xs); }
-.session-pair-qr { align-self: center; }
-.session-pair-qr svg { width: 9rem; height: 9rem; }
-.session-pair-panel .change-email { justify-self: center; min-height: 2.75rem; }
-.session-pair-error { margin: 0; font-size: var(--text-xs); }
 .notice-card { position: relative; padding: 1.5rem; text-align: center; }
 /* Members list, shared by the desktop panel and the phone sheet. */
 .members-icon { display: block; width: 1.1rem; height: 1.1rem; background: currentColor; -webkit-mask: url(/icons/ui/members.svg?v=2) center / contain no-repeat; mask: url(/icons/ui/members.svg?v=2) center / contain no-repeat; }
@@ -2419,8 +2407,6 @@ dialog.custom-modal.sheet-modal { padding: 0 0 var(--kb, 0px); }
 }
 .join-heading { color: var(--text); font-size: var(--text-lg); margin: 0; }
 .join-note { color: var(--muted); margin: 0; }
-.session-expired { display: grid; gap: .75rem; margin-bottom: 1rem; padding: .85rem; border: 1px solid color-mix(in srgb, var(--brand) 35%, transparent); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--brand) 8%, transparent); }
-.session-expired p { margin: 0; color: var(--text); font-size: var(--text-sm); line-height: 1.4; }
 .join-error { display: flex; align-items: flex-start; gap: .5rem; margin: 1.25rem 0 0; color: var(--danger); }
 .join-error svg { width: 1.1rem; height: 1.1rem; flex: 0 0 auto; margin-top: .15em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .join-accept.btn-primary { width: 100%; }
