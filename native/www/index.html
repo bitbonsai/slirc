@@ -53,12 +53,14 @@
   /* Hidden until we know whether a saved workspace opens straight away, so the form never flashes. */
   main { width: min(100%, 22rem); padding: 1.25rem; border: 1px solid var(--line); border-radius: var(--radius-xl); background: var(--panel); visibility: hidden; }
   main.ready { visibility: visible; }
-  /* Shown while a saved workspace is checked and opened, until the form or the workspace takes over. */
-  .opening { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 1rem; color: var(--muted); font-size: var(--text-sm); }
-  .opening img { margin: 0; animation: opening-pulse 1.6s ease-in-out infinite; }
+  /* Shown while a saved workspace is checked and opened, until the form or the workspace takes over.
+     It matches the launch screen before it and the web client's boot screen after it: the logomark
+     alone, centred in the small viewport at the same size, so the three read as one screen. The mark
+     stays still here; the boot screen's pulse starts from full opacity, so nothing blinks at the hand-off. */
+  .opening { position: fixed; top: 0; left: 0; right: 0; height: 100svh; display: grid; place-items: center; }
+  .opening img { width: 5rem; height: 5rem; margin: 0; }
+  @media (min-width: 501px) { .opening img { width: 7rem; height: 7rem; } }
   main.ready ~ .opening { display: none; }
-  @keyframes opening-pulse { 50% { opacity: .45; } }
-  @media (prefers-reduced-motion: reduce) { .opening img { animation: none; } }
   img { display: block; height: 2.25rem; width: auto; margin: 0 auto 1.1rem; }
   h1 { margin: 0 0 .35rem; font-size: var(--text-lg); line-height: 1.25; }
   h1 span { color: var(--brand); }
@@ -125,12 +127,11 @@
   <div class="saved" role="list" aria-label="Saved workspaces"></div>
   <p class="hint" hidden>Swipe left on a workspace to remove it. <button type="button">Edit</button></p>
 </main>
-<div class="opening" role="status">
+<div class="opening" role="status" aria-label="Opening Slirc">
   <picture>
-    <source srcset="brand-org-light.svg" media="(prefers-color-scheme: light)" />
-    <img src="brand-org-dark.svg" width="233" height="73" alt="Slirc" />
+    <source srcset="mark-light.webp" media="(prefers-color-scheme: light)" />
+    <img src="mark-dark.webp" width="384" height="384" alt="" />
   </picture>
-  <span></span>
 </div>
 <script src="hosts.js"></script>
 <script src="picker.js"></script>
@@ -179,10 +180,10 @@
     store = next;
   }
 
-  // The logo screen with "Opening <host>…" while the shell loads a workspace.
+  // The logomark screen while the shell loads a workspace.
   function opening(url) {
     main.classList.remove("ready");
-    document.querySelector(".opening span").textContent = "Opening " + hostOf(workspaceOrigin(url) || url) + "…";
+    document.querySelector(".opening").setAttribute("aria-label", "Opening " + hostOf(workspaceOrigin(url) || url));
   }
 
   async function navigateToWorkspace(url) {

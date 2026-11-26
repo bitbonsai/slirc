@@ -28,12 +28,11 @@ test("the boot screen and phone Home show a regenerated raster mark", async () =
   for (const [path] of marks.raster) expect([path, OLD_RASTERS.includes(await sha(path))]).toEqual([path, false]);
 });
 
-test("the iOS launch screen matches native/assets", async () => {
-  const set = "native/ios/App/App/Assets.xcassets/Splash.imageset";
+test("the iOS launch screen shows only the generated mark", async () => {
+  const set = "native/ios/App/App/Assets.xcassets/SplashMark.imageset";
   const { images } = await Bun.file(`${root}${set}/Contents.json`).json();
-  expect(images.length).toBe(6);
-  for (const { filename, appearances } of images) {
-    const source = appearances ? "native/assets/splash-dark.png" : "native/assets/splash.png";
-    expect([filename, await sha(`${set}/${filename}`)]).toEqual([filename, await sha(source)]);
-  }
+  const generated = marks.splash.map(([path]) => path).sort();
+  expect(images.map(({ filename }: { filename: string }) => `${set}/${filename}`).sort()).toEqual(generated);
+  for (const path of generated) expect([path, await Bun.file(root + path).exists()]).toEqual([path, true]);
+  expect(await text("native/ios/App/App/Base.lproj/LaunchScreen.storyboard")).toContain('image="SplashMark"');
 });

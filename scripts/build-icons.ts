@@ -86,6 +86,10 @@ export const marks = {
     ["app/public/logo.png", 192, "dark"],
     ["landing/slirc-mark.png", 512, "dark"],
   ] as [string, number, Theme][],
+  // The iOS launch screen shows the mark alone at the boot screen's size (5rem, so 80 pt), at 1x, 2x and 3x.
+  splash: [1, 2, 3].flatMap((scale) => (["light", "dark"] as Theme[]).map((theme): [string, number, Theme] => [
+    `native/ios/App/App/Assets.xcassets/SplashMark.imageset/mark@${scale}x${theme === "dark" ? "-dark" : ""}.png`, 80 * scale, theme,
+  ])),
 };
 
 if (import.meta.main) {
@@ -136,5 +140,11 @@ if (import.meta.main) {
     await $`rsvg-convert -w ${size} -h ${size} /tmp/slirc-mark-${theme}.svg -o ${png}`;
     if (png !== target) await $`magick ${png} -quality 92 ${target}`;
   }
-  console.log(`${icons.length + 1} icons and ${marks.svg.length + marks.raster.length} marks written`);
+  for (const [path, size, theme] of marks.splash) {
+    const target = `${out}/${path}`;
+    mkdirSync(dirname(target), { recursive: true });
+    await Bun.write(`/tmp/slirc-mark-${theme}.svg`, mark(theme, "square"));
+    await $`rsvg-convert -w ${size} -h ${size} /tmp/slirc-mark-${theme}.svg -o ${target}`;
+  }
+  console.log(`${icons.length + 1} icons and ${marks.svg.length + marks.raster.length + marks.splash.length} marks written`);
 }

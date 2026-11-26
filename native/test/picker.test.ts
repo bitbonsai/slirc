@@ -525,11 +525,12 @@ describe("iOS load watch", () => {
     expect(html).toContain('navigateToWorkspace(failed + "/")');
   });
 
-  test("the picker shows the logo and the host while a workspace opens", async () => {
+  test("the opening screen shows only the logomark, and the files it names ship", async () => {
     const html = await Bun.file(new URL("../www/index.html", import.meta.url)).text();
-    expect(html).toContain('<div class="opening" role="status">');
-    expect(html).toContain("main.ready ~ .opening { display: none; }");
-    expect(html).toContain('"Opening " + hostOf(workspaceOrigin(url) || url) + "…"');
+    const opening = html.slice(html.indexOf('<div class="opening"'), html.indexOf("</div>", html.indexOf('<div class="opening"')));
+    const files = [...opening.matchAll(/(?:src|srcset)="([^"]+)"/g)].map((match) => match[1]);
+    expect(files.sort()).toEqual(["mark-dark.webp", "mark-light.webp"]);
+    for (const name of files) expect(await Bun.file(new URL("../www/" + name, import.meta.url)).exists()).toBe(true);
     expect(html.indexOf("opening(url);")).toBeGreaterThan(html.indexOf("async function navigateToWorkspace(url) {"));
   });
 });
