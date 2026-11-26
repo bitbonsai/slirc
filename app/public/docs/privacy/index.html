@@ -1,0 +1,136 @@
+<!-- generated from app/docs/*.md — edit there, then run: bun run docs -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#11111b" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="description" content="Slirc privacy and safety: where your data lives, how access is gated, and what stays private." />
+  <title>Privacy &amp; safety · Slirc docs</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="alternate" type="text/markdown" href="/docs/privacy.md" />
+  <script src="/theme.js?v=844fef47"></script>
+  <link rel="stylesheet" href="/docs/docs.css?v=39" />
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="app-back" id="app-back" hidden><a class="app-back-link" href="/more" aria-label="Back to Slirc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 4 12l7 7"/></svg>Back</a></div>
+
+  <header class="topbar">
+    <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-nav">
+      <svg class="menu-icon menu-bars" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>
+      <svg class="menu-icon menu-close" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+    <a class="brand" href="/docs"><img class="brand-lockup" src="/brand-org-dark.svg" width="233" height="73" alt="Slirc" /><span class="tag">docs</span></a>
+    <button class="search-toggle" id="search-toggle" type="button" aria-label="Search the docs" aria-expanded="false" aria-controls="docs-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 4.5 4.5"/></svg>
+    </button>
+    <div class="docs-search" id="docs-search" role="search" data-docs-search>
+      <label class="visually-hidden" for="docs-search-input">Search the docs</label>
+      <span class="docs-search-field">
+        <svg class="docs-search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5"/></svg>
+        <input id="docs-search-input" class="docs-search-input" type="search" placeholder="Search docs…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="docs-search-results" aria-autocomplete="list" />
+        <kbd class="docs-search-key" aria-hidden="true">⌘K</kbd>
+      </span>
+      <div id="docs-search-results" class="docs-search-results" role="listbox" aria-label="Search results" hidden></div>
+      <p class="docs-search-status visually-hidden" aria-live="polite"></p>
+    </div>
+    <a class="open-app-mobile" href="/open-chat">Open chat</a>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" id="docs-nav" aria-label="Documentation" hidden>
+      <div class="nav-content">
+      <a class="nav-link nav-app" href="/open-chat">Open chat</a>
+      <p class="nav-section">Guides</p>
+      <a class="nav-link" href="/docs">Home</a>
+      <a class="nav-link" href="/docs/getting-started">Getting started</a>
+      <a class="nav-link" href="/docs/download">Download</a>
+      <a class="nav-link" href="/docs/channels">Channels & invites</a>
+      <a class="nav-link" href="/docs/messages">Messages & media</a>
+      <a class="nav-link sub" href="/docs/threads">Threads</a>
+      <a class="nav-link" href="/docs/notifications">Notifications</a>
+      <a class="nav-link active" href="/docs/privacy" aria-current="page">Privacy & safety</a>
+      <p class="nav-section">Connect</p>
+      <a class="nav-link" href="/docs/clients">IRC clients</a>
+      <a class="nav-link" href="/docs/agents">Agents</a>
+      <a class="nav-link" href="/docs/bots">Bots</a>
+      <a class="nav-link" href="/docs/setup">Self-hosting</a>
+      <p class="nav-section">Reference</p>
+      <a class="nav-link" href="/docs/design">Design system</a>
+      <p class="nav-section">About</p>
+      <a class="nav-link" href="/docs/about">About Slirc</a>
+      <a class="nav-link" href="/docs/comparison">Footprint</a>
+      <a class="nav-link" href="/docs/faq">FAQ</a>
+      </div>
+    </nav>
+
+    <main id="main">
+      <div class="callout info prelaunch-note"><p>Slirc is in early access. Come say hi in <a href="/open-chat">#open-chat</a>.</p></div>
+      <p class="crumb">Guides / Privacy &amp; safety</p>
+      <h1>Privacy &amp; safety</h1>
+      <p class="lead">Slirc runs on your operator's own hardware and talks an open protocol. This page names what is stored, what is gated, and where the edges are.</p>
+<p>This page describes how a Slirc instance handles your data. Every instance runs the same code under its own operator.</p>
+<h2 id="your-data-lives-on-the-instance-you-chose">Your data lives on the instance you chose</h2>
+<p>Conversations, identity, channels, and history stay on the machine your operator runs, the same one that serves the app. Slirc runs without third-party chat platforms, analytics, or tracking scripts.</p>
+<p>Because Slirc speaks IRC, your history is portable. Any IRC client can read it.</p>
+<p><a id="email-is-only-for-sign-in"></a></p>
+<h2 id="email-and-invitations">Email and invitations</h2>
+<p>Your email address is not shown in chat, profiles or member lists. Slirc uses it for sign-in and invitations. When you invite someone by email, the invitation shows your name and email address so they can tell it is really you.</p>
+<p>A verified member who enters your exact email to start a conversation can discover your account through the resulting DM or membership. Slirc does not provide an email directory or email autocomplete. Senders can see addresses they entered in their own Invitations page.</p>
+<p>People search is not an instance directory. It returns only someone you can already discover: an explicit member of a public or workspace channel, someone who has posted in one (including <code>#open-chat</code> and <code>#help</code>), a person you share a non-direct room with that you both read, or someone you have a DM with, even a closed one. Posting in an open channel makes someone searchable but does not make them a Contact. A stranger who belongs only to a room you cannot see never appears, and guessing their account ID gets the same unavailable result as an unknown one.</p>
+<p>The address is also the key to your account, so you can't edit it yourself. Ask an admin to update it from your profile. Your next sign-in link goes to the new address.</p>
+<h2 id="channels-are-gated-twice">Channels are gated, twice</h2>
+<p>Invite-only channels stay hidden until you're invited, and the instance blocks anyone who isn't on the member list. Open channels are visible to every registered user, so anything you post there is group-wide. On a public instance, recent <code>#open-chat</code> messages are also readable without signing in at <code>/open-chat</code>: messages with their nick, time, reactions, polls and media posted there, and the avatars of people who posted. Member lists, presence, other channels, and who voted for what stay private. An archived channel is read-only.</p>
+<p>The public help channel, <code>#help</code>, is readable by signed-in members. Slirc does not currently offer anonymous reading there, and the member list stays hidden in the app for everyone: joins, parts, and quits aren't visible, and neither is the list of who's there. Slirc does not yet promise IRC invisibility.</p>
+<h2 id="agents-read-what-a-member-reads">Agents read what a member reads</h2>
+<p>An agent runs on its owner's computer, and what it reads may go to the model provider its owner chose. It reads its DM with its owner and the open or invite-only channels its owner added it to. In an open channel it is owner-only and acts only on messages from its owner's account. Like a person you add, it can read each channel's full history, not only what comes after it joins. It leaves a channel when its owner does. Admins can see and remove every agent on the instance.</p>
+<h2 id="media-follows-conversation-access">Media follows conversation access</h2>
+<p>Uploads have random URLs. Photos and videos in private conversations require current membership, even when someone has the link. Thread media also requires access to its parent conversation. Losing membership blocks new requests, including video ranges; it cannot erase a copy someone already downloaded.</p>
+<p>Media posted in public rooms is public. Giphy and other externally hosted media follow their provider's access rules, not Slirc membership.</p>
+<p>Saving an image as custom emoji makes the cropped emoji public across this Slirc instance, including public rooms. Use an image everyone may see.</p>
+<h2 id="closing-a-dm-is-not-deleting-it">Closing a DM is not deleting it</h2>
+<p><strong>Close DM</strong> hides a one-to-one conversation from your list across devices. The other participant keeps seeing it, and its shared channel, membership, and history stay unchanged. A new message in it reopens it, and opening the person from <strong>Contacts</strong> also restores the DM and its history.</p>
+<p>Deleting a message is separate. It removes that message from server history. IRC clients that already received it may keep their own copy. That's the nature of an open protocol, and no product setting can undo it.</p>
+<h2 id="be-careful-with-keys">Be careful with keys</h2>
+<ul>
+<li><strong>Email invitations</strong> are personal. They expire after seven days, can be cancelled, and only the verified account for the invited email address can accept one.</li>
+<li><strong>Media links</strong> point to files. Private uploads still require conversation membership; public-room files and custom emoji do not.</li>
+</ul>
+<p>Only share them with people you trust to be in the channel.</p>
+<h2 id="faq">FAQ</h2>
+<details>
+  <summary>Who can read the public channels?</summary>
+  <div><p>Members signed in to Slirc can read `#help`. Slirc does not currently offer anonymous reading there, and joining events stay hidden in the app. On a public instance, anyone can read recent `#open-chat` messages at `/open-chat` without signing in.</p></div>
+</details>
+<details>
+  <summary>Can other people see my email?</summary>
+  <div><p>Your email is not listed in chat, profiles or member lists. Someone who enters your exact email can discover your account when Slirc opens a conversation or adds you to a channel. Senders can see addresses they entered in their own invitation history. An email invitation shows the sender's name and email address to the person invited.</p></div>
+</details>
+<details>
+  <summary>Who can open an uploaded image or video?</summary>
+  <div><p>Current members of the private conversation, including the parent of a thread. Public-room media and custom emoji are public. Removing access cannot erase copies already downloaded.</p></div>
+</details>
+<details>
+  <summary>Does Slirc track me?</summary>
+  <div><p>Slirc includes no analytics or tracking. Conversations stay on your operator's hardware.</p></div>
+</details>
+
+      <footer class="doc-footer">
+        <p class="doc-footer-meta"><a href="/docs">All guides</a> · <a href="/docs/privacy.md">markdown</a></p>
+        <nav class="pager" aria-label="Page navigation">
+        <a class="pager-box prev" href="/docs/notifications"><small>← Previous</small><span>Notifications</span></a>
+        <a class="pager-box next" href="/docs/clients"><small>Next →</small><span>IRC clients</span></a>
+        </nav>
+      </footer>
+    </main>
+    <nav class="toc" id="page-nav" aria-label="On this page"></nav>
+  </div>
+
+  <script type="module" src="/docs/glow.js"></script>
+  <script src="/docs/docs.js?v=16" defer></script>
+  <script src="/docs/app-back.js?v=26d58c4a" defer></script>
+  <script type="module" src="/docs/search.js?v=1f3b3dfc&amp;index=9725c03e"></script>
+</body>
+</html>

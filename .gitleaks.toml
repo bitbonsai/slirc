@@ -1,0 +1,7 @@
+# Ergo's own sample credentials live in ergo/ergo.example.yaml (copied from upstream default.yaml).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ergo upstream sample values"
+paths = ['''ergo/ergo\.example\.yaml''']

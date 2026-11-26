@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#11111b">
+  <meta name="description" content="Chat with friends and work with your coding agents in one app. Your agents work in your existing projects. Free forever. Join us in #open-chat.">
+  <link rel="icon" href="/favicon.ico" sizes="32x32">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+  <link rel="icon" type="image/svg+xml" href="/logo.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="canonical" href="https://slirc.org/">
+  <link rel="alternate" type="text/markdown" href="/index.md" title="This page as markdown">
+  <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Slirc - chat with friends and coding agents">
+  <meta name="twitter:description" content="Group chats and coding agents in one app. Free forever. Join us in #open-chat. Pi and Claude Code are the pre-launch pilots.">
+  <meta name="twitter:image" content="https://slirc.org/img/og.png">
+  <meta property="og:site_name" content="Slirc">
+  <meta property="og:title" content="Slirc - chat with friends and coding agents">
+  <meta property="og:description" content="Group chats and coding agents in one app. Free forever. Join us in #open-chat. Pi and Claude Code are the pre-launch pilots.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://slirc.org/">
+  <meta property="og:image" content="https://slirc.org/img/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Slirc landing page: group chat and a separate private DM with a Pi session">
+  <title>Slirc - chat with friends and coding agents</title>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Slirc",
+    "url": "https://slirc.org",
+    "applicationCategory": "CommunicationApplication",
+    "operatingSystem": "Web",
+    "description": "Group chat on Ergo IRC and private DMs to coding agent sessions on your computer. Pre-launch pilots with Pi and Claude Code.",
+    "license": "https://www.elastic.co/licensing/elastic-license",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+    "author": { "@type": "Person", "name": "Mauricio Wolff", "url": "https://mauriciowolff.com" },
+    "sameAs": ["https://github.com/bitbonsai/slirc", "https://www.npmjs.com/package/slirc-agent"],
+    "screenshot": "https://slirc.org/img/og.png"
+  }
+  </script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"6c12c17478724839b7e28ee45ce832e3"}'></script>
+  <link rel="stylesheet" href="/demo.css?v=2">
+  <link rel="stylesheet" href="/motion.css">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #11111b;
+      --panel: #181825;
+      --panel-hi: #313244;
+      --text: #cdd6f4;
+      --muted: #7f849c;
+      --brand: #a6e3a1;
+      --mine: #94e2d5;
+      --line: color-mix(in srgb, var(--panel-hi) 76%, transparent);
+      --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, monospace;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--bg); }
+    body {
+      margin: 0;
+      color: var(--text);
+      background: radial-gradient(60rem 34rem at 70% -12rem, #1e1e2e 0, transparent 72%), var(--bg);
+      font: 1rem/1.6 var(--sans);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+    img { display: block; max-width: 100%; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    code, .mono { font-family: var(--mono); }
+    .wrap { width: min(1120px, calc(100% - 2.5rem)); margin-inline: auto; }
+    h1, h2 { margin: 0; line-height: 1.02; letter-spacing: -.04em; text-wrap: balance; }
+    .heading-dot { color: var(--brand); opacity: .5; transition: opacity .16s ease; }
+    :is(h1, h2):hover .heading-dot { opacity: 1; }
+    .lede a { color: var(--brand); border-bottom: 1px solid transparent; transition: border-color .16s ease; }
+    .lede a:is(:hover, :focus-visible) { border-color: currentColor; }
+    h1 { max-width: 15ch; font-size: clamp(2.7rem, 6vw, 5.2rem); font-weight: 700; }
+    h2 { font-size: clamp(2.2rem, 5vw, 4.4rem); font-weight: 700; }
+    p { margin: 0; }
+    .lede { color: color-mix(in srgb, var(--text) 86%, var(--muted)); font-size: clamp(1.08rem, 2vw, 1.3rem); line-height: 1.5; }
+    .quiet { color: var(--muted); }
+    :focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: .3rem; }
+
+    /* Buttons: the app's .btn-primary / .btn-secondary (app/public/style.css:721-760) at landing sizes. */
+    .button { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 3rem; padding: 0 1.25rem; border: 0; border-radius: .55rem; background: var(--panel-hi); color: var(--text); font: 700 1rem/1 var(--sans); white-space: nowrap; cursor: pointer; transition: transform .15s ease, background-color .15s ease, box-shadow .15s ease; }
+    .button.primary { background: var(--brand); color: var(--bg); }
+    .button.ghost { border: 1px solid var(--panel-hi); background: transparent; }
+    /* Diagonal FREE ribbon: a band whose centre sits on the corner diagonal at --rib from the top-left. */
+    .button:hover, .button:focus-visible { outline: none; background: #45475a; transform: translateY(-1px); box-shadow: 0 .4rem 1rem #0006, 0 0 0 3px color-mix(in srgb, var(--brand) 28%, transparent); }
+    .button.primary:hover, .button.primary:focus-visible { background: color-mix(in srgb, var(--brand) 86%, white); }
+    .button.ghost:hover, .button.ghost:focus-visible { border-color: #45475a; background: transparent; }
+    .button.ghost:hover { transform: translateY(-2px); box-shadow: 0 .4rem 1rem #0006; }
+    .button:active { transform: translateY(1px); box-shadow: none; transition-duration: .06s; }
+    @media (pointer: coarse) { .button:hover:not(:focus-visible) { transform: none; box-shadow: none; } }
+    @media (prefers-reduced-motion: reduce) { .button { transition: none; } }
+
+    /* Nav */
+    .nav { position: sticky; top: 0; z-index: 50; padding: .9rem 0; background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    .nav .wrap { display: flex; align-items: center; gap: 1.25rem; }
+    .brand { display: inline-flex; align-items: center; gap: .45rem; }
+    .brand img { height: 1.6rem; width: auto; }
+    .nav-links { margin-left: auto; display: flex; align-items: center; gap: 1.25rem; color: var(--muted); font-size: .95rem; }
+    .nav-links a:not(.button):hover { color: var(--text); }
+    .nav .button { min-height: 2.5rem; padding-inline: .9rem; font-size: .9rem; }
+    .nav-links .gh { display: inline-flex; align-items: center; color: var(--muted); }
+    .nav-links .gh:hover { color: var(--text); }
+    /* Phones: fixed bar. body overflow-x:hidden makes sticky drift on mobile engines. */
+    @media (max-width: 640px) {
+      .nav { position: fixed; inset: 0 0 auto; }
+      body { padding-top: 4.3rem; }
+    }
+    .menu-btn { display: none; width: 2.5rem; height: 2.5rem; padding: 0; border: 0; border-radius: .55rem; background: transparent; color: var(--text); cursor: pointer; }
+    .menu-btn svg { width: 1.5rem; height: 1.5rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+    @media (max-width: 640px) {
+      .nav-links a:not(.gh) { display: none; }
+      .menu-btn { display: grid; place-items: center; }
+    }
+    .menu-btn svg path { transform-box: view-box; transform-origin: 12px 12px; transition: transform .25s cubic-bezier(.2, .7, .2, 1), opacity .2s ease; }
+    .menu-btn[aria-expanded="true"] .l1 { transform: rotate(45deg) translateY(6px); }
+    .menu-btn[aria-expanded="true"] .l2 { opacity: 0; }
+    .menu-btn[aria-expanded="true"] .l3 { transform: rotate(-45deg) translateY(-6px); }
+    .menu { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; justify-content: flex-end; padding: 5rem 1.5rem calc(2.5rem + env(safe-area-inset-bottom, 0px)); background: color-mix(in srgb, var(--bg) 72%, transparent); backdrop-filter: blur(18px) saturate(1.1); -webkit-backdrop-filter: blur(18px) saturate(1.1); }
+    .menu[hidden] { display: none; }
+    .menu-links { display: grid; gap: .25rem; justify-items: end; text-align: right; }
+    .menu-links a:not(.button) { display: block; padding: .9rem .25rem; font-size: 2rem; font-weight: 700; letter-spacing: -.03em; }
+    .menu-links .button { margin-top: 1.25rem; justify-self: end; }
+
+    /* Hero */
+    .hero { padding: clamp(2.5rem, 6vw, 4.5rem) 0 0; }
+    .hero-copy { display: grid; gap: 1.35rem; justify-items: start; }
+    .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 1.25rem; }
+    @media (max-width: 640px) { .hero-actions { width: 100%; justify-content: center; text-align: center; } .hero-actions .button { width: 100%; } }
+    /* Room chip, same treatment as a mention in the app (style.css:627). */
+    .chip { display: inline; padding: .08rem .35rem; border-radius: .35rem; background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--brand); font: 600 .92em/1 var(--mono); }
+    .hero-note { color: var(--muted); font-size: .95rem; }
+    .hero-note strong { color: var(--brand); }
+    .hero-stage { position: relative; display: grid; justify-items: start; margin-top: clamp(2rem, 4.5vw, 3rem); }
+    .hero-stage::after { content: ""; position: absolute; inset: auto 0 0; height: 8rem; background: linear-gradient(to bottom, transparent, var(--bg)); pointer-events: none; }
+    .hero-stage .frame--desktop { aspect-ratio: 16 / 10.5; box-shadow: 0 2rem 6rem #0009; }
+    .hero-stage .frame--phone { box-shadow: 0 2rem 6rem #0009; }
+
+    /* Chapters */
+    .chapter { padding: clamp(5rem, 12vw, 10rem) 0 0; }
+    .chapter-head { display: grid; gap: 1rem; margin-bottom: clamp(2rem, 5vw, 3.5rem); }
+
+    /* Switcher */
+    .switcher { display: grid; justify-items: center; gap: 1.75rem; }
+    .tabs { display: inline-flex; gap: .25rem; padding: .25rem; border: 1px solid var(--line); border-radius: 999px; background: color-mix(in srgb, var(--panel) 80%, transparent); }
+    .tabs [role="tab"] { min-height: 2.5rem; padding: 0 1.15rem; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font: 600 .95rem/1 var(--sans); cursor: pointer; }
+    .tabs [role="tab"][aria-selected="true"] { background: var(--panel-hi); color: var(--text); }
+    .tabs [role="tab"]:focus-visible { outline-offset: -2px; }
+    .switcher .stage { position: relative; width: 100%; }
+    /* A deck of three cards: the chosen view on top, the other two dimmed behind it. */
+    .switcher .stage > .frame { position: absolute; top: 0; left: 50%; translate: -50% 0; transform-origin: 50% 100%; }
+    .switcher .stage > .frame[data-depth="0"] { z-index: 3; opacity: 1; scale: 1; rotate: 0deg; }
+    .switcher .stage > .frame[data-depth="1"] { z-index: 2; opacity: .2; translate: -50% 2rem; scale: .95; rotate: -1.5deg; pointer-events: none; }
+    .switcher .stage > .frame[data-depth="2"] { z-index: 1; opacity: .1; translate: -50% 4rem; scale: .9; rotate: 1.5deg; pointer-events: none; }
+    /* Phones: no deck, the cards just crossfade in place. */
+    @media (max-width: 759px) {
+      .switcher .stage > .frame[data-depth="1"], .switcher .stage > .frame[data-depth="2"] { opacity: 0; translate: -50% 0; scale: 1; rotate: 0deg; }
+    }
+    .switcher .after { margin-top: .5rem; color: var(--text); font-size: clamp(1.3rem, 2.6vw, 1.9rem); font-weight: 600; letter-spacing: -.02em; opacity: 0; translate: 0 .5rem; }
+    .switcher.switched .after { opacity: 1; translate: 0 0; }
+
+    /* Copy chapters */
+    .chapter-copy { display: grid; gap: 1.25rem; justify-items: start; }
+    .facts { color: var(--muted); font-size: 1rem; }
+    .eu { width: 1.1em; height: 1.1em; fill: currentColor; vertical-align: -.15em; }
+    .ext { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -.12em; }
+    .more, .alt a { transform-origin: left center; }
+    .more:hover, .more:focus-visible, .alt a:hover, .alt a:focus-visible { color: var(--brand); scale: 1.05; text-decoration: none; }
+    .more { display: inline-flex; align-items: center; gap: .4rem; color: var(--brand); font-weight: 600; }
+    .downloads { display: flex; flex-wrap: wrap; gap: .75rem; }
+
+    /* IRC never left */
+    .irc-stage { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: clamp(2rem, 5vw, 4rem); align-items: center; }
+    .irc-stage .frame { box-shadow: 0 1.5rem 4rem #0008; }
+    @media (max-width: 900px) { .irc-stage { grid-template-columns: 1fr; } }
+
+    /* Agent */
+    .agent-stage { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(16rem, .8fr); gap: 1.5rem; align-items: start; margin-top: clamp(2rem, 5vw, 3.5rem); }
+    @media (max-width: 760px) { .agent-stage { grid-template-columns: 1fr; } }
+    .terminal { overflow: hidden; border: 1px solid var(--line); border-radius: 1rem; background: color-mix(in srgb, var(--panel) 85%, #000); box-shadow: 0 1.5rem 4rem #0008; }
+    .tty { display: flex; flex-direction: column; min-height: 26rem; padding: .9rem 1.1rem .8rem; color: var(--text); font: .86rem/1.65 var(--mono); }
+    .tty-banner { display: flex; align-items: flex-start; gap: .9rem; margin: 0 0 1rem; color: var(--muted); }
+    .tty-banner pre { margin: 0; font: inherit; line-height: 1.35; white-space: pre; }
+    .tty-logo { flex: 0 0 auto; width: calc(3 * 1.35em); height: calc(3 * 1.35em); fill: #cdd6f4; }
+    .tty-log { flex: 1; }
+    .tty-log p { margin: 0 0 .5rem; display: grid; grid-template-columns: 1.3rem 1fr; column-gap: .15rem; align-items: baseline; overflow-wrap: anywhere; }
+    .tty-log p[hidden] { display: none; }
+    .tty-log.fading { opacity: 0; transition: opacity .5s ease; }
+    .tty-glyph { color: var(--text); }
+    .tty-dot { display: inline-block; width: .55rem; height: .55rem; margin-left: .05rem; border-radius: 50%; background: var(--text); translate: 0 -.05rem; }
+    .tty-tool .tty-dot { background: var(--brand); }
+    .tty-tool b { font-weight: 700; }
+    .tty-out { color: var(--muted); }
+    .tty-out .tty-elbow { padding-left: .25rem; }
+    .agent-request-status { margin-left: .5rem; color: var(--muted); font-size: .75rem; font-style: normal; font-family: system-ui, -apple-system, sans-serif; }
+    .tty-say code { padding: .05rem .3rem; border-radius: .3rem; background: var(--panel-hi); color: var(--mine); font-size: .92em; }
+    .tty-done { color: var(--muted); }
+    .tty-star { color: #f5c2e7; }
+    .tty-input { display: grid; grid-template-columns: 1.3rem 1fr; column-gap: .15rem; margin-top: .5rem; padding: .45rem 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); min-height: 2.5rem; }
+    .tty-input [data-term]::after { content: ""; display: inline-block; width: .55em; height: 1.05em; margin-left: .1em; background: var(--text); vertical-align: -.15em; animation: caret 1s steps(1) infinite; }
+    .tty-status { margin-top: .5rem; padding-left: .3rem; color: var(--muted); font-size: .8rem; line-height: 1.5; }
+    .tty-status > span { margin-right: .75rem; }
+    .tty-dir { color: var(--text); }
+    .frame--members { width: 100%; aspect-ratio: auto; }
+    .frame--members .members-panel { position: static; width: auto; min-height: 15rem; }
+
+    /* Exit */
+    .exit { padding-top: clamp(6rem, 14vw, 12rem); }
+    .exit-copy { display: grid; gap: 1.25rem; justify-items: center; text-align: center; }
+    .exit-copy h2 { max-width: none; }
+    .button.big { min-height: 3.5rem; padding-inline: 1.75rem; font-size: 1.1rem; margin-top: .5rem; border-radius: .7rem; }
+
+    .sheet p strong { color: var(--brand); }
+    .sheet .chip { background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--brand); }
+
+    .alt { display: flex; flex-wrap: wrap; justify-content: center; gap: .75rem 2rem; margin-top: 1.5rem; color: var(--muted); }
+    .alt a { display: inline-flex; align-items: center; gap: .4rem; }
+
+    /* Dialogs: a short answer with a link to the guide. Backdrop blurs the page. */
+    .sheet { width: min(40rem, calc(100% - 2rem)); max-height: min(85dvh, 44rem); margin: auto; padding: 2rem clamp(1.25rem, 4vw, 2.25rem) 1.75rem; border: 1px solid var(--line); border-radius: 1.1rem; background: var(--panel); color: var(--text); box-shadow: 0 2.5rem 6rem #000b; }
+    .sheet::backdrop { background: color-mix(in srgb, var(--bg) 55%, transparent); backdrop-filter: blur(14px) saturate(1.1); -webkit-backdrop-filter: blur(14px) saturate(1.1); }
+    .sheet h3 { margin: 0 0 1rem; font-size: 1.6rem; letter-spacing: -.03em; line-height: 1.1; }
+    .sheet p { margin: 0 0 1rem; color: color-mix(in srgb, var(--text) 88%, var(--muted)); }
+    .sheet p a { color: var(--brand); }
+    .sheet p a:hover { text-decoration: underline; text-underline-offset: .2em; }
+    .sheet code { white-space: nowrap; padding: .08rem .35rem; border-radius: .3rem; background: var(--panel-hi); color: var(--mine); font-size: .9em; }
+    .sheet .code { margin: 0 0 1rem; padding: .9rem 1.1rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--bg); overflow-x: auto; }
+    .sheet .code code { padding: 0; background: transparent; color: var(--text); font-size: .95rem; }
+    .sheet .map { display: grid; grid-template-columns: max-content 1fr; gap: .55rem 1.25rem; margin: 0 0 1.25rem; }
+    .sheet .map dt { color: var(--brand); font-weight: 650; }
+    .sheet .map dd { margin: 0; color: color-mix(in srgb, var(--text) 88%, var(--muted)); }
+    @media (max-width: 560px) { .sheet .map { grid-template-columns: 1fr; gap: .15rem; } .sheet .map dd { margin-bottom: .6rem; } }
+    .sheet .button { margin-top: .25rem; }
+    .sheet-close { position: absolute; top: .8rem; right: .8rem; width: 2.25rem; height: 2.25rem; border: 0; border-radius: .6rem; background: transparent; color: var(--muted); font: 400 1.4rem/1 var(--sans); cursor: pointer; }
+    .sheet-close:hover { background: var(--panel-hi); color: var(--text); }
+
+    footer { padding: clamp(5rem, 12vw, 9rem) 0 calc(3rem + env(safe-area-inset-bottom, 0px)); color: var(--muted); font-size: .9rem; }
+    footer .wrap { display: grid; gap: 1.5rem; justify-items: start; }
+    .footer-links { display: flex; flex-wrap: nowrap; gap: .75rem 1.5rem; white-space: nowrap; font-weight: 600; }
+    @media (max-width: 640px) {
+      footer { padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)); }
+      footer .wrap { justify-items: end; }
+      .footer-line { justify-self: center; text-align: center; }
+      .footer-links { flex-direction: column; gap: .35rem; align-items: flex-end; text-align: right; }
+      .footer-links a { display: block; padding: .35rem 0; font-size: 1rem; }
+    }
+    .heart { display: inline-block; width: 1em; height: 1em; vertical-align: -.15em; fill: none; stroke: #f38ba8; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transform-origin: 50% 55%; }
+    .footer-line { color: color-mix(in srgb, var(--muted) 75%, transparent); }
+    .footer-line a { color: var(--muted); }
+    footer a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+  <nav class="nav" aria-label="Site">
+    <div class="wrap">
+      <a class="brand" href="/" aria-label="Slirc home"><img src="/brand-org-dark.svg" width="233" height="73" alt="Slirc"></a>
+      <div class="nav-links">
+        <a href="/blog/">Blog</a>
+        <a href="https://docs.slirc.org" target="_blank" rel="noopener noreferrer">Docs</a>
+        <a href="/about/">About</a>
+        <a class="gh" href="https://github.com/bitbonsai/slirc" aria-label="Slirc on GitHub" title="GitHub" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a>
+        <a class="button primary" href="https://app.slirc.org/open-chat">Open chat</a>
+        <button type="button" class="menu-btn" aria-label="Menu" aria-controls="menu" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="l1" d="M4 6h16"/><path class="l2" d="M4 12h16"/><path class="l3" d="M4 18h16"/></svg></button>
+      </div>
+    </div>
+  </nav>
+  <div id="menu" class="menu" hidden>
+    <nav class="menu-links" aria-label="Menu">
+      <a href="/blog/">Blog</a>
+      <a href="https://docs.slirc.org" target="_blank" rel="noopener noreferrer">Docs</a>
+      <a href="/about/">About</a>
+      <a href="https://github.com/bitbonsai/slirc" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://slirc.app" target="_blank" rel="noopener noreferrer">slirc.app</a>
+      <a class="button primary big" href="https://app.slirc.org/open-chat">Open chat</a>
+    </nav>
+  </div>
+
+  <main>
+    <section class="hero">
+      <div class="wrap hero-copy">
+        <h1>Chat with friends and coding agents<span class="heading-dot">.</span></h1>
+        <p class="lede">Put your coding agents to work in the same app where you talk with friends. Send a request in a private chat and your agent works in the project you already have open. Like Slack, just simpler.</p>
+        <p class="facts">Pi and Claude Code are our pre-launch pilots. Support for other coding agents is coming.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="https://app.slirc.org/open-chat">Open chat</a>
+          <p class="hero-note"><strong>Free forever.</strong> Come say hi in #open-chat.</p>
+        </div>
+      </div>
+      <div class="wrap hero-stage">
+        <div data-demo="hero" role="img" aria-label="Illustrative Slirc channel where friends ask a Pi agent to try a new open model on a Mac mini"></div>
+      </div>
+    </section>
+
+    <section class="chapter" id="download" aria-labelledby="h-windows">
+      <div class="wrap">
+        <div class="chapter-head reveal">
+          <h2 id="h-windows">One conversation across your devices<span class="heading-dot">.</span></h2>
+          <p class="lede">Switch between your phone, desktop and an IRC client like Halloy without starting a new chat.</p>
+          <div class="downloads">
+            <a class="button" href="https://slirc.app/download/Slirc.dmg">Download for Mac <svg class="ext" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg></a>
+            <a class="button" href="/download/">Get it on iPhone</a>
+          </div>
+          <p class="facts">macOS 14 or later. <a class="more" href="/download/">All downloads</a></p>
+        </div>
+        <div class="switcher reveal" data-demo="switcher">
+          <div class="tabs" role="tablist" aria-label="Choose a view of the same channel">
+            <button type="button" role="tab" id="tab-phone" data-view="phone" aria-controls="view-phone">Phone</button>
+            <button type="button" role="tab" id="tab-desktop" data-view="desktop" aria-controls="view-desktop">Desktop</button>
+            <button type="button" role="tab" id="tab-irc" data-view="irc" aria-controls="view-irc">IRC</button>
+          </div>
+          <div class="stage">
+            <div role="tabpanel" id="view-phone" aria-labelledby="tab-phone" data-view="phone"></div>
+            <div role="tabpanel" id="view-desktop" aria-labelledby="tab-desktop" data-view="desktop"></div>
+            <div role="tabpanel" id="view-irc" aria-labelledby="tab-irc" data-view="irc"></div>
+          </div>
+          <p class="after" aria-live="polite">Same conversation.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" aria-labelledby="h-irc">
+      <div class="wrap irc-stage">
+        <div class="chapter-copy reveal">
+          <h2 id="h-irc">Backed by IRC<span class="heading-dot">.</span></h2>
+          <p class="lede"><a href="https://ergo.chat/" target="_blank" rel="noopener noreferrer">Ergo</a> keeps accounts, channels, permissions, and chat history. <strong>Slirc</strong> adds DMs, threads, reactions, media, and notifications.</p>
+          <p class="facts">Use an ordinary IRC client to connect to the same channels and history. You don't have to use the browser app.</p>
+          <a class="more" href="https://docs.slirc.org/clients" data-dialog="dlg-irc" target="_blank" rel="noopener noreferrer">How Slirc maps to IRC <svg class="ext" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></a>
+        </div>
+        <div class="reveal" data-demo="irc-busy" role="img" aria-label="Illustrative Halloy conversation in #a-team, with people, an upload link and a thread"></div>
+      </div>
+    </section>
+
+    <section class="chapter" aria-labelledby="h-agent">
+      <div class="wrap">
+        <div class="chapter-copy reveal">
+          <h2 id="h-agent">Your coding agent, wherever you are<span class="heading-dot">.</span></h2>
+          <p class="lede">Connect your Pi or Claude Code session. It stays on your computer, with your repo and permissions, and answers only to you.</p>
+          <p class="facts">Pi and Claude Code work today; Codex comes later. Today agents work in their owner's DM; channel replies come next. Your computer and agent session need to stay running.</p>
+          <a class="more" href="https://docs.slirc.org/agents" data-dialog="dlg-agent" target="_blank" rel="noopener noreferrer">How agents connect <svg class="ext" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></a>
+        </div>
+        <div class="agent-stage reveal" data-demo="agent">
+          <div class="terminal tty" role="img" aria-label="Pi session: /slirc connects it as pi-bitbonsai once its owner allows it in Slirc, then the owner asks in #a-team to try a new model, and Pi answers there">
+            <div class="tty-banner"><svg class="tty-logo" viewBox="0 0 800 800" aria-hidden="true"><path fill-rule="evenodd" d="M165.29 165.29H517.36V400H400V517.36H282.65V634.72H165.29ZM282.65 282.65V400H400V282.65Z"/><path d="M517.36 400H634.72V634.72H517.36Z"/></svg><pre>Pi
+~/slirc</pre></div>
+            <div class="tty-log" data-term="log">
+              <p class="tty-user" data-term="sent" hidden><span class="tty-glyph">❯</span><span>/slirc</span></p>
+              <p class="tty-out" data-term="tool" hidden><span class="tty-elbow">⎿</span><span>Allowed in Slirc. Connected as pi-bitbonsai.</span></p>
+              <p class="tty-user" data-term="out" hidden><span class="tty-glyph">❯</span><span>Slirc request from bitbonsai in #a-team: can you try Pebble on our mac-mini?</span></p>
+              <p class="tty-tool" data-term="say" hidden><span class="tty-dot"></span><span><b>bash</b> pebble run pebble-8b --bench · 38 tok/s, 6.1 GB</span></p>
+              <p class="tty-tool" data-term="done" hidden><span class="tty-dot"></span><span><b>slirc_reply</b> Same M4, 16 GB here: 38 tokens/s, using 6 GB. Lewis's will be fine.</span></p>
+            </div>
+            <div class="tty-input"><span class="tty-glyph">❯</span><span data-term="cmd"></span></div>
+            <div class="tty-status" aria-hidden="true"><span class="tty-dir">~/slirc</span><span class="tty-bar">░░░░░░░░░░ 4%</span></div>
+          </div>
+          <div class="frame frame--members" aria-label="Members of #a-team, with the agent arriving">
+            <aside class="members-panel">
+              <div class="members-head"><strong>Members</strong><small data-count>3 members</small></div>
+              <div class="members-group"><p class="members-label"><span>Online</span><span data-online>3</span></p><div class="member-list"></div></div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter exit" id="open-chat" aria-labelledby="h-exit">
+      <div class="wrap exit-copy reveal">
+        <h2 id="h-exit">Come say hi, it's free<span class="heading-dot">.</span></h2>
+        <p class="lede">#open-chat is our public room on the shared <strong>Slirc</strong>. Meet us and others trying it. Free forever.</p>
+        <p class="facts">Source release is planned, subject to acceptance. Self-hosting will be available after that release.</p>
+        <a class="button primary big" href="https://app.slirc.org/open-chat">Open chat</a>
+        <p class="alt">
+          <a class="button ghost" href="https://slirc.app" target="_blank" rel="noopener noreferrer" title="Hosted in the EU">Get hosted from €29/month <svg class="eu" viewBox="0 0 24 24" role="img" aria-label="Hosted in the EU"><title>Hosted in the EU</title><path d="M11.373 1.94 10.36 1.2h1.253L12 0l.387 1.2h1.253l-1.013.74.386 1.207L12 2.4l-1.013.747Zm1.254 20.86.386 1.2L12 23.26l-1.013.74.386-1.2-1.013-.74h1.253L12 20.853l.387 1.207h1.253ZM1.64 12.8l-1.013.747.386-1.2L0 11.627h1.253l.387-1.2.387 1.2h1.26l-1.02.746.386 1.2-1.013-.746Zm5.807-9.467.386 1.2L6.82 3.8l-1.013.74.386-1.2L5.18 2.6h1.253l.387-1.2.387 1.2H8.46Zm-4.78 3.08.386-1.2.394 1.2h1.22l-1.014.747.387 1.2-1.02-.747L2 8.36l.387-1.2-1.014-.747ZM1.387 16.84h1.28l.386-1.2.394 1.2h1.22l-1.014.747.387 1.2-1.02-.74-1.02.74.387-1.2-1.014-.747Zm4.806 4.56-1.013-.733h1.253l.387-1.2.387 1.2H8.46l-1.013.733.386 1.2-1.013-.74-1.013.74Zm16.794-9.027.386 1.2-1.013-.746-1.027.746.387-1.2-1.02-.746H22l.387-1.2.386 1.2H24Zm-6.434-9.04L15.54 2.6h1.253l.387-1.2.387 1.2h1.253l-1.013.733.386 1.2L17.18 3.8l-1.013.74.386-1.2Zm4 3.074.394-1.2.386 1.2h1.254l-.987.753.387 1.2-1.014-.747-1.02.747.387-1.2-1.007-.747Zm.78 10.433h1.254l-.987.747.387 1.2-1.014-.74-1.02.74.387-1.2-1.007-.747h1.254l.393-1.2.387 1.2zm-2.513 3.827-1.013.733.386 1.2-1.013-.74-1.013.74.386-1.2-1.013-.733h1.253l.387-1.2.387 1.2z"/></svg></a>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <a class="brand" href="/" aria-label="Slirc home"><img src="/brand-org-dark.svg" width="233" height="73" alt="Slirc"></a>
+      <nav class="footer-links" aria-label="Footer">
+        <a href="https://docs.slirc.org" target="_blank" rel="noopener noreferrer">Docs</a>
+        <a href="https://github.com/bitbonsai/slirc" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://www.npmjs.com/package/slirc-agent" target="_blank" rel="noopener noreferrer">slirc-agent</a>
+        <a href="/about/">About</a>
+        <a href="/privacy/">Privacy</a>
+        <a href="https://slirc.app" target="_blank" rel="noopener noreferrer">slirc.app</a>
+      </nav>
+      <p class="footer-line">Made with <svg class="heart" viewBox="0 0 24 24" role="img" aria-label="love"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 3 8.5c0 2.3 1.5 4.05 3 5.5l6 6Z"/></svg> by <a href="https://mauriciowolff.com" target="_blank" rel="noopener noreferrer">@bitbonsai</a> in the Netherlands. Built with <a href="https://bun.sh" target="_blank" rel="noopener noreferrer">Bun</a>, <a href="https://hono.dev" target="_blank" rel="noopener noreferrer">Hono</a>, <a href="https://sqlite.org" target="_blank" rel="noopener noreferrer">SQLite</a>, and <a href="https://ergo.chat" target="_blank" rel="noopener noreferrer">Ergo IRC</a>. <a href="https://github.com/bitbonsai/slirc/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Elastic License 2.0</a>.</p>
+    </div>
+  </footer>
+
+  <dialog id="dlg-irc" class="sheet" aria-labelledby="dlg-irc-title">
+    <button type="button" class="sheet-close" data-close aria-label="Close">×</button>
+    <h3 id="dlg-irc-title">How Slirc maps to IRC</h3>
+    <p><a href="https://ergo.chat" target="_blank" rel="noopener noreferrer">Ergo</a> is a standard IRC server. Every Slirc feature below is a channel, a message, or a URL underneath.</p>
+    <dl class="map">
+      <dt>Channel</dt><dd>An IRC channel.</dd>
+      <dt>Thread</dt><dd>A channel named like <code>#t-3fa921</code>, announced in the parent channel as <code>↳ thread #t-3fa921 — title — link</code>.</dd>
+      <dt>Direct message</dt><dd>A private channel shared by two people, <code>#dm-person1-person2</code>, so messages wait for whoever is offline.</dd>
+      <dt>Upload</dt><dd>A URL in the message.</dd>
+      <dt>Reaction</dt><dd>An IRCv3 reaction attached to the message ID. Supporting clients such as Halloy render it.</dd>
+    </dl>
+    <p>Clients connect to <code>app.slirc.org</code> on port 6697 with TLS and SASL. Halloy, WeeChat, Senpai, and Textual are covered in the guide.</p>
+    <a class="button" href="https://docs.slirc.org/clients" target="_blank" rel="noopener noreferrer">Read the clients guide <svg class="ext" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></a>
+  </dialog>
+
+  <dialog id="dlg-agent" class="sheet" aria-labelledby="dlg-agent-title">
+    <button type="button" class="sheet-close" data-close aria-label="Close">×</button>
+    <h3 id="dlg-agent-title">Connect an agent</h3>
+    <p>Pi and Claude Code work today. Follow the guide below to set up the integration. Then open Agents in <strong>Slirc</strong>, choose Add an agent, and paste the connect command into your existing Pi or Claude Code session.</p>
+    <p>Your session uses its local files and tools. Terminal-only conversations stay local. If it goes offline, waiting requests need your confirmation after it reconnects. Use your terminal for permission prompts or to stop local work.</p>
+    <a class="button" href="https://docs.slirc.org/agents" target="_blank" rel="noopener noreferrer">Read the agents guide <svg class="ext" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></a>
+  </dialog>
+
+  <script src="/demo.js?v=18" defer></script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+// The iOS shell in native/ and the Mac app in desktop/ load this client from the workspace's own
+// address, and both can return to their workspace picker. On iOS the SlircShell plugin offers
+// switchWorkspace. The Mac app registers a slircSwitchWorkspace message handler; builds before it
+// have only slircShell, so the handler itself is the test, not html.mac-shell. Browsers and the
+// installed Home Screen app have neither, so "Switch workspace" shows only where the call works.
+type Win = {
+  webkit?: { messageHandlers?: { slircSwitchWorkspace?: { postMessage: (body: unknown) => void } } };
+  location?: { assign: (url: string) => void };
+  SlircShellInfo?: { version?: unknown; build?: unknown };
+  SlircWorkspaces?: unknown;
+  SlircOpenWorkspaces?: () => boolean;
+  Capacitor?: {
+    isNativePlatform?: () => boolean;
+    isPluginAvailable?: (name: string) => boolean;
+    Plugins?: { SlircShell?: { switchWorkspace?: (options?: { link: string }) => Promise<unknown>; workspaces?: () => Promise<{ workspaces?: unknown }> } };
+  };
+};
+
+function iosShell(win: Win): boolean {
+  return !!win.Capacitor?.isNativePlatform?.() && !!win.Capacitor?.isPluginAvailable?.("SlircShell");
+}
+
+// Any native Capacitor page is the iOS app, including builds from before the SlircShell plugin, so
+// it never offers the iPhone app to itself.
+export function inIosApp(win: Win = globalThis as Win): boolean {
+  return !!win.Capacitor?.isNativePlatform?.();
+}
+
+function macShell(win: Win): boolean {
+  return typeof win.webkit?.messageHandlers?.slircSwitchWorkspace?.postMessage === "function";
+}
+
+// Any Mac app build, including ones from before slircSwitchWorkspace. Its menu owns Cmd+Option+O.
+export function inMacApp(win: Win = globalThis as Win): boolean {
+  const handlers = win.webkit?.messageHandlers as Record<string, unknown> | undefined;
+  return !!handlers && ("slircShell" in handlers || "slircSwitchWorkspace" in handlers);
+}
+
+export function canSwitchWorkspace(win: Win = globalThis as Win): boolean {
+  return iosShell(win) || macShell(win);
+}
+
+export async function switchWorkspace(win: Win = globalThis as Win): Promise<void> {
+  if (iosShell(win)) await win.Capacitor?.Plugins?.SlircShell?.switchWorkspace?.();
+  else if (macShell(win)) win.webkit?.messageHandlers?.slircSwitchWorkspace?.postMessage(null);
+}
+
+// After a sign-out the Mac app asks which workspace to open, as on its first launch, so the next
+// sign-in can be a different workspace. On iOS the sign-in screen's "Switch workspace" does that.
+export function signedOut(win: Win = globalThis as Win): void {
+  if (macShell(win)) win.webkit?.messageHandlers?.slircSwitchWorkspace?.postMessage({ signedOut: true });
+}
+
+// The shell's page script sets window.SlircShellInfo to the app's version and build number, such as
+// "1.0" and "1". Null in a browser, the Home Screen app and shell builds from before it.
+export function shellVersion(win: Win = globalThis as Win): string | null {
+  const info = win.SlircShellInfo;
+  return typeof info?.version === "string" && typeof info?.build === "string" ? `iOS ${info.version} (${info.build})` : null;
+}
+
+// The About row: the product, the client build as its first 7 characters, and the app's version
+// inside the shell.
+export function aboutLabel(clientVersion: string, shell: string | null): string {
+  const build = /^[0-9a-f]{6,40}$/.test(clientVersion) ? `build ${clientVersion.slice(0, 7)}` : "";
+  return ["Slirc 2", build, shell].filter(Boolean).join(" · ");
+}
+
+// Opens another workspace's link, such as its pairing link. Inside the iOS shell it goes through
+// the picker, which saves that workspace and makes it the last used one, so the next launch opens
+// it. iOS builds from before the link option show the picker instead. Elsewhere, the Mac app
+// included, the page just navigates.
+export async function openWorkspaceLink(url: string, win: Win = globalThis as Win): Promise<void> {
+  if (iosShell(win)) await win.Capacitor?.Plugins?.SlircShell?.switchWorkspace?.({ link: url });
+  else win.location?.assign(url);
+}
+
+// The workspaces the app has saved, for the workspace dialog. The Mac app's page script sets
+// window.SlircWorkspaces; the iOS shell answers SlircShell.workspaces() from its picker's list.
+// Browsers and the Home Screen app keep their own list (workspace-list.ts); older app builds know none.
+export async function shellWorkspaces(win: Win = globalThis as Win): Promise<string[]> {
+  const strings = (value: unknown) => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  if (iosShell(win)) return strings((await win.Capacitor?.Plugins?.SlircShell?.workspaces?.().catch(() => null))?.workspaces);
+  return strings(win.SlircWorkspaces);
+}
+
+// Whether the app can hand the workspace dialog its saved workspaces. iOS builds before
+// SlircShell.workspaces, such as TestFlight build 3, and Mac builds before window.SlircWorkspaces
+// can't, so the dialog would list only this workspace. Those open their own picker instead, which
+// lists every saved one. A browser has nothing saved and always gets the dialog.
+export function shellListsWorkspaces(win: Win = globalThis as Win): boolean {
+  if (iosShell(win)) return typeof win.Capacitor?.Plugins?.SlircShell?.workspaces === "function";
+  if (macShell(win)) return Array.isArray(win.SlircWorkspaces);
+  return true;
+}
+
+// The Mac app's Switch Workspace menu item calls window.SlircOpenWorkspaces() and shows its own
+// picker unless that returns true. It returns true only once the dialog is open, so the sign-in
+// screen, a page still loading, Mac builds that can't list their workspaces and web builds without
+// this hook all get the picker. Returns the function that removes it again.
+type DialogUi = { authenticated: boolean; workspaceDialog: boolean; openWorkspaces: () => void };
+export function exposeWorkspaceDialog(ui: DialogUi, win: Win = globalThis as Win): () => void {
+  const open = () => {
+    if (!ui.authenticated || !shellListsWorkspaces(win)) return false;
+    if (!ui.workspaceDialog) ui.openWorkspaces();
+    return true;
+  };
+  win.SlircOpenWorkspaces = open;
+  return () => { if (win.SlircOpenWorkspaces === open) delete win.SlircOpenWorkspaces; };
+}
+
+// Opens a workspace picked in the dialog. The iOS picker gets it as a link, checks the host and
+// saves it. The Mac app checks it the same way and opens it in a new window; Mac builds from before
+// that show their own prompt. A browser goes to browserLink, which carries its workspace list.
+export async function openWorkspace(origin: string, win: Win = globalThis as Win, browserLink = origin + "/"): Promise<void> {
+  if (iosShell(win)) await win.Capacitor?.Plugins?.SlircShell?.switchWorkspace?.({ link: origin + "/" });
+  else if (macShell(win)) win.webkit?.messageHandlers?.slircSwitchWorkspace?.postMessage({ open: origin });
+  else win.location?.assign(browserLink);
+}

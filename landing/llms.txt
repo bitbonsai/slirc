@@ -1,0 +1,43 @@
+# Slirc
+
+> Chat with friends and work with your existing coding agents in one app. Group conversations on IRC and private DMs where agents work in your existing projects. Free forever; anyone can join the public #open-chat room. Pi and Claude Code are the pre-launch pilots; support for other coding agents is coming.
+
+Sites: https://slirc.org (project), https://app.slirc.org (shared Slirc), https://docs.slirc.org (guides), https://slirc.app (managed hosting).
+
+## Read these
+
+- [Landing page as markdown](https://slirc.org/index.md): current availability, group chat, IRC clients, and private DMs to coding agents.
+- [Why Slirc exists](https://slirc.org/about/): the project story and why IRC sits underneath.
+- [Download](https://slirc.org/download/): Mac app, iPhone TestFlight, and installing the web app on Windows, Android and Linux.
+- [Blog](https://slirc.org/blog/index.md): every post, newest first.
+- [People are moving in](https://slirc.org/blog/people-are-moving-in/index.md), 18 Nov 2026: what shipped while Slirc grew almost four times in a week, how changes are tested, and how light an instance is.
+- [September development post](https://slirc.org/blog/i-gave-my-coding-agent-an-irc-account/index.md): historical account, with a current availability note. Its old agent commands are not setup instructions.
+- [Docs index for agents](https://docs.slirc.org/docs/llms.txt): every guide as markdown.
+- [Self-hosting guide](https://docs.slirc.org/docs/setup.md): operator instructions; public source release is still subject to acceptance.
+- [Agents](https://docs.slirc.org/docs/agents.md): set up Pi or Claude Code and connect an existing saved session.
+- [IRC clients](https://docs.slirc.org/docs/clients.md): client setup for Slirc's own IRC server.
+- [FAQ](https://docs.slirc.org/docs/faq.md)
+
+## Availability
+
+The shared **Slirc** at https://app.slirc.org is free forever. It is not a time-limited free trial. Join the public #open-chat room at https://app.slirc.org/open-chat.
+
+Source release is planned, subject to acceptance, under Elastic License 2.0. There is no public source download yet. Managed hosting for separate private team instances is available at https://slirc.app.
+
+## Apps
+
+The Mac app is a notarized download at https://slirc.app/download/Slirc.dmg, for macOS 14 or later. It signs in to app.slirc.org or any Slirc instance.
+
+The iPhone app is a public TestFlight beta at https://testflight.apple.com/join/t5w2AfBk. Install TestFlight from the App Store, open the link on the iPhone, tap Install, then open Slirc and type your workspace address. Steps for every device: https://slirc.org/download/
+
+## Personal agents
+
+Support for other coding agents is coming. Pi and Claude Code work today, and they are the pre-launch pilots, not the limit of the product. Connect the session already running on your computer, Pi or Claude Code; it gets one agent identity and one DM with its owner. Reopening that session keeps the same DM. Do not describe other agents as available yet.
+
+The session uses its local files and tools. Terminal-only conversations stay local; the DM carries the owner's requests and the session's replies. The computer and session must be running. Offline requests need owner confirmation after reconnecting. Permission prompts and stopping local work remain in the terminal.
+
+The site demos are illustrative, not live activity. They show people and the Remind bot in channels, and a Pi session pairing from its terminal. Today a paired agent works only in its owner's DM; channel replies come later.
+
+## License
+
+Elastic License 2.0 is the planned source-release license. Once released, it permits use, modification, and self-hosting; offering the software to others as a hosted service is restricted.

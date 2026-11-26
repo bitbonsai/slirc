@@ -1,0 +1,150 @@
+  <div x-data="invitationsPage" class="profile-page invitations-page" data-phone-screen="invitations" :class="isDesktop ? 'profile-page-desktop' : 'mobile-screen profile-screen'" x-cloak x-show="authenticated && invitationsRoute">
+    <div class="mobile-screen-head" x-show="!isDesktop"><div class="home-brand"><a class="home-brand profile-back" href="/more" aria-label="Back to More" x-on:click.prevent="openMore()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a><strong>Invitations</strong></div></div>
+    <div class="profile-page-body" :class="{ 'mobile-screen-body': !isDesktop }">
+      <section class="profile-dialog-card profile-screen-card">
+        <div class="profile-heading" x-show="isDesktop"><div class="profile-modal-avatar"><img :src="avatarUrl(account)" alt="" /></div><div><h2><span x-text="me"></span><span class="admin-badge" x-show="isAdmin" role="img" aria-label="Administrator" x-html="lucideIcon('user-star')"></span></h2><p x-text="'@' + account"></p></div></div>
+<!-- include: account-navigation -->
+        <section class="phone-offer bulk-invite-offer" x-show="isAdmin" aria-labelledby="bulk-invite-offer-title">
+          <div class="phone-offer-intro">
+            <span class="phone-offer-mark" aria-hidden="true" x-html="lucideIcon('user-plus')"></span>
+            <div><h3 id="bulk-invite-offer-title">Invite many</h3><p>Paste a list of emails or drop a CSV. Check what happens to each address, then send.</p></div>
+            <button type="button" class="btn-primary" x-on:click="bulkInvite.open($event)">Invite many</button>
+          </div>
+        </section>
+        <section class="phone-offer join-links" x-show="isAdmin" aria-labelledby="join-links-title">
+          <div class="phone-offer-intro">
+            <span class="phone-offer-mark" aria-hidden="true" x-html="lucideIcon('link')"></span>
+            <div><h3 id="join-links-title">Join link</h3><p>Anyone with the link confirms their email and joins the channel, up to 99 people over seven days.</p></div>
+          </div>
+          <form class="join-link-form" x-on:submit.prevent="invitationsPage.makeJoinLink()">
+            <select x-model="invitationsPage.joinChannel" aria-label="Channel for the link" :disabled="invitationsPage.joinBusy">
+              <option value="">Pick a channel</option>
+              <template x-for="item in channels" :key="item.conversationId"><option :value="item.wireTarget" x-text="roomLabelFor(item.wireTarget)"></option></template>
+            </select>
+            <button type="submit" class="btn-primary" :class="invitationsPage.joinBusy && 'busy'" :aria-busy="invitationsPage.joinBusy ? 'true' : 'false'" :disabled="invitationsPage.joinBusy || !invitationsPage.joinChannel">Make link</button>
+          </form>
+          <p class="profile-error" role="alert" x-show="invitationsPage.joinError" x-text="invitationsPage.joinError"></p>
+          <ul class="join-link-list" x-show="invitationsPage.visibleJoinLinks().length">
+            <template x-for="link in invitationsPage.visibleJoinLinks()" :key="link.id">
+              <li class="join-link-row" :class="{ fresh: invitationsPage.joinUrl && link.id === invitationsPage.joinNewId, past: invitationsPage.isPastJoinLink(link) }">
+                <div class="join-link-line">
+                  <span class="join-link-copy">
+                    <strong x-text="link.channel"></strong>
+                    <small x-text="invitationsPage.joinLinkDetail(link)"></small>
+                  </span>
+                  <button type="button" class="link-button" x-show="link.url && !invitationsPage.isPastJoinLink(link) && !(invitationsPage.joinUrl && link.id === invitationsPage.joinNewId)" :aria-label="invitationsPage.joinCopiedId === link.id ? 'Link copied' : 'Copy the join link for ' + link.channel" x-on:click="invitationsPage.copyListedJoinLink(link)" x-text="invitationsPage.joinCopiedId === link.id ? 'Copied' : 'Copy link'"></button>
+                  <button type="button" class="link-button danger" x-show="!invitationsPage.isPastJoinLink(link)" :disabled="invitationsPage.joinBusy" :aria-label="'Revoke the join link for ' + link.channel" x-on:click="invitationsPage.revokeJoinLink(link)">Revoke</button>
+                  <span class="invitation-status status-cancelled" x-show="invitationsPage.isPastJoinLink(link)" x-text="invitationsPage.joinLinkPill(link)"></span>
+                </div>
+                <span class="join-link-meter" aria-hidden="true" x-show="!invitationsPage.isPastJoinLink(link)"><span :style="'width:' + invitationsPage.joinLinkProgress(link) + '%'"></span></span>
+                <p class="field-hint" x-show="invitationsPage.joinLinkUncopyable(link)">This older link can't be copied. Make a new one to share it.</p>
+                <template x-if="invitationsPage.joinUrl && link.id === invitationsPage.joinNewId">
+                  <div class="join-link-fresh">
+                    <div class="join-link-share">
+                      <code class="join-link-url" x-text="invitationsPage.joinLinkDisplay(invitationsPage.joinUrl)"></code>
+                      <button type="button" class="btn-primary join-link-copy-button" x-on:click="invitationsPage.copyJoinLink()" :aria-label="invitationsPage.joinCopied ? 'Link copied' : 'Copy the join link'"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon(invitationsPage.joinCopied ? 'check' : 'copy')"></span><span class="join-link-copy-label" x-text="invitationsPage.joinCopied ? 'Copied' : 'Copy link'"></span></button>
+                    </div>
+                    <input type="text" readonly class="join-link-full" x-show="invitationsPage.joinCopyFailed" :value="invitationsPage.joinUrl" aria-label="Join link" x-on:focus="$event.target.select()" />
+                  </div>
+                </template>
+              </li>
+            </template>
+          </ul>
+          <button type="button" class="link-button past-toggle" x-show="invitationsPage.pastJoinLinkCount()" :aria-expanded="invitationsPage.showPastLinks" x-on:click="invitationsPage.showPastLinks = !invitationsPage.showPastLinks" x-text="invitationsPage.showPastLinks ? 'Hide past' : 'Show past (' + invitationsPage.pastJoinLinkCount() + ')'"></button>
+        </section>
+        <div class="invitations-heading">
+          <h3>Sent invitations</h3>
+          <p class="invitation-quota" x-show="invitationsPage.limit"><strong x-text="invitationsPage.remaining"></strong> of <span x-text="invitationsPage.limit"></span> email invites left</p>
+          <p class="invitation-quota" x-show="invitationsPage.unlimited">Unlimited email invites</p>
+        </div>
+        <p class="field-hint invitation-explainer">Email invitations expire after seven days. Cancelling one does not remove anyone from a conversation. Resending uses another invite.</p>
+        <p class="profile-error" role="alert" x-show="invitationsPage.rowError" x-text="invitationsPage.rowError"></p>
+        <p class="field-hint" x-show="invitationsPage.loading">Loading invitations…</p>
+        <div class="invitation-notice-error" x-show="invitationsPage.error">
+          <p class="profile-error" role="alert" x-text="invitationsPage.error"></p>
+          <button type="button" class="btn-secondary" :disabled="invitationsPage.loading" x-on:click="invitationsPage.load()">Retry</button>
+        </div>
+        <p class="invitation-empty" role="status" x-show="!invitationsPage.loading && !invitationsPage.error && !invitationsPage.invitations.length">No invitations yet. <a href="/dms" x-on:click.prevent="openDms()">Start a conversation in DMs</a> to invite someone by email.</p>
+        <p class="invitation-empty" role="status" x-show="!invitationsPage.loading && !invitationsPage.error && invitationsPage.invitations.length && !invitationsPage.visibleInvitations().length">No pending invitations.</p>
+        <ul class="invitation-list" x-show="invitationsPage.visibleInvitations().length">
+          <template x-for="row in invitationsPage.visibleInvitations()" :key="row.id">
+            <li class="invitation-row">
+              <div class="invitation-main">
+                <span class="room-mark" aria-hidden="true" x-html="lucideIcon('mail')"></span>
+                <span class="invitation-copy">
+                  <strong x-text="row.recipientEmail"></strong>
+                  <small x-text="invitationsPage.invitationDestinationLabel(row)"></small>
+                  <small x-show="row.expiresAt" x-text="'Expires ' + invitationsPage.invitationDate(row.expiresAt)"></small>
+                </span>
+                <span class="invitation-status" :class="'status-' + row.status" x-text="invitationsPage.invitationStatusLabel(row.status)"></span>
+              </div>
+              <div class="invitation-actions" x-show="invitationsPage.canResendInvitation(row.status) || invitationsPage.canCancelInvitation(row.status)">
+                <template x-if="invitationsPage.confirmId !== row.id">
+                  <div class="invitation-actions-row">
+                    <button type="button" class="link-button" x-show="invitationsPage.canResendInvitation(row.status)" :disabled="invitationsPage.busyId === row.id" x-on:click="invitationsPage.resend(row)" x-text="invitationsPage.busyId === row.id ? 'Sending…' : 'Resend'"></button>
+                    <button type="button" class="link-button danger" x-show="invitationsPage.canCancelInvitation(row.status)" :disabled="invitationsPage.busyId === row.id" x-on:click="invitationsPage.confirmId = row.id">Cancel</button>
+                  </div>
+                </template>
+                <template x-if="invitationsPage.confirmId === row.id">
+                  <div class="invitation-confirm" role="group" :aria-label="'Confirm cancelling invitation for ' + row.recipientEmail">
+                    <span>Cancel this invitation?</span>
+                    <button type="button" class="btn-danger" :disabled="invitationsPage.busyId === row.id" x-on:click="invitationsPage.cancel(row)" x-text="invitationsPage.busyId === row.id ? 'Cancelling…' : 'Cancel invitation'"></button>
+                    <button type="button" class="btn-secondary" :disabled="invitationsPage.busyId === row.id" x-on:click="invitationsPage.confirmId = ''">Keep</button>
+                  </div>
+                </template>
+              </div>
+            </li>
+          </template>
+        </ul>
+        <button type="button" class="link-button past-toggle" x-show="invitationsPage.pastInvitationCount()" :aria-expanded="invitationsPage.showPastInvitations" x-on:click="invitationsPage.showPastInvitations = !invitationsPage.showPastInvitations" x-text="invitationsPage.showPastInvitations ? 'Hide past' : 'Show past (' + invitationsPage.pastInvitationCount() + ')'"></button>
+        <section class="admission-requests" x-data="admissionFounder" x-show="authenticated && isFounder && (admissionFounder.visible || admissionFounder.loading)" x-effect="authenticated && isFounder && invitationsRoute && admissionFounder.open()" aria-labelledby="admission-requests-title">
+          <div class="invitations-heading">
+            <h3 id="admission-requests-title">Pre-launch requests</h3>
+            <p class="field-hint" x-show="admissionFounder.loading">Loading…</p>
+          </div>
+          <p class="field-hint">Approve to email a one-time sign-up link. People join after they open it and choose a name.</p>
+          <div class="invitation-notice-error" x-show="admissionFounder.error">
+            <p class="profile-error" role="alert" x-text="admissionFounder.error"></p>
+            <button type="button" class="btn-secondary" x-show="!admissionFounder.loading" :disabled="admissionFounder.loading" x-on:click="admissionFounder.reload()">Retry</button>
+          </div>
+          <p class="profile-error" role="alert" x-show="admissionFounder.rowError" x-text="admissionFounder.rowError"></p>
+          <p class="invitation-empty" x-show="!admissionFounder.loading && !admissionFounder.error && !admissionFounder.rows().length">No admission requests yet.</p>
+          <ul class="invitation-list" x-show="admissionFounder.rows().length">
+            <template x-for="row in admissionFounder.rows()" :key="row.application.id">
+              <li class="invitation-row">
+                <div class="invitation-main">
+                  <span class="room-mark" aria-hidden="true" x-html="lucideIcon('user-plus')"></span>
+                  <span class="invitation-copy">
+                    <strong x-text="row.application.email"></strong>
+                    <small x-show="row.application.selfhost" x-text="'Self-hosting: yes'"></small>
+                    <small x-show="row.application.revision !== undefined && row.application.revision !== null" x-text="'Request revision ' + row.application.revision"></small>
+                    <small x-show="row.application.createdAt" x-text="'Requested ' + invitationsPage.invitationDate(row.application.createdAt)"></small>
+                    <small x-show="row.admission?.expiresAt" x-text="row.admission?.expiresAt ? 'Invite expires ' + invitationsPage.invitationDate(row.admission.expiresAt) : ''"></small>
+                    <small x-show="admissionFounder.admissionDeliveryDetail(row)" x-text="admissionFounder.admissionDeliveryDetail(row)"></small>
+                  </span>
+                  <span class="invitation-status" :class="'status-' + (row.admission ? row.admission.state : 'pending')" x-text="admissionFounder.admissionStateLabel(row)"></span>
+                </div>
+                <div class="invitation-actions" x-show="admissionFounder.canApproveAdmission(row) || admissionFounder.canReissueAdmission(row) || admissionFounder.canCancelAdmission(row)">
+                  <div class="invitation-actions-row">
+                    <button type="button" class="btn-primary" x-show="admissionFounder.canApproveAdmission(row)" :disabled="admissionFounder.busyId === row.application.id" x-on:click="admissionFounder.approve(row)" x-text="admissionFounder.busyId === row.application.id && admissionFounder.busyAction === 'approve' ? 'Sending…' : 'Approve and send'"></button>
+                    <button type="button" class="btn-secondary" x-show="admissionFounder.canReissueAdmission(row)" :disabled="admissionFounder.busyId === row.application.id" x-on:click="admissionFounder.reissue(row)" x-text="admissionFounder.busyId === row.application.id && admissionFounder.busyAction === 'reissue' ? 'Reissuing…' : 'Reissue invite'"></button>
+                    <button type="button" class="link-button danger" x-show="admissionFounder.canCancelAdmission(row)" :disabled="admissionFounder.busyId === row.application.id" x-on:click="admissionFounder.askCancel($event, row)">Cancel</button>
+                  </div>
+                </div>
+              </li>
+            </template>
+          </ul>
+          <dialog id="admission-cancel-dialog" class="custom-modal" x-cloak x-on:cancel.prevent="admissionFounder.closeConfirm()" x-on:click="if ($event.target === $el) admissionFounder.closeConfirm()">
+            <section class="notice-card delete-confirmation" role="alertdialog" aria-labelledby="admission-cancel-title">
+              <h2 id="admission-cancel-title">Cancel this admission request?</h2>
+              <p>This cancels the pending invite. They will not be able to use it. You can approve them again later.</p>
+              <div class="pair-actions">
+                <button type="button" class="btn-secondary" data-admission-cancel-safe autofocus :disabled="admissionFounder.busyAction === 'cancel'" x-on:click="admissionFounder.closeConfirm()">Keep</button>
+                <button type="button" class="btn-danger" :disabled="admissionFounder.busyAction === 'cancel'" x-on:click="admissionFounder.confirmCancel()" x-text="admissionFounder.busyAction === 'cancel' ? 'Cancelling…' : 'Cancel invite'"></button>
+              </div>
+            </section>
+          </dialog>
+        </section>
+      </section>
+    </div>
+  </div>

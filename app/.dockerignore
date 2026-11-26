@@ -1,0 +1,31 @@
+# Build context is app/ (both Compose files); COPY . . must not copy local state.
+**/node_modules
+**/.git
+**/.env
+**/.env.*
+**/.data
+**/*.db
+**/*.db-*
+**/*.sqlite
+**/*.sqlite-*
+**/*.sqlite3
+**/*.sqlite3-*
+**/*.core
+**/*.pem
+**/*.key
+**/secrets
+**/credentials.json
+test
+# The agent package stays out, except the files the server imports: the harness registry and the
+# version and workspace helpers. Without them the app quits at start (16 Nov 2026).
+agent/*
+!agent/src
+agent/src/*
+!agent/src/version.ts
+!agent/src/workspace.ts
+# The Codex harness module reads stateDir from here (20 Nov 2026: the app quit at start without it).
+!agent/src/adapter-core.ts
+!agent/src/harnesses
+agent/src/harnesses/pi/*
+!agent/src/harnesses/pi/module.ts
+!agent/package.json

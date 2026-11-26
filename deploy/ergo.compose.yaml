@@ -1,0 +1,52 @@
+# Ergo IRC. Its own Compose project so an app deploy can never recreate it.
+#
+# By hand on the host:
+#   cd /srv/slirc
+#   SLIRC_CONFIG_DIR=./config \
+#     podman-compose --in-pod=false -p slirc-ergo -f deploy/ergo.compose.yaml up -d
+#
+# The `slirc` network and named volumes are external: `just bootstrap` creates them
+# once on a fresh host. `just deploy-ergo` wraps this command and fails if the app restarted.
+services:
+  ergo:
+    image: ghcr.io/bitbonsai/slirc-ergo:v2.19.1-63c743a@sha256:c3ee80d97cfda5b6b1524a07d3bad2127ead14f7243d0b8d5a8a122164046cb8
+    container_name: ${SLIRC_ERGO_CONTAINER:-slirc-ergo}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        TOKEN=$$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n');
+        printf '%s' "$$TOKEN" > /run/secrets/ergo-api-token;
+        export ERGO__API__BEARER_TOKENS="[\"$$TOKEN\"]";
+        exec /ircd-bin/run.sh
+    ports:
+      - "${ERGO_TLS_BIND:-0.0.0.0}:${ERGO_TLS_PORT:-6697}:6697" # TLS IRC
+    environment:
+      # Admission stays in the operator's ergo.yaml. A Compose override here would mask
+      # that file for every instance using this Compose project.
+      ERGO__ACCOUNTS__DEFAULT_USER_MODES: "+iR"
+      ERGO__API__ENABLED: "true"
+      ERGO__API__LISTENER: ":8089"
+    volumes:
+      - slirc-ergo-data:/ircd
+      - slirc-ergo-api:/run/secrets
+      # Hand-edited production config, kept outside the checkout so git reset never touches it.
+      - ${SLIRC_CONFIG_DIR:-./config}/ergo.yaml:/ircd/ircd.yaml:ro
+      - ../ergo/ergo.motd:/ircd/ergo.motd:ro
+    networks:
+      slirc:
+        ipv4_address: ${ERGO_IP:-10.89.0.2}
+    restart: unless-stopped
+
+# The app joins this network and reaches Ergo at the fixed address above.
+networks:
+  slirc:
+    name: ${SLIRC_NETWORK:-slirc}
+    external: true
+
+volumes:
+  slirc-ergo-data:
+    name: ${SLIRC_ERGO_DATA_VOLUME:-slirc-ergo-data}
+    external: true
+  slirc-ergo-api:
+    name: ${SLIRC_ERGO_API_VOLUME:-slirc-ergo-api}
+    external: true

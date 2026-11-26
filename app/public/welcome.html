@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en" data-device="desktop">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#11111b">
+  <title>Welcome - Slirc</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <script src="/welcome.js"></script>
+  <style>
+    :root { color-scheme: dark; --bg: #11111b; --panel: #181825; --panel-hi: #313244; --line: #313244; --text: #cdd6f4; --muted: #7f849c; --brand: #a6e3a1; --mine: #94e2d5; --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; --mono: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, monospace; }
+    :root[data-brand="app"] img.brand-wordmark { content: url("/brand-app-dark.svg"); }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body { min-height: 100svh; display: grid; place-items: center; padding: 2.5rem 1.25rem; background: radial-gradient(60rem 34rem at 70% -12rem, #1e1e2e 0, transparent 72%), var(--bg); color: var(--text); font: 1rem/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
+    main { width: min(46rem, 100%); display: grid; gap: 1.25rem; justify-items: start; }
+    a { color: inherit; text-decoration: none; }
+    :focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: .3rem; }
+    .brand { display: inline-flex; margin-bottom: 1rem; }
+    .brand img { height: 2.3rem; width: auto; }
+    .eyebrow { margin: 1rem 0 0; color: var(--brand); font: 600 .75rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(2.4rem, 8vw, 4rem); font-weight: 700; letter-spacing: -.04em; line-height: 1.02; }
+    h1 span { color: var(--brand); opacity: .5; }
+    h2 { margin: 0; font-size: 1.15rem; letter-spacing: -.01em; }
+    p { margin: 0; }
+    .lede { color: color-mix(in srgb, var(--text) 86%, var(--muted)); font-size: 1.1rem; }
+    .quiet { color: var(--muted); }
+    code { padding: .08rem .35rem; border-radius: .35rem; background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--brand); font: 600 .9em/1 var(--mono); }
+
+    /* The first step. Each device sees one, and a phone sees its Home Screen video beside it. */
+    section.first-step { width: 100%; }
+    .step { width: 100%; display: none; grid-template-columns: 1fr auto; gap: 1.25rem; align-items: center; padding: 1.25rem 1.4rem; border: 1px solid var(--line); border-radius: .9rem; background: color-mix(in srgb, var(--panel) 85%, transparent); }
+    .step-copy { display: grid; gap: .6rem; justify-items: start; }
+    .step-copy p { color: color-mix(in srgb, var(--text) 86%, var(--muted)); }
+    .media { margin: 0; }
+    /* Centered inside the figure: on phones the figure spans the card and the video is narrower. */
+    .media video { display: block; width: 11rem; height: auto; aspect-ratio: 9 / 16; margin-inline: auto; border-radius: .9rem; background: var(--panel); }
+    html[data-device="desktop"] .step[data-for="desktop"],
+    html[data-device="iphone"] .step[data-for="iphone"],
+    html[data-device="android"] .step[data-for="android"] { display: grid; }
+    html[data-device="installed"] .first-step { display: none; }
+    @media (max-width: 560px) { .step { grid-template-columns: 1fr; } .media { justify-self: center; } .media video { width: min(16rem, 100%); } }
+
+    .button { display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; margin-top: .25rem; padding: 0 1.1rem; border-radius: .55rem; background: var(--brand); color: var(--bg); font: 700 .95rem/1 var(--sans); transition: transform .15s ease, background-color .15s ease; }
+    .button:hover, .button:focus-visible { background: color-mix(in srgb, var(--brand) 86%, white); transform: translateY(-1px); }
+    .button.ghost { border: 1px solid var(--panel-hi); background: transparent; color: var(--text); }
+    .button.ghost:hover, .button.ghost:focus-visible { border-color: #45475a; }
+
+    /* Features: each card opens its guide. */
+    .features { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin: 0; padding: 0; list-style: none; }
+    .features a { height: 100%; display: grid; gap: .35rem; align-content: start; padding: 1rem 1.15rem; border: 1px solid var(--line); border-radius: .9rem; background: color-mix(in srgb, var(--panel) 70%, transparent); transition: border-color .15s ease, transform .15s ease; }
+    .features a:hover, .features a:focus-visible { border-color: color-mix(in srgb, var(--brand) 45%, var(--line)); transform: translateY(-1px); }
+    .features p { color: var(--muted); font-size: .95rem; }
+    @media (max-width: 560px) { .features { grid-template-columns: 1fr; } }
+
+    @media (prefers-reduced-motion: no-preference) {
+      @keyframes rise { from { opacity: 0; translate: 0 1rem; } }
+      main > * { animation: rise .6s cubic-bezier(.2, .7, .2, 1) both; }
+      main > :nth-child(2) { animation-delay: .06s; } main > :nth-child(3) { animation-delay: .12s; } main > :nth-child(4) { animation-delay: .18s; } main > :nth-child(5) { animation-delay: .24s; } main > :nth-child(6) { animation-delay: .3s; } main > :nth-child(7) { animation-delay: .36s; } main > :nth-child(8) { animation-delay: .42s; }
+    }
+    @media (prefers-reduced-motion: reduce) { .button, .features a { transition: none; } }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="brand" href="/" aria-label="Open Slirc"><img class="brand-wordmark" src="/brand-org-dark.svg" width="233" height="73" alt="Slirc"></a>
+    <p class="eyebrow">{{host}}</p>
+    <h1>You're in<span>.</span></h1>
+    <p class="lede">Here's how to get set up, and a few things worth trying. Questions? Ask <strong>help</strong> in your DMs, any time.</p>
+
+    <p class="eyebrow first-step">Start here</p>
+    <section class="first-step">
+      <div class="step" data-for="desktop">
+        <div class="step-copy">
+          <h2>Add your phone</h2>
+          <p>Open <strong>Devices</strong> and choose <strong>Show code</strong>. Point your phone's camera at the code and it's signed in. Nothing to type.</p>
+          <a class="button" href="/settings">Open Devices</a>
+        </div>
+      </div>
+      <div class="step" data-for="iphone">
+        <div class="step-copy">
+          <h2>Save Slirc to your Home Screen</h2>
+          <p>Open <strong>{{host}}</strong> in Safari, tap Share, then <strong>Add to Home Screen</strong>. From then on, open Slirc from its icon, like any other app.</p>
+        </div>
+        <figure class="media"><video data-src="/media/a2hs-iphone.mp4" width="1080" height="1920" muted loop playsinline preload="none" aria-label="Adding Slirc to the Home Screen on iPhone"></video></figure>
+      </div>
+      <div class="step" data-for="android">
+        <div class="step-copy">
+          <h2>Save Slirc to your Home screen</h2>
+          <p>Open <strong>{{host}}</strong> in your browser, open its menu and choose <strong>Add to Home screen</strong> or <strong>Install app</strong>. From then on, open Slirc from its icon, like any other app.</p>
+        </div>
+        <figure class="media"><video data-src="/media/a2hs-android.mp4" width="1080" height="1920" muted loop playsinline preload="none" aria-label="Adding Slirc to the Home screen on Android"></video></figure>
+      </div>
+    </section>
+
+    <p class="eyebrow">Worth trying</p>
+    <ul class="features">
+      <li><a href="/docs/threads"><h2>Threads and reactions</h2><p>Reply in a thread to keep a side conversation out of the channel, or react to any message.</p></a></li>
+      <li><a href="/docs/bots"><h2>Reminders</h2><p>Type <code>@remind in 20m stretch</code> anywhere. Only you see it.</p></a></li>
+      <li data-agents><a href="/agents"><h2>Your coding agent</h2><p>{{agentsToday}} Open <strong>Agents</strong> for the one line to run, then press Allow when your agent asks. More coding agents are coming.</p></a></li>
+      <li data-irc><a href="/clients"><h2>Any IRC client</h2><p>Slirc runs on IRC. Point your client at <code>{{ircHost}}:{{ircPort}}</code> with TLS. <strong>Devices</strong> has your settings.</p></a></li>
+    </ul>
+
+    <a class="button ghost" href="/">Back to Slirc</a>
+  </main>
+</body>
+</html>

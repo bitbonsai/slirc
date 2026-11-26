@@ -1,0 +1,104 @@
+# Example Caddy site configuration for Slirc: landing page, app, and docs
+# Install: copy this to /etc/caddy/sites.d/slirc.caddy, replace the domains and
+# checkout paths with yours, and reload Caddy.
+#
+# Every reverse_proxy forwards {client_ip} as X-Forwarded-For. If you sit behind a CDN
+# such as Cloudflare, configure global `trusted_proxies` and `client_ip_headers` in
+# /etc/caddy/Caddyfile so {client_ip} is the visitor rather than the CDN edge; without
+# header_up, Caddy keeps any incoming X-Forwarded-For header the visitor sent.
+#
+# Landing and docs are static: `just deploy-landing` and `just deploy-docs`
+# only reset the checkout, and Caddy picks the new files up. No app restart involved.
+
+example.com, www.example.com {
+	# Static landing page from the repo checkout; ships with every deploy.
+	root * /srv/slirc/landing
+	encode zstd gzip
+	file_server
+
+	# Images are content-addressed by name in practice (replaced, not versioned): a day is plenty.
+	# HTML, CSS, and JS change with every landing deploy: short cache, always revalidate.
+	@assets path /img/* *.png *.jpg *.svg
+	header @assets Cache-Control "public, max-age=86400"
+	@pages path / *.html *.css *.js *.md *.txt *.xml
+	header @pages Cache-Control "public, max-age=300, must-revalidate"
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		X-Robots-Tag "index, follow"
+		-Server
+	}
+}
+
+docs.example.com {
+	# Generated docs are plain files in the checkout: app/docs/*.md is the source,
+	# `cd app && bun run docs` writes app/public/docs/. The app is not involved.
+	root * /srv/slirc/app/public
+
+	# App paths linked from the docs navigation come first, so the guide rewrite below
+	# cannot swallow them.
+	redir /help https://chat.example.com/help
+	redir /open-chat https://chat.example.com/open-chat
+	# The docs site lives under /docs, so the docs host root is the docs index.
+	rewrite / /docs/index.html
+	rewrite /docs /docs/index.html
+	# /docs/<guide> and /docs/<guide>/ serve the generated directory index.
+	@guide path_regexp guide ^/docs/([a-z0-9-]+)/?$
+	rewrite @guide /docs/{re.guide.1}/index.html
+	# Guides are also reachable straight off the subdomain: docs.example.com/setup reads better
+	# in a chat citation than docs.example.com/docs/setup, and both shapes must keep working.
+	# The pattern excludes dotted paths so real files keep resolving.
+	@rootguide path_regexp rootguide ^/([a-z0-9-]+)/?$
+	rewrite @rootguide /docs/{re.rootguide.1}/index.html
+
+	file_server
+
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+
+	log {
+		output file /var/log/caddy/docs-slirc.log {
+			roll_size 10MB
+			roll_keep 5
+		}
+		format json
+	}
+}
+
+# chat.example.com: Slirc app
+chat.example.com {
+	handle {
+		reverse_proxy 127.0.0.1:9010 {
+			lb_try_duration 20s
+			header_up X-Forwarded-For {client_ip}
+		}
+	}
+
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+
+	log {
+		output file /var/log/caddy/app-slirc.log {
+			roll_size 10MB
+			roll_keep 5
+		}
+		format json
+	}
+}

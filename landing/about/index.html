@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#11111b">
+  <meta name="description" content="Why Slirc exists. A friend in Sydney, a Campfire install that wanted 2 GB with nobody talking, a Friday with three friends, and IRC underneath all of it.">
+  <link rel="icon" href="/favicon.ico" sizes="32x32">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+  <link rel="icon" type="image/svg+xml" href="/logo.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="canonical" href="https://slirc.org/about/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Slirc - why it exists">
+  <meta name="twitter:description" content="Why Slirc exists. A friend in Sydney, a Campfire install that wanted 2 GB with nobody talking, a Friday with three friends, and IRC underneath all of it.">
+  <meta name="twitter:image" content="https://slirc.org/img/og.png">
+  <meta property="og:title" content="Slirc - why it exists">
+  <meta property="og:description" content="Why Slirc exists. A friend in Sydney, a Campfire install that wanted 2 GB with nobody talking, a Friday with three friends, and IRC underneath all of it.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://slirc.org/about/">
+  <meta property="og:image" content="https://slirc.org/img/og.png">
+  <title>Slirc - why it exists</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #11111b; --panel: #181825; --panel-hi: #313244; --line: #313244;
+      --text: #cdd6f4; --muted: #7f849c; --brand: #a6e3a1; --mine: #94e2d5;
+      --bg-glow: radial-gradient(max(50vw, 34rem) 34rem at 50% -10rem, #1e1e2e, var(--bg));
+      --blur-light: blur(3px); --blur-medium: blur(9px);
+      --hairline: color-mix(in srgb, var(--line) 50%, transparent);
+      --card-line: color-mix(in srgb, var(--line) 85%, transparent);
+      --card: color-mix(in srgb, var(--panel) 96%, transparent);
+      --row: color-mix(in srgb, var(--panel-hi) 42%, transparent);
+      --shadow: 0 .5rem 1.5rem #0007;
+      /* type scale: minor third (1.2), base 16px. Edit here. */
+      --step--2: .694rem; --step--1: .833rem; --step-0: 1rem; --step-1: 1.2rem; --step-2: 1.44rem;
+      --step-3: 1.728rem; --step-4: 2.074rem; --step-5: 2.488rem; --step-6: 2.986rem;
+      --leading: 1.6;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    html { background: var(--bg); }
+    body {
+      margin: 0; background: var(--bg-glow) no-repeat; color: var(--text); font-family: var(--sans);
+      font-size: var(--step-0); line-height: var(--leading); -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--brand); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code, kbd, .mono { font-family: var(--mono); font-size: .92em; }
+    h1, h2, h3 { letter-spacing: -.02em; line-height: 1.15; margin: 0; font-weight: 750; }
+    .heading-dot { color: var(--brand); opacity: .5; transition: opacity .16s ease; }
+    :is(h1, h2):hover .heading-dot { opacity: 1; }
+    h2 { font-size: var(--step-3); margin-bottom: 1rem; letter-spacing: -.03em; }
+    h3 { font-size: var(--step-1); font-weight: 700; margin-bottom: .25rem; }
+    p { margin: 0 0 1rem; }
+    .wrap { width: min(100% - 2.5rem, 860px); margin: 0 auto; }
+    .wrap.wide { max-width: 1040px; width: min(100% - 2.5rem, 1040px); }
+    section { padding: 4.5rem 0; }
+    .muted { color: var(--muted); }
+    .lede { font-size: var(--step-1); }
+    .cta-line { color: var(--text); font-weight: 600; }
+
+    /* nav */
+    .nav { position: sticky; top: 0; z-index: 5; backdrop-filter: var(--blur-medium) saturate(1.15); -webkit-backdrop-filter: var(--blur-medium) saturate(1.15); background: color-mix(in srgb, var(--panel) 68%, transparent); }
+    .nav .wrap { display: flex; align-items: center; gap: 1.25rem; min-height: 3.625rem; }
+    .nav .brand { display: inline-flex; align-items: center; gap: .3rem; color: var(--text); }
+    .nav .brand:hover { text-decoration: none; }
+    .nav .brand .mark-sm { width: 1.25rem; height: 1.25rem; }
+    .nav .brand .wordmark { width: auto; height: .85rem; }
+    .nav .links { margin-left: auto; display: flex; gap: 1.25rem; align-items: center; }
+    .nav .links a:not(.btn) { color: var(--muted); font-size: .95rem; font-weight: 500; }
+    .nav .links a[aria-current] { color: var(--text); }
+    .nav .links a:not(.btn):hover { color: var(--text); text-decoration: none; }
+    @media (max-width: 600px) { .nav .links a:not(.btn):not(.icon):not([href="/blog/"]) { display: none; } .nav .links { gap: .75rem; } }
+
+    /* buttons */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 2.75rem; padding: .75rem 1rem; border: 0; border-radius: .55rem; background: var(--panel-hi); color: var(--text); font-weight: 700; font-size: 1rem; line-height: 1.45; text-decoration: none; transition: transform .15s ease, background-color .15s ease, box-shadow .15s ease; }
+    .btn:hover, .btn:focus-visible { text-decoration: none; outline: none; transform: translateY(-1px); box-shadow: 0 .4rem 1rem #0006, 0 0 0 3px color-mix(in srgb, var(--brand) 28%, transparent); }
+    .btn:active { transform: translateY(1px); box-shadow: none; transition-duration: .06s; }
+    .btn.primary { background: var(--brand); color: var(--bg); }
+    .btn.primary:hover, .btn.primary:focus-visible { background: color-mix(in srgb, var(--brand) 86%, white); }
+    .btn.ghost { background: var(--panel-hi); color: var(--text); }
+    .btn.ghost:hover, .btn.ghost:focus-visible { background: #45475a; }
+    .nav .btn { min-height: 2.5rem; padding: 0 .9rem; font-size: .9rem; }
+    .nav .icon { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 50%; transition: color .15s ease, background-color .15s ease; }
+    .nav .icon svg { width: 1.25rem; height: 1.25rem; fill: currentColor; }
+    .nav .icon:hover, .nav .icon:focus-visible { outline: none; color: var(--text); background: color-mix(in srgb, var(--panel-hi) 60%, transparent); }
+    .ctas { display: flex; flex-wrap: wrap; gap: .8rem; margin: 1.75rem 0 .9rem; }
+
+    /* story */
+    .story { width: min(100% - 2.5rem, 68ch); margin: 0 auto; padding: 4rem 0 5rem; font-size: 1rem; line-height: 1.6875; font-weight: 300; }
+    .story .sig b { font-weight: 600; }
+    .story p { text-wrap: pretty; }
+    .story h1, .story h2 { text-wrap: balance; }
+    .story .mark { width: 3.5rem; height: 3.5rem; margin-bottom: 1.75rem; animation: flip-in 1.4s cubic-bezier(.2,.75,.2,1) both; }
+    .story h1 { font-size: 2.5625rem; line-height: 1.1; letter-spacing: -.02em; font-weight: 700; margin-bottom: 1rem; }
+    .story .lede { font-size: 1.125rem; color: color-mix(in srgb, var(--text) 82%, var(--muted)); margin-bottom: 3rem; }
+    .beat { padding: 1.75rem 0; }
+    .beat h2 { font-size: 1.4375rem; line-height: 1.3; font-weight: 600; letter-spacing: -.01em; margin-bottom: 1rem; }
+    .beat p { color: color-mix(in srgb, var(--text) 90%, var(--muted)); }
+    .beat strong, .lede strong { font-weight: 600; color: var(--text); }
+    .beat em { font-style: italic; }
+    .beat a:not(.btn) { color: var(--text); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--text) 35%, transparent); text-underline-offset: .15em; }
+    .beat a:not(.btn):hover { color: var(--brand); text-decoration-color: currentColor; }
+    .beat p:last-child { margin-bottom: 0; }
+    .pull { margin: 1.75rem 0; padding: 1.25rem 1.5rem; border-left: 2px solid var(--brand); border-radius: 0 .6rem .6rem 0; background: var(--row); font-size: inherit; font-weight: 400; line-height: 1.4; color: var(--text); }
+    .stat { display: inline-block; padding: .1rem .45rem; border-radius: .4rem; background: var(--row); font-family: var(--mono); font-size: .9em; color: var(--brand); }
+    .sig { display: flex; align-items: center; gap: .75rem; margin: 2.5rem 0 0; color: var(--muted); font-size: var(--step--1); }
+    .sig img { width: 2.25rem; height: 2.25rem; border-radius: 50%; }
+    .sig b { display: block; color: var(--text); font-weight: 700; }
+    .story .ctas { margin-top: 2.5rem; }
+    @keyframes flip-in { from { opacity: 0; transform: perspective(700px) rotateY(720deg) scale(.9); } 30% { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } html { scroll-behavior: auto; } }
+
+    /* footer */
+    footer { padding: 3rem 0 2.5rem; font-size: .92rem; color: var(--muted); }
+    footer .cols { display: grid; gap: 2rem; grid-template-columns: 1.6fr 1fr 1fr 1fr; align-items: start; }
+    footer .cols > div:first-child p { max-width: 16rem; color: color-mix(in srgb, var(--text) 85%, var(--muted)); }
+    @media (max-width: 680px) { footer .cols { grid-template-columns: 1fr 1fr; } }
+    footer h4 { margin: 0 0 .5rem; font-size: .75rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 650; }
+    footer ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .35rem; }
+    footer a { color: var(--text); }
+    footer .brandline { display: flex; align-items: center; gap: .6rem; color: var(--text); font-weight: 600; margin-bottom: .4rem; }
+    footer .brandline img { width: 1.5rem; height: 1.5rem; }
+    footer .bottom { margin-top: 2.5rem; padding-top: 1.25rem; border-top: 1px solid var(--hairline); font-size: .85rem; }
+    footer .bottom a { color: var(--muted); }
+    footer .bottom { text-align: center; }
+    .heart-wrap { display: inline-flex; align-items: center; justify-content: center; width: 1.4em; height: 1em; margin: 0 .05em; vertical-align: -.12em; cursor: default; }
+    .heart { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; color: var(--muted); transition: color .2s ease, transform .2s ease; }
+    .heart-wrap:hover .heart { color: #f38ba8; fill: #f38ba8; animation: heartbeat 1s ease-in-out infinite; transform-origin: center; }
+    @keyframes heartbeat { 0%, 100% { transform: scale(1); } 18% { transform: scale(1.18); } 36% { transform: scale(1); } 50% { transform: scale(1.1); } 70% { transform: scale(1); } }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+    @keyframes flip-in { from { opacity: 0; transform: perspective(700px) rotateY(720deg) scale(.9); } 30% { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="Slirc"><img class="wordmark" src="/brand-org-dark.svg" width="233" height="73" alt="Slirc"></a>
+    <div class="links">
+      <a href="/blog/">Blog</a>
+      <a href="https://docs.slirc.org/">Docs</a>
+      <a href="/about/" aria-current="page">About</a>
+      <a class="icon" href="https://github.com/bitbonsai/slirc" rel="noreferrer" aria-label="Slirc on GitHub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2.17c-3.2.7-3.87-1.37-3.87-1.37-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.7 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.04 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.58.23 2.75.11 3.04.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.05.78 2.12v3.14c0 .31.21.67.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg></a>
+      <a class="btn primary" href="https://app.slirc.org/open-chat">Open chat</a>
+    </div>
+  </div>
+</nav>
+
+<main class="story">
+  <img class="mark" src="/slirc-mark.png?v=2" alt="Slirc">
+  <h1>It started twice<span class="heading-dot">.</span></h1>
+  <p class="lede">Once with a friend in Sydney, once at a table with three more. In both cases we wanted a channel that did not belong to anyone's company, and everything we tried was either owned by an employer or far heavier than a few people talking.</p>
+
+  <section class="beat">
+    <h2>A place to exchange ideas</h2>
+    <p>Lewis lives in Sydney and I live in the Netherlands. We had been talking about starting a group for people who work on AI and design engineering at different companies, somewhere we could compare notes without it being anyone's workplace.</p>
+    <p>A Slack workspace would have been the normal choice, except that a workspace belongs to whoever creates it. Everyone else is a guest there, and when that person changes jobs the channel usually goes with them. WhatsApp or Signal didn't seem a good choice, no channels, no threads, no searchable history.</p>
+    <p>I have a homelab, so I installed Campfire from <a href="https://once.com" rel="noreferrer">once.com</a> on it. It took one command and it worked well. When I checked the container stats a few hours later, it was using close to 2 GB of RAM with two people in it and nobody typing. Campfire is a good product on a stack I have not worked with. A group chat is a few people sending short lines to each other, and computers were doing that thirty years ago on machines with a fraction of the memory.</p>
+  </section>
+
+  <section class="beat">
+    <h2>Then a Friday at Lokaalhost:22<span class="heading-dot">.</span></h2>
+    <p>Gabriel, Pedro, Ricardo and I met for an afternoon and talked about our AI projects, models, training methods, what we were building and what was working for us. We left with more energy than we arrived with, and I wanted that conversation to carry on during the week.</p>
+    <p>I ran into the same problem. Slack had the threads and reactions we would use, but the free plan forgets after 90 days and the paid one is another subscription. Campfire was still running at home with its 2 GB. All four of us spend most of the day in a terminal, and at some point the obvious question came up.</p>
+    <p class="pull">We all use terminals. <strong>Why not IRC</strong>?</p>
+  </section>
+
+  <section class="beat">
+    <h2>IRC, with the nice parts of Slack<span class="heading-dot">.</span></h2>
+    <p>My first conversations online were on BBSs and IRC. IRC has survived because it does one thing well, which is moving short messages between people quickly and on very little hardware. <strong>Ergo</strong>, the IRC server <strong>Slirc</strong> runs on, keeps accounts, channels, permissions and history in about <strong>17 MiB of memory</strong>.</p>
+    <p>What IRC never had was a good phone experience. <strong>Slirc</strong> adds that layer: an app you install from the browser (PWA), which shows images, videos, threads you can follow, and sends a notification when someone mentions you. Underneath, it is still IRC, and everything the app does can be read from an ordinary IRC client. Threads are channels, uploads are URLs, and reactions are IRCv3 message tags that supporting clients such as Halloy render.</p>
+    <p>The first useful version took a couple of days, most of it written with coding agents on the <a href="https://opencode.ai/" rel="noreferrer">opencode.ai</a> <em>Go</em> plan, and it has been in daily use since. The stack is <a href="https://bun.sh/" rel="noreferrer">Bun</a>, <a href="https://hono.dev/" rel="noreferrer">Hono</a>, <a href="https://alpinejs.dev/" rel="noreferrer">Alpine</a>, <a href="https://sqlite.org/" rel="noreferrer">SQLite</a> and <a href="https://ergo.chat/" rel="noreferrer">Ergo</a>, and the app and server together idle at around <strong>20 MB</strong>. Deciding what belongs in it, and what should stay out so it still makes sense over IRC, is where most of the time went.</p>
+  </section>
+
+  <section class="beat">
+    <h2>Then the agents walked in<span class="heading-dot">.</span></h2>
+    <p>The four of us use Claude Code, Codex, Crush and Pi every day, and it soon became clear that an agent could be just another IRC client with an account.</p>
+    <p>Pi and Claude Code work with Slirc today, and support for other coding agents is coming. Connect the session already running on your computer and give it its next task from your phone. It works in its existing checkout, and reopening that saved session keeps the same DM. Terminal-only conversations stay local. Personal agents belong in their owner's DM, not shared channels.</p>
+    <p>None of that was in the original plan. It is now the first thing people ask about when they see <strong>Slirc</strong>.</p>
+  </section>
+
+  <section class="beat">
+    <h2>Why the .org<span class="heading-dot">.</span></h2>
+    <p>I registered <a href="https://slirc.org">slirc.org</a> because I wanted this to be something other people could run <strong>on their own hardware, with their own data</strong>.</p>
+    <p>Source release is planned, subject to acceptance, under the <a href="https://www.elastic.co/licensing/elastic-license" rel="noreferrer">Elastic License 2.0</a>. There is no public source download yet. Once released, you can host it yourself and change it for your own group.</p>
+    <p><strong>slirc.org</strong> is the project and the shared <strong>Slirc</strong>. The shared service is free forever, and anyone can join us in <code>#open-chat</code>. Private team workspaces have their own home at <a href="https://slirc.app">slirc.app</a>.</p>
+    <div class="sig"><img src="/img/mauricio.png" alt="" loading="lazy" width="36" height="36"><span><b>Mauricio Wolff</b>The Netherlands, September 2026</span></div>
+    <div class="ctas">
+      <a class="btn primary" href="https://app.slirc.org/open-chat">Open chat</a>
+      <a class="btn ghost" href="https://docs.slirc.org/setup">Self-hosting guide</a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <div class="brandline"><img class="wordmark" src="/brand-org-dark.svg" width="233" height="73" alt="Slirc" style="width:auto;height:.9rem"></div>
+        <p>Chat with friends and coding agents, built on Ergo IRC. Pi and Claude Code are the pre-launch pilots. Source release is planned, subject to acceptance.</p>
+      </div>
+      <div><h4>Product</h4><ul>
+        <li><a href="https://app.slirc.org/open-chat">Open chat</a></li>
+        <li><a href="/about/">About</a></li>
+        <li><a href="https://docs.slirc.org/setup">Self-host</a></li>
+        <li><a href="https://slirc.app">Managed hosting</a></li>
+      </ul></div>
+      <div><h4>Docs</h4><ul>
+        <li><a href="https://docs.slirc.org/getting-started">Getting started</a></li>
+        <li><a href="https://docs.slirc.org/agents">Agents</a></li>
+        <li><a href="https://docs.slirc.org/clients">IRC clients</a></li>
+        <li><a href="https://docs.slirc.org/privacy">Privacy</a></li>
+        <li><a href="https://docs.slirc.org/comparison">Comparison</a></li>
+      </ul></div>
+      <div><h4>Source</h4><ul>
+        <li><a href="https://github.com/bitbonsai/slirc" rel="noreferrer">GitHub</a></li>
+        <li><a href="https://www.npmjs.com/package/slirc-agent" rel="noreferrer">slirc-agent on npm</a></li>
+        <li><a href="https://github.com/bitbonsai/slirc/issues" rel="noreferrer">Issues</a></li>
+        <li><a href="https://github.com/bitbonsai/slirc/blob/main/LICENSE" rel="noreferrer">License</a></li>
+      </ul></div>
+    </div>
+    <p class="bottom">Made with <span class="heart-wrap"><svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg><span class="sr">love</span></span> by <a href="https://mauriciowolff.com" rel="noreferrer">@bitbonsai</a> in the Netherlands. Built on <a href="https://ergo.chat" rel="noreferrer">Ergo IRC</a>. No analytics on this page.</p>
+  </div>
+</footer>
+</body>
+</html>

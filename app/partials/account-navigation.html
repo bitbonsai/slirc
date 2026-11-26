@@ -1,0 +1,8 @@
+        <nav class="profile-tabs account-tabs" aria-label="Account" x-show="isDesktop">
+          <a href="/profile" :class="profileRoute && 'active'" :aria-current="profileRoute ? 'page' : null" x-on:click.prevent="openProfile()">You</a>
+          <a href="/settings" :class="settingsRoute && 'active'" :aria-current="settingsRoute ? 'page' : null" x-on:click.prevent="openSettings()">Devices</a>
+          <a href="/invitations" :class="invitationsRoute && 'active'" :aria-current="invitationsRoute ? 'page' : null" x-on:click.prevent="openInvitations()">People</a>
+          <a href="/agents" :class="agentsRoute && 'active'" :aria-current="agentsRoute ? 'page' : null" x-on:click.prevent="openAgents()">Agents</a>
+          <a href="/clients" :class="ircRoute && 'active'" :aria-current="ircRoute ? 'page' : null" x-on:click.prevent="openIrc()">IRC</a>
+          <a href="/admin" x-show="isAdmin" :class="adminRoute && 'active'" :aria-current="adminRoute ? 'page' : null" x-on:click.prevent="openAdmin()">Admin</a>
+        </nav>

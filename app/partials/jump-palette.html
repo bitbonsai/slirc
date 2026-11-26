@@ -1,0 +1,20 @@
+  <dialog id="jump-dialog" class="custom-modal palette-modal" x-data="jumpDialog" x-cloak aria-label="Jump to a conversation" x-on:cancel.prevent="close()" x-on:click="if ($event.target === $el) close()">
+    <section class="palette">
+      <input id="jump-search" class="palette-input" x-ref="search" type="text" role="combobox" aria-label="Jump to a channel, DM or person" aria-autocomplete="list" aria-expanded="true" aria-controls="jump-list" :aria-activedescendant="activeId()" autocomplete="off" spellcheck="false" placeholder="Jump to a channel, DM or person" x-model="query" x-on:input="onInput($event)" x-on:keydown="keydown($event)" />
+      <div id="jump-list" class="palette-list" x-ref="list" role="listbox" aria-label="Conversations">
+        <template x-for="(row, i) in filtered()" :key="row.id">
+          <button type="button" tabindex="-1" role="option" :id="'jump-option-' + i" :class="i === index && 'active'" :aria-selected="String(i === index)" x-on:mouseenter="index = i" x-on:click="choose(row)">
+            <span class="palette-mark" aria-hidden="true">
+              <span x-show="row.kind === 'channel' && row.hint === 'Channel'">#</span>
+              <span class="lock-icon" x-show="row.kind === 'group' || row.hint === 'Invite-only channel'"></span>
+              <img x-show="row.kind === 'dm' || row.kind === 'person'" :src="row.kind === 'dm' || row.kind === 'person' ? avatarUrl(row.target) : null" alt="" x-on:error="$el.hidden = true" />
+            </span>
+            <span class="palette-copy"><strong x-text="row.label"></strong><small x-text="row.hint"></small></span>
+            <span class="unread-badge" x-show="row.unread" x-text="row.unread" :aria-label="row.unread + ' unread'"></span>
+          </button>
+        </template>
+        <p class="palette-empty" x-show="!filtered().length" role="status">Nothing matches.</p>
+      </div>
+      <p class="palette-foot" aria-hidden="true"><span class="palette-hint"><kbd>&uarr;</kbd><kbd>&darr;</kbd> move</span><span class="palette-hint"><kbd>&crarr;</kbd> open</span><span class="palette-hint"><kbd>esc</kbd> close</span></p>
+    </section>
+  </dialog>

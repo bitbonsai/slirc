@@ -1,0 +1,635 @@
+#!/usr/bin/env bash
+# Management CLI for a self-hosted Slirc instance.
+# Installed to /usr/local/bin/slirc by install.sh.
+set -euo pipefail
+
+INSTALL_DIR="${SLIRC_INSTALL_DIR:-/opt/slirc}"
+COMPOSE_FILE="$INSTALL_DIR/compose.yaml"
+DOT_ENV="$INSTALL_DIR/.env"
+APP_ENV="$INSTALL_DIR/app.env"
+CRON_CERT_SYNC="/etc/cron.daily/slirc-sync-certs"
+CRON_AUTO_UPDATE="/etc/cron.daily/slirc-auto-update"
+SYSTEMD_DIR="/etc/systemd/system"
+UPDATE_SERVICE="$SYSTEMD_DIR/slirc-update.service"
+UPDATE_TIMER="$SYSTEMD_DIR/slirc-update.timer"
+
+die() {
+  printf 'error: %s\n' "$*" >&2
+  exit 1
+}
+
+require_install() {
+  [[ -f "$COMPOSE_FILE" ]] || die "Slirc is not installed in $INSTALL_DIR (missing $COMPOSE_FILE)"
+  [[ -f "$DOT_ENV" ]] || die "Missing $DOT_ENV"
+}
+
+load_dot_env() {
+  # shellcheck disable=SC1090
+  set -a && source "$DOT_ENV" && set +a
+  SLIRC_DATA_DIR="${SLIRC_DATA_DIR:-/var/lib/slirc}"
+  SLIRC_KEYS_DIR="${SLIRC_KEYS_DIR:-/var/lib/slirc-keys}"
+  SLIRC_DOMAIN="${SLIRC_DOMAIN:-}"
+  SLIRC_IMAGE="${SLIRC_IMAGE:-ghcr.io/bitbonsai/slirc:latest}"
+  ERGO_IMAGE="${ERGO_IMAGE:-ghcr.io/bitbonsai/slirc-ergo:v2.19.1}"
+  CADDY_IMAGE="${CADDY_IMAGE:-caddy:2-alpine}"
+  ERGO_TLS_BIND="${ERGO_TLS_BIND:-127.0.0.1}"
+}
+
+compose() {
+  docker compose --project-directory "$INSTALL_DIR" -f "$COMPOSE_FILE" "$@"
+}
+
+read_app_env_key() {
+  local key="$1"
+  [[ -f "$APP_ENV" ]] || return 0
+  awk -F= -v k="$key" '$1 == k { sub(/^[^=]*=/, ""); print; exit }' "$APP_ENV"
+}
+
+has_systemd() {
+  command -v systemctl >/dev/null 2>&1 && [[ -d /run/systemd/system ]]
+}
+
+auto_update_status() {
+  if has_systemd && systemctl is-enabled slirc-update.timer >/dev/null 2>&1; then
+    printf 'enabled (systemd timer, nightly ~03:30)'
+  elif [[ -x "$CRON_AUTO_UPDATE" ]]; then
+    printf 'enabled (cron.daily)'
+  else
+    printf 'disabled'
+  fi
+}
+
+wait_for_health() {
+  local attempts="${1:-30}"
+  for _ in $(seq 1 "$attempts"); do
+    if docker exec slirc bun -e 'const r = await fetch("http://127.0.0.1:8080/healthz"); if (!r.ok) process.exit(1);' >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
+
+container_image_id() {
+  docker inspect -f '{{.Image}}' "$1" 2>/dev/null || true
+}
+
+local_image_id() {
+  docker image inspect -f '{{.Id}}' "$1" 2>/dev/null || true
+}
+
+cmd_help() {
+  cat <<'EOF'
+Usage: slirc <command> [options]
+
+Commands:
+  status                    Show containers, health, version, auto-update, and paths
+  logs [service] [args]     Stream logs (services: slirc, ergo, caddy)
+  restart [service|--all]   Restart slirc cleanly without dropping Ergo (or named service)
+  update [--auto]           Pull images, recreate only changed services, rollback on failure
+  auto-update [on|off|status]
+                            Enable, disable, or inspect nightly automatic updates
+  backup [dest]             Create a consistent tar.gz backup (excludes irc-key)
+  env [--compose]           Edit app.env (or .env with --compose) and recreate
+  login-link [nick]         Mint a one-time 15-minute sign-in link on this server
+  sync-certs [--quiet]      Copy Caddy's TLS cert to Ergo and reload with SIGHUP
+  uninstall [--yes] [--purge]
+                            Stop and remove Slirc (keeps data unless --purge)
+  help                      Show this help
+EOF
+}
+
+cmd_status() {
+  require_install
+  load_dot_env
+  local mode channel irc_status health version
+  mode="$(read_app_env_key SLIRC_MODE)"
+  mode="${mode:-private_workspace}"
+  channel="$(read_app_env_key IRC_CHANNEL)"
+  channel="${channel:-#general}"
+  if [[ "$ERGO_TLS_BIND" == "0.0.0.0" ]]; then
+    irc_status="public (${SLIRC_DOMAIN}:6697)"
+  else
+    irc_status="loopback only (${ERGO_TLS_BIND}:6697)"
+  fi
+
+  printf 'Domain:    https://%s\n' "$SLIRC_DOMAIN"
+  printf 'Mode:      %s (%s)\n' "$mode" "$channel"
+  printf 'IRC TLS:   %s\n' "$irc_status"
+  printf 'Updates:   %s\n' "$(auto_update_status)"
+  printf 'Config:    %s\n' "$INSTALL_DIR"
+  printf 'Data:      %s\n' "$SLIRC_DATA_DIR"
+  printf 'IRC key:   %s/irc-key\n\n' "$SLIRC_KEYS_DIR"
+
+  compose ps
+  printf '\n'
+
+  if health="$(docker exec slirc bun -e 'const r = await fetch("http://127.0.0.1:8080/healthz"); if (!r.ok) process.exit(1); console.log(await r.text());' 2>/dev/null)"; then
+    printf 'Health:    ok (%s)\n' "$health"
+  else
+    printf 'Health:    unreachable\n'
+  fi
+
+  if version="$(docker exec slirc bun -e 'const r = await fetch("http://127.0.0.1:8080/api/version"); if (!r.ok) process.exit(1); console.log(await r.text());' 2>/dev/null)"; then
+    printf 'Version:   %s\n' "$version"
+  fi
+}
+
+cmd_logs() {
+  require_install
+  if [[ $# -eq 0 ]]; then
+    exec docker compose --project-directory "$INSTALL_DIR" -f "$COMPOSE_FILE" logs -f --tail=100
+  fi
+  exec docker compose --project-directory "$INSTALL_DIR" -f "$COMPOSE_FILE" logs -f --tail=100 "$@"
+}
+
+cmd_restart() {
+  require_install
+  load_dot_env
+  local target="${1:-slirc}"
+  case "$target" in
+    --all|all)
+      printf 'Restarting caddy, ergo, and slirc...\n'
+      compose restart
+      ;;
+    slirc|ergo|caddy)
+      printf 'Restarting %s...\n' "$target"
+      compose restart "$target"
+      ;;
+    *)
+      die "Unknown service: $target (expected slirc, ergo, caddy, or --all)"
+      ;;
+  esac
+
+  printf 'Waiting for Slirc to become healthy...\n'
+  if ! wait_for_health 30; then
+    die "Slirc did not pass /healthz within 60s. Check: slirc logs slirc"
+  fi
+  printf 'Done. Slirc is healthy.\n'
+}
+
+cmd_update() {
+  require_install
+  load_dot_env
+  local auto_mode=0
+  [[ "${1:-}" == "--auto" ]] && auto_mode=1
+
+  local old_app old_ergo old_caddy
+  old_app="$(container_image_id slirc)"
+  old_ergo="$(container_image_id slirc-ergo)"
+  old_caddy="$(container_image_id slirc-caddy)"
+
+  printf 'Checking for updated images...\n'
+  if [[ $auto_mode -eq 1 ]]; then
+    compose pull --quiet
+  else
+    compose pull
+  fi
+
+  local new_app new_ergo new_caddy
+  new_app="$(local_image_id "$SLIRC_IMAGE")"
+  new_ergo="$(local_image_id "$ERGO_IMAGE")"
+  new_caddy="$(local_image_id "$CADDY_IMAGE")"
+
+  local app_changed=0 ergo_changed=0 caddy_changed=0
+  [[ -z "$old_app" || "$old_app" != "$new_app" ]] && app_changed=1
+  [[ -z "$old_ergo" || "$old_ergo" != "$new_ergo" ]] && ergo_changed=1
+  [[ -z "$old_caddy" || "$old_caddy" != "$new_caddy" ]] && caddy_changed=1
+
+  if [[ $app_changed -eq 0 && $ergo_changed -eq 0 && $caddy_changed -eq 0 ]]; then
+    printf 'Already up to date.\n'
+    return 0
+  fi
+
+  # Update Ergo only if its image changed (preserves IRC sessions during routine app updates).
+  if [[ $ergo_changed -eq 1 ]]; then
+    printf 'Updating Ergo...\n'
+    compose up -d --no-deps ergo
+  fi
+
+  # Update Slirc app independently, rolling back automatically if /healthz fails.
+  if [[ $app_changed -eq 1 ]]; then
+    printf 'Updating Slirc app (keeping Ergo running)...\n'
+    compose up -d --no-deps slirc
+    printf 'Waiting for Slirc to become healthy...\n'
+    if ! wait_for_health 30; then
+      printf 'error: new Slirc image failed /healthz.\n' >&2
+      if [[ -n "$old_app" ]]; then
+        printf 'Rolling back Slirc to previous image (%s)...\n' "${old_app:0:19}" >&2
+        SLIRC_IMAGE="$old_app" compose up -d --no-deps slirc
+        if wait_for_health 30; then
+          die "Rolled back Slirc to previous healthy image. Check logs: slirc logs slirc"
+        fi
+      fi
+      die "Slirc did not pass /healthz within 60s. Check: slirc logs slirc"
+    fi
+  fi
+
+  if [[ $caddy_changed -eq 1 ]]; then
+    printf 'Updating Caddy...\n'
+    compose up -d --no-deps caddy
+  fi
+
+  if [[ "$ERGO_TLS_BIND" == "0.0.0.0" ]]; then
+    cmd_sync_certs --quiet || true
+  fi
+
+  # Clean up superseded untagged image layers so nightly updates do not fill disk.
+  docker image prune -f >/dev/null 2>&1 || true
+
+  local version
+  version="$(docker exec slirc bun -e 'const r = await fetch("http://127.0.0.1:8080/api/version"); if (r.ok) console.log(await r.text());' 2>/dev/null || true)"
+  printf 'Update complete. %s\n' "${version:+Version: $version}"
+}
+
+cmd_auto_update() {
+  require_install
+  local action="${1:-status}"
+  local bin_self
+  bin_self="$(command -v "$0" 2>/dev/null || printf '%s' "$0")"
+
+  case "$action" in
+    on|enable)
+      if has_systemd; then
+        cat > "$UPDATE_SERVICE" <<EOF
+[Unit]
+Description=Nightly Slirc image update
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=SLIRC_INSTALL_DIR=${INSTALL_DIR}
+ExecStart=${bin_self} update --auto
+EOF
+        cat > "$UPDATE_TIMER" <<'EOF'
+[Unit]
+Description=Check for Slirc updates nightly
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=30m
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+        systemctl daemon-reload
+        systemctl enable --now slirc-update.timer
+        rm -f "$CRON_AUTO_UPDATE"
+        printf 'Nightly automatic updates enabled (systemd timer slirc-update.timer).\n'
+      elif [[ -d "$(dirname "$CRON_AUTO_UPDATE")" ]]; then
+        cat > "$CRON_AUTO_UPDATE" <<EOF
+#!/bin/sh
+SLIRC_INSTALL_DIR="${INSTALL_DIR}" "${bin_self}" update --auto >> /var/log/slirc-update.log 2>&1 || true
+EOF
+        chmod 755 "$CRON_AUTO_UPDATE"
+        printf 'Nightly automatic updates enabled (%s).\n' "$CRON_AUTO_UPDATE"
+      else
+        die "Neither systemd nor /etc/cron.daily is available on this host"
+      fi
+      ;;
+    off|disable)
+      if has_systemd; then
+        systemctl disable --now slirc-update.timer >/dev/null 2>&1 || true
+        rm -f "$UPDATE_TIMER" "$UPDATE_SERVICE"
+        systemctl daemon-reload
+      fi
+      rm -f "$CRON_AUTO_UPDATE"
+      printf 'Nightly automatic updates disabled.\n'
+      ;;
+    status)
+      printf 'Auto-update: %s\n' "$(auto_update_status)"
+      if has_systemd && systemctl is-enabled slirc-update.timer >/dev/null 2>&1; then
+        systemctl list-timers --no-pager slirc-update.timer 2>/dev/null || true
+      fi
+      ;;
+    *)
+      die "Usage: slirc auto-update [on|off|status]"
+      ;;
+  esac
+}
+
+sqlite_snapshot() {
+  local src="$1"
+  local dst="$2"
+  [[ -f "$src" ]] || return 0
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$src" "$dst" <<'PY'
+import sqlite3, sys
+src_path, dst_path = sys.argv[1], sys.argv[2]
+src = sqlite3.connect(f"file:{src_path}?mode=ro", uri=True, timeout=30)
+dst = sqlite3.connect(dst_path)
+src.backup(dst)
+verdict = dst.execute("PRAGMA integrity_check").fetchone()[0]
+dst.close()
+src.close()
+if verdict != "ok":
+    sys.exit(f"{dst_path}: integrity_check returned {verdict}")
+PY
+    return 0
+  fi
+  if command -v sqlite3 >/dev/null 2>&1; then
+    sqlite3 "$src" ".timeout 30000" ".backup '$dst'"
+    local verdict
+    verdict="$(sqlite3 "$dst" "PRAGMA integrity_check;")"
+    [[ "$verdict" == "ok" ]] || die "$dst: integrity_check returned $verdict"
+    return 0
+  fi
+  # Fallback using Bun inside the already-pulled slirc image when host has neither python3 nor sqlite3.
+  local src_dir src_base dst_dir dst_base
+  src_dir="$(cd "$(dirname "$src")" && pwd)"
+  src_base="$(basename "$src")"
+  dst_dir="$(cd "$(dirname "$dst")" && pwd)"
+  dst_base="$(basename "$dst")"
+  docker run --rm \
+    -v "$src_dir:/src:ro" \
+    -v "$dst_dir:/dst" \
+    "$SLIRC_IMAGE" \
+    bun -e "
+      import { Database } from 'bun:sqlite';
+      const src = new Database('/src/${src_base}', { readonly: true });
+      src.exec('PRAGMA busy_timeout = 30000');
+      src.exec(\"VACUUM INTO '/dst/${dst_base}'\");
+      src.close();
+      const dst = new Database('/dst/${dst_base}', { readonly: true });
+      const row = dst.query('PRAGMA integrity_check').get() as { integrity_check: string };
+      dst.close();
+      if (row?.integrity_check !== 'ok') process.exit(1);
+    "
+}
+
+cmd_backup() {
+  require_install
+  load_dot_env
+  umask 077
+
+  local stamp dest_arg out_file backup_dir
+  stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+  backup_dir="$SLIRC_DATA_DIR/backups"
+  dest_arg="${1:-}"
+  if [[ -z "$dest_arg" ]]; then
+    mkdir -p "$backup_dir"
+    out_file="$backup_dir/slirc-backup-$stamp.tar.gz"
+  elif [[ -d "$dest_arg" ]]; then
+    out_file="${dest_arg%/}/slirc-backup-$stamp.tar.gz"
+  else
+    mkdir -p "$(dirname "$dest_arg")"
+    out_file="$dest_arg"
+  fi
+
+  local stage
+  stage="$(mktemp -d)"
+  trap 'rm -rf "$stage"' EXIT
+
+  local app_dir="$SLIRC_DATA_DIR/app"
+  local ergo_dir="$SLIRC_DATA_DIR/ergo"
+
+  mkdir -p "$stage/app" "$stage/ergo" "$stage/config"
+
+  # Consistent SQLite snapshots (WAL-safe, integrity-checked).
+  if [[ -f "$app_dir/chat.sqlite" ]]; then
+    sqlite_snapshot "$app_dir/chat.sqlite" "$stage/app/chat.sqlite"
+  fi
+  if [[ -f "$ergo_dir/ergo_history.db" ]]; then
+    sqlite_snapshot "$ergo_dir/ergo_history.db" "$stage/ergo/ergo_history.db"
+  fi
+
+  # Ergo account and channel store (append-only file).
+  if [[ -f "$ergo_dir/ircd.db" ]]; then
+    cp -p "$ergo_dir/ircd.db" "$stage/ergo/ircd.db"
+  fi
+
+  # App uploads, avatars, and any extra files beside chat.sqlite.
+  if [[ -d "$app_dir" ]]; then
+    (
+      cd "$app_dir"
+      shopt -s dotglob nullglob
+      for entry in *; do
+        case "$entry" in
+          chat.sqlite|chat.sqlite-wal|chat.sqlite-shm|chat.sqlite-journal|irc-key) continue ;;
+        esac
+        cp -a "$entry" "$stage/app/"
+      done
+    )
+  fi
+
+  # Config files (never includes irc-key from SLIRC_KEYS_DIR).
+  for f in compose.yaml .env app.env Caddyfile ergo.yaml ergo.motd; do
+    if [[ -f "$INSTALL_DIR/$f" ]]; then
+      cp -p "$INSTALL_DIR/$f" "$stage/config/$f"
+    fi
+  done
+
+  # Guard: refuse to ever package an irc-key file.
+  if find "$stage" -name 'irc-key' -print -quit | grep -q .; then
+    die "Refusing to create backup: irc-key found inside staging directory"
+  fi
+
+  # Checksums for everything inside the archive.
+  (
+    cd "$stage"
+    local sums_tmp
+    sums_tmp="$(mktemp)"
+    if command -v sha256sum >/dev/null 2>&1; then
+      find . -type f ! -name SHA256SUMS -exec sha256sum {} + | sort -k2 > "$sums_tmp"
+    elif command -v shasum >/dev/null 2>&1; then
+      find . -type f ! -name SHA256SUMS -exec shasum -a 256 {} + | sort -k2 > "$sums_tmp"
+    fi
+    mv "$sums_tmp" SHA256SUMS
+  )
+
+  tar -C "$stage" -czf "$out_file" .
+  chmod 600 "$out_file"
+  rm -rf "$stage"
+  trap - EXIT
+
+  printf 'Backup written to %s\n' "$out_file"
+  printf 'Note: %s/irc-key is intentionally excluded. Keep a separate copy in your password manager.\n' "$SLIRC_KEYS_DIR"
+}
+
+cmd_env() {
+  require_install
+  load_dot_env
+  local target="$APP_ENV"
+  local service="slirc"
+  if [[ "${1:-}" == "--compose" ]]; then
+    target="$DOT_ENV"
+    service=""
+  fi
+  [[ -f "$target" ]] || die "Missing $target"
+
+  local editor="${EDITOR:-}"
+  if [[ -z "$editor" ]]; then
+    if command -v nano >/dev/null 2>&1; then
+      editor="nano"
+    else
+      editor="vi"
+    fi
+  fi
+
+  local before after
+  before="$(cksum "$target")"
+  "$editor" "$target"
+  after="$(cksum "$target")"
+
+  if [[ "$before" == "$after" ]]; then
+    printf 'No changes to %s.\n' "$target"
+    return 0
+  fi
+
+  printf 'Recreating containers to apply %s...\n' "$target"
+  if [[ -n "$service" ]]; then
+    compose up -d --no-deps --force-recreate "$service"
+  else
+    compose up -d --force-recreate
+  fi
+
+  printf 'Waiting for Slirc to become healthy...\n'
+  if ! wait_for_health 30; then
+    die "Slirc did not pass /healthz within 60s. Check: slirc logs slirc"
+  fi
+  printf 'Done. Slirc is healthy.\n'
+}
+
+cmd_login_link() {
+  require_install
+  load_dot_env
+  local nick="${1:-}"
+  if [[ -z "$nick" ]]; then
+    nick="$(read_app_env_key OWNER_NICK)"
+  fi
+  [[ -n "$nick" ]] || die "Specify a nick or set OWNER_NICK in $APP_ENV"
+
+  docker exec -e "SLIRC_LOGIN_NICK=$nick" slirc bun -e '
+    import { createHash, randomBytes } from "node:crypto";
+    import { Database } from "bun:sqlite";
+
+    const nick = (process.env.SLIRC_LOGIN_NICK || "").trim().toLowerCase();
+    const origin = (process.env.APP_ORIGIN || `https://${process.env.APP_HOST}`).replace(/\/+$/, "");
+    const db = new Database(process.env.DB_PATH || "/data/chat.sqlite");
+    const row = db.query("SELECT nick FROM accounts WHERE nick = ? COLLATE NOCASE").get(nick) as { nick: string } | null;
+    if (!row) {
+      console.error(`Account "${nick}" not found.`);
+      process.exit(1);
+    }
+    const token = randomBytes(32).toString("base64url");
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+    const now = Date.now();
+    db.query("DELETE FROM magic_links WHERE expires_at < ?").run(now);
+    db.query("INSERT INTO magic_links (token_hash, nick, expires_at, created_at) VALUES (?, ?, ?, ?)")
+      .run(tokenHash, row.nick, now + 15 * 60_000, now);
+    console.log(`${origin}/auth/verify?token=${encodeURIComponent(token)}&next=%2F`);
+  '
+  printf '\nOne-time sign-in link for %s (valid for 15 minutes). Do not share it.\n' "$nick" >&2
+}
+
+cmd_sync_certs() {
+  require_install
+  load_dot_env
+  local quiet=0
+  [[ "${1:-}" == "--quiet" ]] && quiet=1
+
+  local cert_dir="$SLIRC_DATA_DIR/caddy/data/caddy/certificates"
+  local ergo_dir="$SLIRC_DATA_DIR/ergo"
+  local crt key
+
+  crt="$(find "$cert_dir" -type f -path "*/${SLIRC_DOMAIN}/${SLIRC_DOMAIN}.crt" 2>/dev/null | head -n 1 || true)"
+  key="$(find "$cert_dir" -type f -path "*/${SLIRC_DOMAIN}/${SLIRC_DOMAIN}.key" 2>/dev/null | head -n 1 || true)"
+
+  if [[ -z "$crt" || -z "$key" ]]; then
+    [[ $quiet -eq 1 ]] || printf 'No Caddy certificate found yet for %s under %s.\n' "$SLIRC_DOMAIN" "$cert_dir" >&2
+    return 1
+  fi
+
+  local changed=0
+  if ! cmp -s "$crt" "$ergo_dir/fullchain.pem" 2>/dev/null || ! cmp -s "$key" "$ergo_dir/privkey.pem" 2>/dev/null; then
+    install -m 600 "$crt" "$ergo_dir/fullchain.pem"
+    install -m 600 "$key" "$ergo_dir/privkey.pem"
+    changed=1
+  fi
+
+  if [[ $changed -eq 1 ]]; then
+    if docker inspect -f '{{.State.Running}}' slirc-ergo 2>/dev/null | grep -qx true; then
+      docker kill --signal=HUP slirc-ergo >/dev/null
+    fi
+    [[ $quiet -eq 1 ]] || printf 'Synced TLS certificate for %s to Ergo and reloaded.\n' "$SLIRC_DOMAIN"
+  else
+    [[ $quiet -eq 1 ]] || printf 'Ergo TLS certificate for %s is already up to date.\n' "$SLIRC_DOMAIN"
+  fi
+}
+
+cmd_uninstall() {
+  require_install
+  load_dot_env
+  local assume_yes=0
+  local purge=0
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --yes|-y) assume_yes=1 ;;
+      --purge) purge=1 ;;
+      *) die "Unknown option: $1" ;;
+    esac
+    shift
+  done
+
+  if [[ $assume_yes -eq 0 ]]; then
+    printf 'This will stop Slirc and remove %s and /usr/local/bin/slirc.\n' "$INSTALL_DIR"
+    printf 'Type "%s" to confirm: ' "$SLIRC_DOMAIN"
+    local reply
+    read -r reply
+    [[ "$reply" == "$SLIRC_DOMAIN" ]] || die "Aborted."
+  fi
+
+  if has_systemd; then
+    systemctl disable --now slirc-update.timer >/dev/null 2>&1 || true
+    rm -f "$UPDATE_TIMER" "$UPDATE_SERVICE"
+    systemctl daemon-reload
+  fi
+
+  compose down --remove-orphans || true
+  rm -f "$CRON_CERT_SYNC" "$CRON_AUTO_UPDATE"
+  rm -rf "$INSTALL_DIR"
+  rm -f /usr/local/bin/slirc
+
+  if [[ $purge -eq 0 && $assume_yes -eq 0 ]]; then
+    printf 'Also delete chat data (%s) and IRC key (%s)? [y/N]: ' "$SLIRC_DATA_DIR" "$SLIRC_KEYS_DIR"
+    local del_reply
+    read -r del_reply
+    if [[ "$del_reply" =~ ^[Yy]$ ]]; then
+      purge=1
+    fi
+  fi
+
+  if [[ $purge -eq 1 ]]; then
+    rm -rf "$SLIRC_DATA_DIR" "$SLIRC_KEYS_DIR"
+    printf 'Removed Slirc, data, and IRC key.\n'
+  else
+    printf 'Removed Slirc containers and config. Kept data in %s and IRC key in %s.\n' "$SLIRC_DATA_DIR" "$SLIRC_KEYS_DIR"
+  fi
+}
+
+subcmd="${1:-help}"
+shift || true
+
+if [[ "$subcmd" != "help" && "$subcmd" != "-h" && "$subcmd" != "--help" && "${EUID:-$(id -u)}" -ne 0 && "$INSTALL_DIR" == "/opt/slirc" ]]; then
+  if command -v sudo >/dev/null 2>&1; then
+    exec sudo --preserve-env=EDITOR,VISUAL,SLIRC_INSTALL_DIR "$0" "$subcmd" "$@"
+  fi
+  die "slirc $subcmd requires root privileges (re-run as root or with sudo)"
+fi
+
+case "$subcmd" in
+  status) cmd_status "$@" ;;
+  logs) cmd_logs "$@" ;;
+  restart) cmd_restart "$@" ;;
+  update) cmd_update "$@" ;;
+  auto-update) cmd_auto_update "$@" ;;
+  backup) cmd_backup "$@" ;;
+  env) cmd_env "$@" ;;
+  login-link) cmd_login_link "$@" ;;
+  sync-certs) cmd_sync_certs "$@" ;;
+  uninstall) cmd_uninstall "$@" ;;
+  help|-h|--help) cmd_help ;;
+  *) die "Unknown command: $subcmd (try: slirc help)" ;;
+esac

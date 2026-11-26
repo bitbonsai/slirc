@@ -1,0 +1,15 @@
+  <div x-data="messageActions" class="reaction-picker" :class="actions.reactionSearch && 'searching'" x-cloak x-show="actions.openReactionId" :style="actions.pickerStyle()" x-on:mouseleave="if (!actions.reactionSearch) actions.closeReactionPicker()" x-on:mousedown.outside="actions.closeReactionPicker()" x-on:keydown.escape="actions.closeReactionPicker()">
+    <template x-if="!actions.reactionSearch">
+      <div class="reaction-picker-presets">
+        <template x-for="emoji in reactionPresets" :key="emoji">
+          <button type="button" class="picker-reaction" :disabled="!reactionsReady()" :aria-label="'React with ' + emoji" x-on:click.stop="actions.pickEmoji(emoji)"><span class="pr-emoji" x-text="emoji"></span></button>
+        </template>
+        <button type="button" class="picker-reaction reaction-search-open" :disabled="!reactionsReady()" aria-label="Add reaction" x-tooltip x-on:click.stop="actions.openReactionSearch()"><span class="pr-icon" aria-hidden="true" x-html="lucideIcon('smile-plus')"></span></button>
+      </div>
+    </template>
+    <template x-if="actions.reactionSearch">
+      <div class="reaction-search">
+<!-- include: reaction-search -->
+      </div>
+    </template>
+  </div>

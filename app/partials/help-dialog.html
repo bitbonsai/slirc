@@ -1,0 +1,12 @@
+  <dialog id="help-dialog" class="custom-modal palette-modal" x-data="helpDialog" x-cloak x-on:cancel.prevent="close()" x-on:click="if ($event.target === $el) close()">
+    <section class="palette" role="dialog" aria-modal="true" aria-label="Help">
+      <input id="help-search" class="palette-input" x-ref="search" type="text" aria-label="Search help" autocomplete="off" spellcheck="false" placeholder="Search help" x-model="query" x-on:input="editor.onInput($event)" x-on:keydown="keydown($event)" />
+      <div class="palette-list" x-ref="list" role="listbox" aria-label="Help">
+        <template x-for="(topic, i) in filtered()" :key="topic.command">
+          <button type="button" role="option" :class="i === index && 'active'" :aria-selected="i === index" x-on:mouseenter="index = i" x-on:click="choose(topic)"><span class="palette-slash" x-text="topic.command"></span><span class="palette-copy"><small x-text="topic.description"></small></span></button>
+        </template>
+        <p class="palette-empty" x-show="!filtered().length">No help matches.</p>
+      </div>
+      <p class="palette-foot"><span class="palette-hint"><kbd>&uarr;</kbd><kbd>&darr;</kbd> move</span><span class="palette-hint"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('corner-down-right')"></span> open</span><span class="palette-hint"><kbd>esc</kbd> close</span></p>
+    </section>
+  </dialog>

@@ -1,0 +1,16 @@
+<div x-show="!actions.remindOpen">
+  <button type="button" x-show="canEdit(message)" x-on:click="startEdit(message)"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('pencil')"></span>Edit</button>
+  <button type="button" x-show="!activeThread && !notesOpen && !actions.panelMenu" x-on:click="openThreadForMessage(message)"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('corner-down-right')"></span>Reply in thread</button>
+  <button type="button" x-show="!notesOpen" x-on:click="actions.openRemind()"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('bell')"></span>Remind me</button>
+  <button type="button" x-show="!notesOpen" x-on:click="copyMessageLink(message)"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('link')"></span>Copy link</button>
+  <button type="button" class="danger" x-show="canDelete(message)" x-on:click="actions.requestDelete(message)"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('trash')"></span>Delete</button>
+</div>
+<div class="remind-presets" x-show="actions.remindOpen && !actions.remindForm" role="group" aria-label="Remind me">
+  <template x-for="preset in actions.remindPresets" :key="preset.when"><button type="button" x-on:click="actions.remindAt(preset.when)" x-text="preset.label"></button></template>
+  <button type="button" x-on:click="actions.openRemindForm()">Custom…</button>
+</div>
+<form class="remind-form" x-show="actions.remindForm" novalidate x-on:submit.prevent="actions.remindCustom()">
+  <label>Date and time<input type="datetime-local" x-model="actions.remindValue" :min="actions.remindMin" :max="actions.remindMax" x-on:input="actions.remindError = ''" x-on:keydown.enter.prevent="actions.remindCustom()" /></label>
+  <p class="profile-error" role="alert" x-show="actions.remindError" x-text="actions.remindError"></p>
+  <div class="remind-form-actions"><button type="button" class="btn-secondary" x-on:click="actions.remindBack()">Back</button><button type="submit" class="btn-primary">Set reminder</button></div>
+</form>

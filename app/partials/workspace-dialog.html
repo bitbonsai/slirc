@@ -1,0 +1,18 @@
+  <dialog id="workspace-dialog" class="custom-modal" aria-labelledby="workspace-dialog-title" x-cloak x-effect="const show = authenticated && workspaceDialog; if (show && !$el.open) { $el.showModal(); $el.querySelector('#workspace-address')?.focus() } else if (!show && $el.open) $el.close()" x-on:cancel.prevent="closeWorkspaces()" x-on:click="if ($event.target === $el) closeWorkspaces()">
+    <section class="notice-card workspace-card">
+      <h2 id="workspace-dialog-title">Workspaces</h2>
+      <p>Each workspace keeps its own sign-in.</p>
+      <form class="workspace-form" x-on:submit.prevent="openTypedWorkspace()">
+        <input id="workspace-address" class="agent-rename-input" type="text" inputmode="url" enterkeyhint="go" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Find or open a workspace" aria-label="Find or open a workspace" aria-controls="workspace-list" autofocus x-model="workspaceAddress" x-on:input="workspaceError = ''" :disabled="workspaceBusy" />
+      </form>
+      <div id="workspace-list" class="workspace-list" role="group" aria-label="Workspaces" x-effect="workspaceFilter(); $nextTick(() => animateListHeight($el))">
+        <template x-for="(item, index) in workspaceFilter().rows" :key="item.origin">
+          <button type="button" class="workspace-row" :tabindex="index === 0 ? 0 : -1" :aria-current="item.current ? 'true' : null" :disabled="workspaceBusy" x-on:click="pickWorkspace(item.origin)"><span class="workspace-badge" aria-hidden="true" :class="item.logo ? 'logo' : item.iconReady ? 'logo icon' : ''" :style="item.logo || item.iconReady ? '' : 'background:' + item.color"><img x-show="item.logo || item.iconReady" :src="item.logo || item.icon || null" alt="" x-on:load="if (!item.logo) item.iconReady = true" x-on:error="item.iconReady = false" /><span x-show="!item.logo && !item.iconReady" x-text="item.letter"></span></span><span class="workspace-row-main"><strong x-text="item.name"></strong><small x-text="item.note || item.host"></small></span><span class="workspace-current" x-show="item.current">Current</span><span class="workspace-row-end" aria-hidden="true" x-show="!item.current" x-html="lucideIcon('chevron-right')"></span></button>
+        </template>
+        <template x-if="workspaceFilter().open">
+          <button type="button" class="workspace-row workspace-row-open" tabindex="0" :disabled="workspaceBusy" x-on:click="openTypedWorkspace()"><span class="workspace-badge" aria-hidden="true" x-html="lucideIcon('plus')"></span><span class="workspace-row-main"><strong x-text="'Open ' + workspaceFilter().open.label"></strong><small>Add this workspace</small></span><span class="workspace-row-end" aria-hidden="true" x-html="lucideIcon('chevron-right')"></span></button>
+        </template>
+      </div>
+      <p class="profile-error" role="alert" x-show="workspaceError" x-text="workspaceError"></p>
+    </section>
+  </dialog>

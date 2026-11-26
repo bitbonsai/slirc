@@ -1,0 +1,49 @@
+  <div x-data="settingsPage" class="profile-page settings-page" data-phone-screen="settings" :class="isDesktop ? 'profile-page-desktop' : 'mobile-screen profile-screen'" x-cloak x-show="authenticated && settingsRoute">
+    <div class="mobile-screen-head" x-show="!isDesktop"><div class="home-brand"><a class="home-brand profile-back" href="/profile" aria-label="Back to Profile" x-on:click.prevent="openProfile()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a><strong>Devices</strong></div></div>
+    <div class="profile-page-body" :class="{ 'mobile-screen-body': !isDesktop }">
+      <section class="profile-dialog-card profile-screen-card">
+        <div class="profile-heading" x-show="isDesktop"><div class="profile-modal-avatar"><img :src="avatarUrl(account)" alt="" /></div><div><h2><span x-text="me"></span><span class="admin-badge" x-show="isAdmin" role="img" aria-label="Administrator" x-html="lucideIcon('user-star')"></span></h2><p x-text="'@' + account"></p></div></div>
+<!-- include: account-navigation -->
+        <section class="phone-offer" x-show="isDesktop" x-effect="if (!authenticated || !settingsRoute) phoneOffer.close(); else if (isDesktop && !booting) loadIphoneApp(account)" x-on:keydown.escape="if (phoneOffer.open) { phoneOffer.close(); $refs.phoneOfferShow.focus() }">
+          <div class="phone-offer-intro">
+            <span class="phone-offer-mark" aria-hidden="true" x-html="lucideIcon('smartphone')"></span>
+            <div><h3>Add your phone</h3><p>Scan a code with your phone's camera and it's signed in to this account. Nothing to type.</p></div>
+            <button type="button" class="btn-primary" x-ref="phoneOfferShow" :aria-expanded="phoneOffer.open" aria-controls="phone-offer-card" x-on:click="phoneOffer.toggle()" x-text="phoneOffer.open ? 'Hide code' : 'Show code'"></button>
+          </div>
+          <p class="phone-offer-app" x-show="iphoneAppUrl"><a class="link-button" :href="iphoneAppUrl || null" target="_blank" rel="noopener noreferrer"><span>Get the iPhone app</span><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('external-link')"></span></a> TestFlight beta. Install it first, then scan the code to sign in.</p>
+          <a class="link-button phone-offer-welcome" x-show="!iphoneAppUrl" href="/welcome">Then put Slirc on your phone's Home Screen, so it opens like an app</a>
+          <div id="phone-offer-card" class="phone-offer-card" x-show="phoneOffer.open" aria-live="polite">
+            <template x-if="phoneOffer.url"><span class="invite-qr" x-effect="pairing.renderPairQr($el, phoneOffer.url)"></span></template>
+            <p class="pair-panel-copy" x-show="phoneOffer.url">Scan with your phone's camera to sign in there.</p>
+            <p class="phone-offer-countdown" x-show="phoneOffer.url" x-text="'New code in ' + phoneOffer.secondsLeft + ' s'"></p>
+            <p class="profile-note" role="status" x-show="phoneOffer.busy && !phoneOffer.url">Making a code…</p>
+            <p class="profile-note" role="status" x-show="phoneOffer.device && !phoneOffer.signedOut"><strong x-text="phoneOffer.device"></strong> signed in.</p>
+            <button type="button" class="link-button danger" x-show="phoneOffer.device && !phoneOffer.signedOut" :disabled="phoneOffer.signOutBusy" x-on:click="phoneOffer.signOut()" x-text="phoneOffer.signOutBusy ? 'Signing out…' : 'Not you? Sign it out'"></button>
+            <p class="profile-note" role="status" x-show="phoneOffer.signedOut">Signed out.</p>
+            <p class="profile-error" role="alert" x-show="phoneOffer.error" x-text="phoneOffer.error"></p>
+            <button type="button" class="btn-secondary" x-show="phoneOffer.stale && !phoneOffer.busy" x-on:click="phoneOffer.again()">Show code again</button>
+          </div>
+        </section>
+        <section class="session-settings">
+          <h3 id="settings-sessions-title" tabindex="-1">Sessions</h3>
+          <p>Browsers signed in as <strong x-text="account"></strong>.</p>
+          <form class="pair-code-form" x-on:submit.prevent="pairing.lookupPair()">
+            <label>Have a code from another device?<input type="text" x-code="digits" inputmode="numeric" autocomplete="one-time-code" placeholder="123 456" x-model="pairing.pairLookupDraft" :disabled="pairing.approvalBusy" /></label>
+            <button type="submit" class="btn-secondary" :disabled="pairing.approvalBusy || !pairing.pairCodeComplete()">Review</button>
+          </form>
+          <p class="profile-error" role="alert" x-show="pairing.approvalError" x-text="pairing.approvalError"></p>
+          <p class="profile-note" role="status" x-show="pairing.pendingPair === 'approved' || pairing.pendingPair === 'denied'" x-text="pairing.pendingPair === 'approved' ? 'Device linked.' : 'Sign-in request denied.'"></p>
+          <p class="profile-note" role="status" x-show="settings.sessionsBusy && !settings.sessionsLoaded">Loading sessions…</p>
+          <p class="profile-error" role="alert" x-show="settings.sessionsError && !settings.signOutTarget" x-text="settings.sessionsError"></p>
+          <button type="button" class="link-button" x-show="settings.sessionsError && !settings.signOutTarget" :disabled="settings.sessionsBusy" x-on:click="settings.loadSessions()">Try again</button>
+          <div class="session-list"><template x-for="item in settings.sessions.slice(0, 3)" :key="item.id"><div class="session-row"><span><strong><span x-text="item.device"></span><b x-show="item.current">Current</b></strong><small x-text="'Signed in ' + settings.sessionDate(item.createdAt)"></small></span><button type="button" class="link-button danger" x-show="!item.current" :disabled="settings.sessionsBusy" :aria-label="'Sign out ' + item.device" x-on:click="settings.askSignOut(item.id, $el)">Sign out</button></div></template></div>
+          <details class="session-more" x-show="settings.sessions.length > 3"><summary x-text="'More (' + Math.max(0, settings.sessions.length - 3) + ')'"></summary><div class="session-list"><template x-for="item in settings.sessions.slice(3)" :key="item.id"><div class="session-row"><span><strong x-text="item.device"></strong><small x-text="'Signed in ' + settings.sessionDate(item.createdAt)"></small></span><button type="button" class="link-button danger" :disabled="settings.sessionsBusy" :aria-label="'Sign out ' + item.device" x-on:click="settings.askSignOut(item.id, $el)">Sign out</button></div></template></div></details>
+          <p class="profile-note" x-show="settings.sessionsLoaded && !settings.sessions.length">No browser sessions found.</p>
+          <button type="button" class="link-button danger irc-device-remove-all" x-show="settings.sessions.some(item => !item.current)" :disabled="settings.sessionsBusy" x-on:click="settings.askSignOut(null, $el)">Sign out other sessions</button>
+        </section>
+      </section>
+    </div>
+    <dialog class="custom-modal" aria-labelledby="settings-signout-title" tabindex="-1" x-on:keydown="settings.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && settingsRoute && settings.signOutTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!settings.sessionsBusy) settings.closeSignOut()">
+      <section class="notice-card"><h2 id="settings-signout-title">Sign out browser?</h2><p>You will need to sign in again on <strong x-text="settings.signOutTarget?.label"></strong>. This browser stays signed in.</p><p class="profile-error" role="alert" x-show="settings.sessionsError" x-text="settings.sessionsError"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="settings.sessionsBusy" x-on:click="settings.closeSignOut()">Cancel</button><button type="button" class="btn-primary" :disabled="settings.sessionsBusy" x-on:click="settings.confirmSignOut()" x-text="settings.sessionsBusy ? 'Signing out…' : 'Sign out'"></button></div></section>
+    </dialog>
+  </div>

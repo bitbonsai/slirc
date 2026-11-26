@@ -1,0 +1,70 @@
+  <dialog x-data="peopleCard" id="whois-dialog" class="custom-modal" x-cloak x-effect="const open = !!people.whoisNick; if (open && !$el.open) $el.showModal(); else if (!open && $el.open) $el.close()" x-on:cancel.prevent="people.closeWhois()" x-on:click="if ($event.target === $el) people.closeWhois()">
+    <section class="notice-card whois-card" role="dialog" aria-labelledby="whois-title" tabindex="-1" autofocus>
+      <button type="button" class="profile-close" aria-label="Close" x-tooltip x-on:click="people.closeWhois()" x-html="lucideIcon('x')"></button>
+      <div class="whois-heading">
+        <span class="whois-avatar"><img :src="people.whoisAvatarUrl()" alt="" /></span>
+        <div class="whois-identity">
+          <h2 id="whois-title" x-text="people.whoisInfo()?.profile?.fullName || people.whoisNick"></h2>
+          <p class="whois-handle" x-text="'@' + (people.whoisInfo()?.profile?.account || people.whoisInfo()?.account || people.whoisNick)"></p>
+          <p class="whois-status" x-show="people.whoisInfo()?.profile?.availability" x-text="people.whoisInfo()?.profile?.availability"></p>
+          <span class="whois-skeleton status" x-show="people.whoisInfo()?.profileLoading && !people.whoisInfo()?.profile"></span>
+        </div>
+      </div>
+      <p class="whois-about" x-show="people.whoisInfo()?.profile?.about" x-text="people.whoisInfo()?.profile?.about"></p>
+      <span class="whois-skeleton about" x-show="people.whoisInfo()?.profileLoading && !people.whoisInfo()?.profile"></span>
+      <p class="whois-error" x-show="people.whoisInfo()?.profileError" role="status"><span x-text="people.whoisInfo()?.profileError"></span> <button type="button" class="link-button" x-on:click="people.retryWhois()">Retry</button></p>
+      <div class="whois-shared" :class="people.whoisInfo()?.loading && 'loading'" :aria-busy="!!people.whoisInfo()?.loading">
+        <div class="whois-shared-placeholder" x-show="people.whoisInfo()?.loading" role="status" aria-label="Loading shared conversations">
+          <section class="whois-section"><h3 class="whois-section-title">Shared channels</h3><div class="whois-rows"><span class="whois-skeleton row"></span><span class="whois-skeleton row"></span></div></section>
+          <section class="whois-section"><h3 class="whois-section-title">Shared DMs</h3><span class="whois-skeleton row"></span></section>
+        </div>
+        <p class="whois-error" x-show="people.whoisInfo()?.error" role="status"><span x-text="people.whoisInfo()?.error"></span> <button type="button" class="link-button" x-on:click="people.retryWhois()">Retry</button></p>
+        <div class="whois-shared-content" x-show="!people.whoisInfo()?.loading && !people.whoisInfo()?.error">
+          <section class="whois-section" x-show="people.whoisShared().channels.length">
+            <h3 class="whois-section-title">Shared channels</h3>
+            <div class="whois-rows"><template x-for="row in people.whoisShared().channels" :key="row.conversationId">
+              <button type="button" class="whois-row" x-on:click="people.openShared(row)"><span class="room-mark channel" aria-hidden="true"><span class="channel-hash">#</span></span><span class="whois-row-name" x-text="row.label"></span></button>
+            </template></div>
+          </section>
+          <section class="whois-section" x-show="people.whoisShared().dms.length">
+            <h3 class="whois-section-title">Shared DMs</h3>
+            <div class="whois-rows"><template x-for="row in people.whoisShared().dms" :key="row.conversationId">
+              <button type="button" class="whois-row" x-on:click="people.openShared(row)"><span class="whois-pile" aria-hidden="true" :class="people.groupMembersState(row.wireTarget) === 'loading' && 'loading'"><span class="whois-skeleton pile" x-show="people.groupMembersState(row.wireTarget) === 'loading'"></span><template x-for="nick in (people.groupMembersState(row.wireTarget) === 'ready' ? row.people : [])" :key="nick"><span class="room-mark peer-avatar"><span>@</span><img :src="people.personAvatarUrl(nick)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span></template><span class="whois-pile-extra" x-show="row.extra" x-text="'+' + row.extra"></span></span><span class="whois-row-name" x-text="row.label"></span></button>
+            </template></div>
+          </section>
+          <section class="whois-section" x-show="people.whoisShared().threads.length">
+            <h3 class="whois-section-title">Shared threads</h3>
+            <div class="whois-rows"><template x-for="row in people.whoisShared().threads" :key="row.conversationId">
+              <button type="button" class="whois-row" x-on:click="people.openShared(row)"><span class="room-mark" aria-hidden="true"><svg viewBox="0 0 24 24" style="width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="m15 10 5 5-5 5"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/></svg></span><span class="whois-row-copy"><span class="whois-row-name" x-text="row.label"></span><small x-text="row.parentLabel"></small></span></button>
+            </template></div>
+          </section>
+          <p class="whois-error" x-show="Object.values(people.groupMemberState).includes('error')" role="status">Group avatars unavailable. <button type="button" class="link-button" x-on:click="people.retryGroupMembers()">Retry</button></p>
+        </div>
+      </div>
+      <details class="whois-details">
+        <summary><span class="whois-details-chevron" x-html="lucideIcon('chevron-right')"></span><span>IRC details</span></summary>
+        <div class="whois-details-body" :class="people.whoisInfo()?.loading && 'loading'" :aria-busy="!!people.whoisInfo()?.loading">
+          <p class="whois-details-loading" x-show="people.whoisInfo()?.loading">Loading…</p>
+          <p class="whois-error" x-show="people.whoisInfo()?.error" x-text="people.whoisInfo()?.error"></p>
+          <dl class="whois-list">
+            <div x-show="people.whoisInfo()?.loading || (people.whoisInfo()?.user || people.whoisInfo()?.host)"><dt>Address</dt><dd :class="people.whoisInfo()?.loading && 'whois-skeleton'" x-text="people.whoisInfo()?.loading ? '' : (people.whoisInfo()?.user || '?') + '@' + (people.whoisInfo()?.host || 'hidden')"></dd></div>
+            <div x-show="people.whoisInfo()?.loading || (people.whoisInfo()?.account)"><dt>Account</dt><dd :class="people.whoisInfo()?.loading && 'whois-skeleton'" x-text="people.whoisInfo()?.loading ? '' : people.whoisInfo()?.account === '*' ? 'not signed in' : people.whoisInfo()?.account"></dd></div>
+            <div x-show="people.whoisInfo()?.loading || (people.whoisInfo()?.server)"><dt>Server</dt><dd :class="people.whoisInfo()?.loading && 'whois-skeleton'" x-text="people.whoisInfo()?.loading ? '' : people.whoisInfo()?.server"></dd></div>
+            <div x-show="people.whoisInfo()?.loading || (people.whoisInfo()?.realname && people.whoisInfo()?.realname !== people.whoisInfo()?.profile?.fullName)"><dt>Real name</dt><dd :class="people.whoisInfo()?.loading && 'whois-skeleton'" x-text="people.whoisInfo()?.loading ? '' : people.whoisInfo()?.realname"></dd></div>
+          </dl>
+        </div>
+      </details>
+      <div class="whois-remove" x-show="people.removeConfirm" role="alert">
+        <p>Remove <strong x-text="people.removeName()"></strong>? They leave every channel, thread and DM here, and can't sign in again with this email. Their messages stay.</p>
+        <p class="profile-error" x-show="people.removeError" x-text="people.removeError"></p>
+      </div>
+      <div class="pair-actions" x-show="!people.removeConfirm">
+        <button type="button" class="btn-secondary" x-show="people.canRemove()" x-on:click="people.removeConfirm = true; $nextTick(() => $refs.removeCancel.focus())">Remove member</button>
+        <button type="button" class="btn-primary" x-show="people.whoisNick && !people.isMe(people.whoisNick)" x-on:click="people.messageMention(people.whoisNick)">Message</button>
+      </div>
+      <div class="pair-actions" x-show="people.removeConfirm">
+        <button type="button" class="btn-secondary" x-ref="removeCancel" :disabled="people.removeBusy" x-on:click="people.removeConfirm = false; people.removeError = ''">Cancel</button>
+        <button type="button" class="btn-danger" :disabled="people.removeBusy" x-on:click="people.removeMember()" x-text="people.removeBusy ? 'Removing…' : 'Remove ' + people.removeName()"></button>
+      </div>
+    </section>
+  </dialog>

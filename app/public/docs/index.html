@@ -1,0 +1,136 @@
+<!-- generated from app/docs/*.md — edit there, then run: bun run docs -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#11111b" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="description" content="Documentation for Slirc, a self-hosted Slack alternative built on IRC." />
+  <title>Slirc docs</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="alternate" type="text/markdown" href="/docs/home.md" />
+  <script src="/theme.js?v=844fef47"></script>
+  <link rel="stylesheet" href="/docs/docs.css?v=39" />
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="app-back" id="app-back" hidden><a class="app-back-link" href="/more" aria-label="Back to Slirc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 4 12l7 7"/></svg>Back</a></div>
+
+  <header class="topbar">
+    <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-nav">
+      <svg class="menu-icon menu-bars" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>
+      <svg class="menu-icon menu-close" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+    <a class="brand" href="/docs"><img class="brand-lockup" src="/brand-org-dark.svg" width="233" height="73" alt="Slirc" /><span class="tag">docs</span></a>
+    <button class="search-toggle" id="search-toggle" type="button" aria-label="Search the docs" aria-expanded="false" aria-controls="docs-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 4.5 4.5"/></svg>
+    </button>
+    <div class="docs-search" id="docs-search" role="search" data-docs-search>
+      <label class="visually-hidden" for="docs-search-input">Search the docs</label>
+      <span class="docs-search-field">
+        <svg class="docs-search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5"/></svg>
+        <input id="docs-search-input" class="docs-search-input" type="search" placeholder="Search docs…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="docs-search-results" aria-autocomplete="list" />
+        <kbd class="docs-search-key" aria-hidden="true">⌘K</kbd>
+      </span>
+      <div id="docs-search-results" class="docs-search-results" role="listbox" aria-label="Search results" hidden></div>
+      <p class="docs-search-status visually-hidden" aria-live="polite"></p>
+    </div>
+    <a class="open-app-mobile" href="/open-chat">Open chat</a>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" id="docs-nav" aria-label="Documentation" hidden>
+      <div class="nav-content">
+      <a class="nav-link nav-app" href="/open-chat">Open chat</a>
+      <p class="nav-section">Guides</p>
+      <a class="nav-link active" href="/docs" aria-current="page">Home</a>
+      <a class="nav-link" href="/docs/getting-started">Getting started</a>
+      <a class="nav-link" href="/docs/download">Download</a>
+      <a class="nav-link" href="/docs/channels">Channels & invites</a>
+      <a class="nav-link" href="/docs/messages">Messages & media</a>
+      <a class="nav-link sub" href="/docs/threads">Threads</a>
+      <a class="nav-link" href="/docs/notifications">Notifications</a>
+      <a class="nav-link" href="/docs/privacy">Privacy & safety</a>
+      <p class="nav-section">Connect</p>
+      <a class="nav-link" href="/docs/clients">IRC clients</a>
+      <a class="nav-link" href="/docs/agents">Agents</a>
+      <a class="nav-link" href="/docs/bots">Bots</a>
+      <a class="nav-link" href="/docs/setup">Self-hosting</a>
+      <p class="nav-section">Reference</p>
+      <a class="nav-link" href="/docs/design">Design system</a>
+      <p class="nav-section">About</p>
+      <a class="nav-link" href="/docs/about">About Slirc</a>
+      <a class="nav-link" href="/docs/comparison">Footprint</a>
+      <a class="nav-link" href="/docs/faq">FAQ</a>
+      </div>
+    </nav>
+
+    <main id="main">
+      <div class="docs-search" id="docs-home-search" role="search" data-docs-search>
+        <label class="visually-hidden" for="docs-home-search-input">Search the docs</label>
+        <span class="docs-search-field">
+          <svg class="docs-search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5"/></svg>
+          <input id="docs-home-search-input" class="docs-search-input" type="search" placeholder="Search the docs" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="docs-home-search-results" aria-autocomplete="list" />
+          <kbd class="docs-search-key" aria-hidden="true">⌘K</kbd>
+        </span>
+        <div id="docs-home-search-results" class="docs-search-results" role="listbox" aria-label="Search results" hidden></div>
+        <p class="docs-search-status visually-hidden" aria-live="polite"></p>
+      </div>
+      <div class="callout info prelaunch-note"><p>Slirc is in early access. Come say hi in <a href="/open-chat">#open-chat</a>.</p></div>
+<div class="hero">
+  <p class="eyebrow">Slirc documentation</p>
+  <h1>Slack, without giving up IRC.</h1>
+  <p class="lead">Slirc combines familiar team chat with an open protocol and hardware you control. Your coding agent can join too: Pi, Claude Code, Codex and OpenCode work today, and more are coming. These guides explain the app and what stays available from ordinary IRC clients.</p>
+  <div class="grid">
+    <a class="card" href="/docs/getting-started"><strong>Getting started</strong><span>Join with your email, say hi in <code>#open-chat</code>, and sign in on your other devices.</span></a>
+    <a class="card" href="/docs/download"><strong>Download</strong><span>The Mac and iPhone apps, and installing Slirc from the browser on Windows, Android and Linux.</span></a>
+    <a class="card" href="/docs/agents"><strong>Agents</strong><span>Connect a Pi, Claude Code, Codex or OpenCode session and talk to it from your phone.</span></a>
+    <a class="card" href="/docs/channels"><strong>Channels &amp; invites</strong><span>How channels and direct messages work, and how invite links get you in.</span></a>
+    <a class="card" href="/docs/messages"><strong>Messages &amp; media</strong><span>Send, format, react, edit, and share images, videos, and links.</span></a>
+    <a class="card" href="/docs/threads"><strong>Threads</strong><span>Turn one message into a focused conversation that stays portable.</span></a>
+    <a class="card" href="/docs/notifications"><strong>Notifications</strong><span>Choose when Slirc should get your attention across your devices.</span></a>
+    <a class="card" href="/docs/clients"><strong>IRC clients</strong><span>Halloy, Senpai, WeeChat, Textual, and Revolution IRC, with a password or a certificate.</span></a>
+    <a class="card" href="/docs/bots"><strong>Bots</strong><span>The <code>@remind</code>, <code>@help</code> and <code>@poll</code> helpers, and IRC accounts for your own scripts.</span></a>
+    <a class="card" href="/docs/privacy"><strong>Privacy &amp; safety</strong><span>Where your data lives, how access is gated, and what stays private.</span></a>
+    <a class="card" href="/docs/setup"><strong>Self-hosting</strong><span>Run Slirc on your own server, from a fresh Linux box to your first message.</span></a>
+    <a class="card" href="/docs/comparison"><strong>Footprint</strong><span>Measured RAM, CPU, and disk next to Campfire, and the server ladder that follows.</span></a>
+    <a class="card" href="/docs/faq"><strong>FAQ</strong><span>Cost, IRC clients, agents, deletion, iPhone push, and group size.</span></a>
+  </div>
+</div>
+<h2 id="what-is-slirc">What is Slirc?</h2>
+<p>Slirc is a self-hosted team chat. The app, in the browser or on Mac and iPhone, gives you channels, direct messages, reactions, threads, media, and notifications. Ergo IRC handles accounts, rooms, permissions, messages, reactions, and history. Scripts, bots and your coding agent join as ordinary members.</p>
+<p>Everything stays legible in an ordinary IRC client. Threads are channels, uploads are URLs, and history does not depend on one proprietary interface.</p>
+<h2 id="how-to-use-these-guides">How to use these guides</h2>
+<p>Start with <a href="/docs/getting-started">Getting started</a> to sign in, and <a href="/docs/download">Download</a> to get the app on your devices. The rest of the guides map to what you do day to day:</p>
+<ul>
+<li><a href="/docs/channels">Channels &amp; invites</a>: channels, direct messages, and invitation links.</li>
+<li><a href="/docs/messages">Messages &amp; media</a>: formatting, reactions, edits, uploads, and previews.</li>
+<li><a href="/docs/threads">Threads</a>: focused replies that stay in their channel as standard IRC <code>+reply</code> messages.</li>
+<li><a href="/docs/notifications">Notifications</a>: choosing when Slirc gets your attention.</li>
+<li><a href="/docs/agents">Agents</a>: connect your coding agent. Pi, Claude Code, Codex and OpenCode work today.</li>
+<li><a href="/docs/bots">Bots</a>: the <code>@remind</code>, <code>@help</code> and <code>@poll</code> helpers, and IRC accounts your own scripts log in as.</li>
+<li><a href="/docs/clients">IRC clients</a>: connecting a terminal or desktop client.</li>
+<li><a href="/docs/privacy">Privacy &amp; safety</a>: data, access boundaries, and account safety.</li>
+<li><a href="/docs/setup">Self-hosting</a>: running Slirc on your own server.</li>
+<li><a href="/docs/faq">FAQ</a>: short answers to the questions people bring first.</li>
+</ul>
+<div class="callout info"><h4 id="note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Note</h4><p>Looking for a specific command? The <code>/help</code> command inside the app lists everything available.</p></div>
+
+      <footer class="doc-footer">
+        <p class="doc-footer-meta"><a href="/docs">All guides</a> · <a href="/docs/home.md">markdown</a></p>
+        <nav class="pager" aria-label="Page navigation">
+        <span class="pager-box prev empty" aria-hidden="true"></span>
+        <a class="pager-box next" href="/docs/getting-started"><small>Next →</small><span>Getting started</span></a>
+        </nav>
+      </footer>
+    </main>
+    <nav class="toc" id="page-nav" aria-label="On this page"></nav>
+  </div>
+
+  <script type="module" src="/docs/glow.js"></script>
+  <script src="/docs/docs.js?v=16" defer></script>
+  <script src="/docs/app-back.js?v=26d58c4a" defer></script>
+  <script type="module" src="/docs/search.js?v=1f3b3dfc&amp;index=9725c03e"></script>
+</body>
+</html>

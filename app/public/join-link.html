@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#11111b">
+  <title>Join {{host}} on Slirc</title>
+  <meta name="description" content="A chat workspace on Slirc. Enter your email and we send you a link to join.">
+  <meta property="og:site_name" content="Slirc">
+  <meta property="og:title" content="Join {{host}} on Slirc">
+  <meta property="og:description" content="A chat workspace on Slirc. Enter your email and we send you a link to join.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <style>
+    :root { color-scheme: dark; --bg: #11111b; --panel: #181825; --panel-hi: #313244; --line: #313244; --text: #cdd6f4; --muted: #7f849c; --brand: #a6e3a1; --danger: #f38ba8; --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; --mono: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, monospace; }
+    :root[data-brand="app"] img.brand-wordmark { content: url("/brand-app-dark.svg"); }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body { min-height: 100svh; display: grid; place-items: center; padding: 2.5rem 1.25rem; background: radial-gradient(60rem 34rem at 70% -12rem, #1e1e2e 0, transparent 72%), var(--bg); color: var(--text); font: 1rem/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
+    main { width: min(30rem, 100%); display: grid; gap: 1.25rem; justify-items: start; }
+    .brand img { height: 2.3rem; width: auto; display: block; margin-bottom: 1rem; }
+    .eyebrow { margin: 0; color: var(--brand); font: 600 .75rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(2.2rem, 8vw, 3.4rem); font-weight: 700; letter-spacing: -.04em; line-height: 1.05; }
+    h1 span { color: var(--brand); opacity: .5; }
+    p { margin: 0; color: color-mix(in srgb, var(--text) 86%, var(--muted)); }
+    section { width: 100%; display: grid; gap: 1rem; }
+    form { display: grid; gap: .75rem; width: 100%; }
+    label { display: grid; gap: .35rem; font-size: .9rem; color: var(--muted); }
+    input { width: 100%; min-height: 2.9rem; padding: 0 .9rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); color: var(--text); font: 1rem var(--sans); }
+    input:focus-visible, button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+    button { position: relative; min-height: 2.9rem; padding: 0 1.2rem; border: 0; border-radius: .55rem; background: var(--brand); color: var(--bg); font: 700 1rem/1 var(--sans); cursor: pointer; }
+    button[disabled] { opacity: .7; cursor: default; }
+    button.busy { color: transparent; }
+    button.busy::after { content: ""; position: absolute; inset: 0; margin: auto; width: 1rem; height: 1rem; border: 2px solid transparent; border-top-color: var(--bg); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { button.busy::after { animation-duration: 2s; } }
+    .error { color: var(--danger); }
+    .quiet { color: var(--muted); font-size: .9rem; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <span class="brand"><img class="brand-wordmark" src="/brand-org-dark.svg" width="233" height="73" alt="Slirc"></span>
+    <p class="eyebrow">{{host}}</p>
+    <section data-state="open">
+      <h1>Join the workspace<span>.</span></h1>
+      <p>Enter your email and we send you a link to join. No password needed.</p>
+      <form id="join-form" novalidate>
+        <label>Email<input id="join-email" type="email" name="email" autocomplete="email" required></label>
+        <button id="join-send" type="submit">Send me a link</button>
+        <p id="join-error" class="error" role="alert" hidden></p>
+      </form>
+      <div id="join-sent" role="status" hidden>
+        <p><strong>Check your inbox.</strong> The email has a link that brings you into the workspace. Nothing there after a few minutes? Check spam.</p>
+        <p class="quiet" id="join-dev" hidden>Local test: <a id="join-dev-link" href="#">open the link</a>. No email was sent.</p>
+      </div>
+    </section>
+    <section data-state="full">
+      <h1>This link is full<span>.</span></h1>
+      <p>Everyone it had room for has joined. Ask whoever shared it for a new one.</p>
+    </section>
+    <section data-state="spent">
+      <h1>This link is used up<span>.</span></h1>
+      <p>It sent all the email it can. Ask whoever shared it for a new one.</p>
+    </section>
+    <section data-state="closed">
+      <h1>This link no longer works<span>.</span></h1>
+      <p>It was closed or it expired. Ask whoever shared it for a new one.</p>
+    </section>
+  </main>
+  <script src="/join-link.js"></script>
+</body>
+</html>

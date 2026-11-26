@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#11111b">
+  <meta name="description" content="Expectation: 2 days. Reality: a full rewrite in 3 weeks. What I learned from Astra, DeepSeek v4.1 Flash and good old IRC.">
+  <link rel="icon" href="/favicon.ico" sizes="32x32">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+  <link rel="icon" type="image/svg+xml" href="/logo.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="canonical" href="https://mauriciowolff.com/blog/slirc2">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Slirc 2, new models (Astra, DSv4.1-flash)">
+  <meta name="twitter:description" content="Expectation: 2 days. Reality: a full rewrite in 3 weeks. What I learned from Astra, DeepSeek v4.1 Flash and good old IRC.">
+  <meta name="twitter:image" content="https://slirc.org/img/og.png">
+  <meta property="og:title" content="Slirc 2, new models (Astra, DSv4.1-flash)">
+  <meta property="og:description" content="Expectation: 2 days. Reality: a full rewrite in 3 weeks. What I learned from Astra, DeepSeek v4.1 Flash and good old IRC.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://mauriciowolff.com/blog/slirc2">
+  <meta property="og:image" content="https://slirc.org/img/og.png">
+  <meta name="author" content="Mauricio Wolff">
+  <meta property="article:published_time" content="2026-10-01">
+  <meta property="article:author" content="Mauricio Wolff">
+  <title>Slirc 2, new models (Astra, DSv4.1-flash) | Slirc blog</title>
+  <link rel="stylesheet" href="/blog/blog.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap">
+    <img src="/slirc-mark.png?v=2" alt="">
+    <a class="brand" href="/">Slirc</a>
+    <div class="links">
+      <a href="/blog/">Blog</a>
+      <a href="https://docs.slirc.org/">Docs</a>
+      <a href="/about/">About</a>
+      <a class="icon" href="https://github.com/bitbonsai/slirc" rel="noreferrer" aria-label="Slirc on GitHub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2.17c-3.2.7-3.87-1.37-3.87-1.37-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.7 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.04 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.58.23 2.75.11 3.04.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.05.78 2.12v3.14c0 .31.21.67.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg></a>
+      <a class="btn primary" href="https://app.slirc.org/open-chat">Open chat</a>
+    </div>
+  </div>
+</nav>
+
+<article>
+  <div class="wrap">
+    <p class="eyebrow"><a href="/blog/">blog</a> · Building Slirc</p>
+    <h1>Slirc 2, new models (Astra, DSv4.1-flash)</h1>
+    <div class="byline">
+      <img class="avatar" src="/blog/img/mauricio-wolff.webp" width="40" height="40" alt="Mauricio Wolff">
+      <a href="https://mauriciowolff.com" rel="author noreferrer">Mauricio Wolff</a>
+      <span class="dot"></span>
+      <time datetime="2026-10-01">1 October 2026</time>
+      <span class="dot"></span>
+      <span>6 min read</span>
+      <p class="first">First published on <a href="https://mauriciowolff.com/blog/slirc2">mauriciowolff.com</a>.</p>
+    </div>
+    <div class="content">
+<p>I really believed I'd have a decent version in two days. HA 🤦‍♂️. I should know better.</p>
+<p>The <em>alpha</em> version did take two days. Making it good took three weeks and a full rewrite, and I learned a lot of IRC on the way. This is what changed, and what's coming on October 6th (pre-launch).</p>
+<p><a href="https://mauriciowolff.com/blog/slirc2">Watch the video on mauriciowolff.com</a></p>
+<h2>What you'll notice</h2>
+<p>Open the app and your messages are already there. Before, every open started from zero: connect, ask the server for the last 250 messages of each room, draw. One or two seconds on a good connection. Apps like WhatsApp make you wait zero.</p>
+<p>The full-screen &quot;Reconnecting…&quot; page is gone too. There's a small &quot;Connecting…&quot; in the header while the app catches up in the background.</p>
+<h2>How the alpha got there</h2>
+<p>The first <em>alpha</em> was mostly OpenAI's Astra. It took two of my resets and a ton of tokens. Then I switched to cheaper models, and the quality dropped.</p>
+<p>I usually spend <a href="https://boiling.mauriciowolff.com/#/23">70% of the time planning</a> and reviewing plans, until I know exactly how the model will build what I want. This time I wanted to see how Astra plans on its own, so I let it loose, YOLO. It did things I would <strong>never</strong> do, like a 5,800-line <code>app.js</code> next to a 1,600-line <code>index.html</code>.</p>
+<blockquote>
+<p>Everything in life is either a victory or a good lesson</p>
+</blockquote>
+<p>This one was a lesson. You <strong>can</strong> vibecode something and use it, sure. But production software still needs a few years of hard-earned lessons. Ideas and architecture are still human things. At least for now.</p>
+<h2>Back to planning</h2>
+<p>So, back to the workflow I know works. I used my last Astra reset to write the plan, split into stages. Each one shippable on its own, checked on a real phone by a real person (me).</p>
+<p>DeepSeek v4.1 Flash built most of the features one at a time, with the exact files to touch, acceptance checks, and a stop condition. And man, that DS model delivers. It's <strong>fast</strong>, and cheap enough that I stopped counting attempts and put my attention on the instructions instead.</p>
+<p>Between stages I tested on my Linux and Mac desktops and on my iPhone. <em>Computer use</em> could do that for me, but I like testing myself. Being a designer, I always end up polishing something along the way.</p>
+<h2>Local first, IRC underneath</h2>
+<p><strong>IRC is the server.</strong> That's the whole point of Slirc, and I stand by it. But asking the server for everything on every open is what made the app slow.</p>
+<p>Now each account gets its own <code>IndexedDB</code> on your device: conversations, messages, drafts, sync progress and an outbox. Open a channel and it draws from disk while the socket catches up. Think <a href="https://linear.app">Linear</a>, or the <a href="https://lofi.so/">local-first</a> crowd, for chat.</p>
+<p>The IRC server is still the source of truth. The local database is a cache and outbox. Wipe it and the only thing you lose is a draft you hadn't sent.</p>
+<p><img src="/blog/img/slirc-indexeddb.webp" alt="Slirc with DevTools open on its IndexedDB stores" /></p>
+<h2>Every message gets a receipt number</h2>
+<p>Sending without duplicates was the fun puzzle. Every message now carries a small IRCv3 tag, <code>+slirc/cid</code>, which works like a receipt number. The message goes into the outbox and shows up as <code>pending</code>. When the server (Ergo) echoes it back with the same number, the app swaps the pending row in place.</p>
+<p>When the app wakes up, it asks each room for everything after the last message it has. If a message you sent before the phone fell asleep is in there, the receipt number matches and it's marked delivered. Seems simple, but it took some brain cells.</p>
+<h2>Seven throwaway scripts</h2>
+<p>The plan assumed a lot about how Ergo behaves, and I didn't want to find out the hard way. So before writing any client code, Flash (DSv4.1) wrote seven tiny scripts that spoke raw IRC to the dev server. Good thinking, because 3 of them changed the plan, basically half.</p>
+<p><strong>Receipt numbers break on multi-line messages</strong>, unless they sit on the opening line of the batch. Put the tag on the first inner line and Ergo drops it silently. You only find that by trying.</p>
+<p><strong>Deleted messages can come back.</strong> Ergo never replays a deletion. Ask for history and the message is just gone. So a message you deleted while your phone slept could come back from the local cache. The app now keeps a short list of deleted <code>msgid</code> values and drops them on sight.</p>
+<p><strong>Always-on accounts are cheap, but need a restart.</strong> Your account stays in its rooms while your phone sleeps, so you never miss a DM and rooms don't fill up with join and quit lines. Thirty idle accounts cost about 28 KB each. The catch is that Ergo only changes that setting on a restart. On a server I promised never to restart, that's a scheduled event.</p>
+<h2>A protocol from 1988, with reactions</h2>
+<p>This project is teaching me a lot about IRC, and I'm loving it. Something that has lasted almost forty years survived a few battles, and the <a href="https://ircv3.net/irc/">IRCv3</a> specs are a big part of why. Most of <strong>Slirc</strong> is those specs, used the way they were written.</p>
+<p><strong>Message tags</strong> are the big one. You can hang a small label on any message. A reaction in Slirc is a one-line message with a tag pointing at the message it reacts to. Halloy shows a ❤️ under the line. A client that doesn't know the tag just ignores it.</p>
+<p><img src="/blog/img/slirc-halloy.webp" alt="Halloy connected to Slirc, with a link preview and a 😂 reaction in #dev-open" /></p>
+<p>The rest of what Slirc leans on:</p>
+<ul>
+<li><code>echo-message</code>: the server repeats my message back, and that's my confirmation.</li>
+<li><code>server-time</code>: two phones agree on order.</li>
+<li><code>account-tag</code>: the agent knows a command came from my account.</li>
+<li><code>batch</code>: a photo with a caption travels as one message.</li>
+<li><code>chathistory</code>: the catch-up.</li>
+<li><code>message-redaction</code>: deletion, with a spec.</li>
+</ul>
+<p>Half of these are still labelled <em>draft</em> in IRCv3. Ergo ships them, Halloy and Senpai read most of them, and I get history, reactions, replies and deletes on a protocol from <strong>1988</strong>, with other people's clients in the same room.</p>
+<p>Under the hood, the two giant files became <strong>29 small HTML partials</strong> stitched together at build time, plus <strong>51 TypeScript modules</strong>. Still Alpine.js + Nanostores.</p>
+<h2>So, two days?</h2>
+<p><strong>Three weeks, and counting</strong>. The two-day alpha had a 5,800-line file, no sending state, and a spinner every time the phone woke up. I'd call that <strong>a good prototype</strong>.</p>
+<p>Getting from there to here took the parts I can't hand off yet. Deciding how it should work, then holding the phone and checking that it does. The models did all the typing, I did a LOT of prompting and steering.</p>
+<h2>What's next</h2>
+<ul>
+<li><strong>October 6th:</strong> pre-launch. The waiting list gets into app.slirc.org, and the next post goes up that day at the latest.</li>
+<li><strong>October 12th:</strong> the source code goes public.</li>
+<li><strong>After that:</strong> a native iOS app. It wraps the same web app with Capacitor, so there's one codebase. The first screen asks one thing: sign in to slirc.org, or use your own server.</li>
+</ul>
+<p>Mentions and DMs arrive as push notifications, and a tap opens the room. This rewrite is what makes it possible. The local store moves into storage iOS keeps, and the relay means no password on the phone.</p>
+<p>TestFlight comes first. If you want an invite, <a href="mailto:info@slirc.org">let me know</a>.</p>
+<p><a href="https://slirc.org/#waitlist">Join the waiting list</a>, and see you on the 6th.</p>
+    </div>
+  </div>
+</article>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <div class="brandline"><img src="/slirc-mark.png?v=2" alt="">Slirc</div>
+        <p>A server you own, with code you can read.</p>
+      </div>
+      <div><h4>Product</h4><ul>
+        <li><a href="https://app.slirc.org/open-chat">Open chat</a></li>
+        <li><a href="https://app.slirc.org/help">Help room</a></li>
+      </ul></div>
+      <div><h4>Docs</h4><ul>
+        <li><a href="https://docs.slirc.org/getting-started">Getting started</a></li>
+        <li><a href="https://docs.slirc.org/agents">Agents</a></li>
+        <li><a href="https://docs.slirc.org/bots">Bots</a></li>
+        <li><a href="https://docs.slirc.org/clients">IRC clients</a></li>
+        <li><a href="https://docs.slirc.org/privacy">Privacy</a></li>
+        <li><a href="https://docs.slirc.org/comparison">Comparison</a></li>
+      </ul></div>
+      <div><h4>Source</h4><ul>
+        <li><a href="https://github.com/bitbonsai/slirc" rel="noreferrer">GitHub</a></li>
+        <li><a href="https://www.npmjs.com/package/slirc-agent" rel="noreferrer">slirc-agent on npm</a></li>
+        <li><a href="https://github.com/bitbonsai/slirc/issues" rel="noreferrer">Issues</a></li>
+      </ul></div>
+    </div>
+    <p class="bottom">Made with <span class="heart">&#9829;</span> by <a href="https://mauriciowolff.com" rel="noreferrer">@bitbonsai</a> · Built on <a href="https://ergo.chat" rel="noreferrer">Ergo IRC</a> · No analytics on this page.</p>
+  </div>
+</footer>
+
+<script src="/blog/lightbox.js" defer></script>
+</body>
+</html>

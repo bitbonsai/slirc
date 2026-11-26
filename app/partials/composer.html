@@ -1,0 +1,52 @@
+  <p class="archived-channel" role="status" x-cloak x-show="authenticated && activeChannelArchived() && !profileRoute && !settingsRoute && !channelsRoute && !invitationsRoute && !ircRoute && !agentsRoute && !adminRoute && (isDesktop || mobileNav === null) && !library.on"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('archive')"></span> Archived channel. You can read it, but nobody can post.</p>
+  <form x-data="composerEditor" id="composer" class="composer" :class="[(editor.composerTall || media || mediaCompress || (isEditing() && editingMedia().length)) && 'tall', isEditing() && 'editing']" role="group" aria-label="Message composer" x-on:dragover="onDragOver($event)" x-on:dragleave="onDragLeave($event)" x-on:drop="onDrop($event)" x-cloak x-show="authenticated && !profileRoute && !settingsRoute && !channelsRoute && !invitationsRoute && !ircRoute && !agentsRoute && !adminRoute && (isDesktop || mobileNav === null) && !library.on && !activeChannelArchived()" x-on:submit.prevent="send()" x-on:transitionend.self="polls.plusOpen && placePlusMenu($refs.plusMenu, $refs.plus)">
+    <p class="sr-only" role="status" aria-live="polite" x-text="typing.statusText()"></p>
+    <div class="typing-row" x-cloak x-show="typing.accounts().length">
+      <span class="typing-avatars">
+        <template x-for="account in typing.accounts().slice(0, 3)" :key="account">
+          <span class="typing-avatar" role="img" tabindex="0" :aria-label="typing.label(account) + ' is typing'" :data-tooltip="typing.label(account)" x-tooltip><img :src="avatarUrl(account)" alt="" x-on:error="$el.hidden = true" /></span>
+        </template>
+      </span>
+      <span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+    </div>
+    <p class="composer-editing" x-show="isEditing()"><span role="status"><span x-text="notesOpen ? 'Editing note' : 'Editing message'">Editing message</span><span x-show="isDesktop"> · Esc to cancel</span></span><button type="button" class="composer-edit-cancel" x-show="!isDesktop" x-on:click="cancelEdit()">Cancel</button></p>
+    <div class="media-preview editing-media-preview" x-show="isEditing() && editingMedia().length">
+      <template x-for="(attachment, index) in editingMedia()" :key="index"><div class="media-chip"><template x-if="attachment.kind === 'video'"><video :src="attachment.href" muted playsinline preload="metadata" aria-hidden="true"></video></template><template x-if="attachment.kind !== 'video'"><img :src="attachment.href" :alt="attachment.alt" /></template><span class="media-name" x-text="attachment.kind === 'giphy' ? 'GIF' : attachment.kind === 'video' ? 'Video' : 'Photo'"></span><button type="button" class="media-remove" :aria-label="attachment.kind === 'video' ? 'Remove video from edited message' : 'Remove image from edited message'" x-tooltip x-on:click="removeEditingMedia(attachment)">×</button></div></template>
+    </div>
+    <div id="media-preview" class="media-preview" :class="mediaBusy && 'uploading'" x-show="media || mediaCompress">
+      <template x-for="(photo, index) in media?.photos ?? []" :key="photo.objectUrl"><div class="media-chip">
+        <template x-if="photo.mime.startsWith('video/')"><video :src="photo.objectUrl" muted playsinline preload="metadata" aria-hidden="true"></video></template>
+        <template x-if="!photo.mime.startsWith('video/')"><img :src="photo.objectUrl" alt="" /></template>
+        <span class="media-name" x-text="photo.name"></span>
+        <button type="button" class="media-remove" :aria-label="'Remove ' + photo.name" x-tooltip :disabled="mediaBusy" x-on:click="removeMedia(index)">×</button>
+      </div></template>
+      <template x-if="mediaCompress"><div class="media-chip compressing">
+        <video :src="mediaCompress.objectUrl" muted playsinline preload="metadata" aria-hidden="true"></video>
+        <span class="media-progress" aria-hidden="true" x-text="mediaCompress.percent + '%'"></span>
+        <span class="media-name" x-text="mediaCompress.name"></span>
+        <button type="button" class="media-remove" :aria-label="'Cancel ' + mediaCompress.name" x-tooltip x-on:click="cancelCompress()">×</button>
+      </div></template>
+    </div>
+    <p class="media-note sr-only" role="status" x-show="mediaBusy || mediaCompress" x-text="mediaCompress ? 'Compressing… ' + Math.floor(mediaCompress.percent / 10) * 10 + '%' : media?.photos.length > 1 ? 'Uploading files…' : media?.photos[0]?.mime.startsWith('video/') ? 'Uploading video…' : 'Uploading photo…'">Uploading photo…</p>
+    <p class="profile-error" role="alert" x-show="mediaError" x-text="mediaError"></p>
+    <div class="composer-editor">
+      <div id="input" class="composer-input" contenteditable="true" role="textbox" aria-multiline="true" :data-placeholder="notesOpen ? 'Write a note' : 'Type or / for commands'" :contenteditable="!threadCommandBusy" :aria-label="notesOpen ? 'Write a note' : 'Message ' + (roomLabel || channel)" aria-autocomplete="list" :aria-expanded="emoji.isOpen()" :aria-controls="emoji.isOpen() ? 'emoji-picker' : null" :aria-activedescendant="emoji.isOpen() ? 'emoji-option-' + emoji.index : null" autocorrect="on" autocapitalize="sentences" spellcheck="true" enterkeyhint="send" x-show="!threadCommandBusy" x-ref="input" x-effect="composer; $nextTick(() => { editor.syncComposerEditor(); editor.resizeComposer(); })" x-on:input.capture="editor.captureComposerCaret($event)" x-on:input="editor.onInput($event)" x-on:blur="editor.composerBlur()" x-on:keydown="editor.composerKeydown($event)" x-on:paste="pasteMedia($event); editor.pasteLink($event)" x-on:keyup="emoji.syncCaret()" x-on:click="$event.target.closest('a') && $event.preventDefault(); emoji.syncCaret()" x-on:compositionstart="editor.composerComposing = true" x-on:compositionend="editor.composerComposing = false; editor.onInput($event)"></div>
+      <div class="composer-waiting" x-cloak x-show="threadCommandBusy" role="status" aria-live="polite">Starting thread <span class="thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+    </div>
+    <input x-ref="mediaInput" name="media" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" multiple hidden x-on:change="pickMedia($event)" />
+    <button type="button" class="composer-plus" x-ref="plus" :class="mediaBusy && 'busy'" :disabled="threadCommandBusy || pendingDm || pendingThread" x-show="!pendingDm && !pendingThread" :aria-label="polls.canCreate() ? 'Add' : 'Add photo or video'" :aria-haspopup="polls.canCreate() ? 'menu' : null" :aria-expanded="polls.canCreate() ? (polls.plusOpen ? 'true' : 'false') : null" x-tooltip x-on:click="if (!polls.canCreate()) { $refs.mediaInput.click(); return; } polls.plusOpen = !polls.plusOpen; polls.plusOpen && $nextTick(() => $refs.plusMenu.querySelector('button')?.focus())">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide/sprite.svg#plus"></use></svg>
+    </button>
+    <!-- With polls on, + opens a two-item menu; without them it picks photos and videos at once, as before.
+         The menu lives at the end of <body>: the composer's backdrop-filter is a backdrop root, so a blur
+         on a child of it samples nothing and the messages show through sharp. -->
+    <template x-teleport="body">
+      <div class="composer-plus-menu" role="menu" aria-label="Add" x-ref="plusMenu" x-show="polls.plusOpen" x-effect="polls.plusOpen && placePlusMenu($el, $refs.plus)" x-on:resize.window="polls.plusOpen && placePlusMenu($el, $refs.plus)" x-on:click.outside="if (!$refs.plus.contains($event.target)) polls.plusOpen = false" x-on:keydown.escape.prevent.stop="polls.plusOpen = false; $refs.plus.focus()" x-on:keydown.tab.prevent="polls.plusOpen = false; $refs.plus.focus()" x-on:keydown.arrow-down.prevent="($event.target.nextElementSibling || $el.firstElementChild).focus()" x-on:keydown.arrow-up.prevent="($event.target.previousElementSibling || $el.lastElementChild).focus()">
+        <button type="button" role="menuitem" x-on:click="polls.plusOpen = false; $refs.mediaInput.click()"><span class="menu-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></span>Photo or video</button>
+        <button type="button" role="menuitem" x-on:click="polls.openDialog($refs.plus)"><span class="menu-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 21V10"/><path d="M12 21V4"/><path d="M19 21v-7"/></svg></span>Poll</button>
+      </div>
+    </template>
+    <button type="button" class="composer-send" :disabled="threadCommandBusy || !canSend()" :aria-label="notesOpen ? 'Save note' : 'Send message'" x-tooltip x-on:click="send()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide/sprite.svg#arrow-up"></use></svg>
+    </button>
+  </form>

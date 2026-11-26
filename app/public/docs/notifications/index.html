@@ -1,0 +1,109 @@
+<!-- generated from app/docs/*.md — edit there, then run: bun run docs -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#11111b" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="description" content="Turn Slirc notifications on or off from your profile." />
+  <title>Notifications · Slirc docs</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="alternate" type="text/markdown" href="/docs/notifications.md" />
+  <script src="/theme.js?v=844fef47"></script>
+  <link rel="stylesheet" href="/docs/docs.css?v=39" />
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="app-back" id="app-back" hidden><a class="app-back-link" href="/more" aria-label="Back to Slirc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 4 12l7 7"/></svg>Back</a></div>
+
+  <header class="topbar">
+    <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-nav">
+      <svg class="menu-icon menu-bars" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>
+      <svg class="menu-icon menu-close" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+    <a class="brand" href="/docs"><img class="brand-lockup" src="/brand-org-dark.svg" width="233" height="73" alt="Slirc" /><span class="tag">docs</span></a>
+    <button class="search-toggle" id="search-toggle" type="button" aria-label="Search the docs" aria-expanded="false" aria-controls="docs-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 4.5 4.5"/></svg>
+    </button>
+    <div class="docs-search" id="docs-search" role="search" data-docs-search>
+      <label class="visually-hidden" for="docs-search-input">Search the docs</label>
+      <span class="docs-search-field">
+        <svg class="docs-search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5"/></svg>
+        <input id="docs-search-input" class="docs-search-input" type="search" placeholder="Search docs…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="docs-search-results" aria-autocomplete="list" />
+        <kbd class="docs-search-key" aria-hidden="true">⌘K</kbd>
+      </span>
+      <div id="docs-search-results" class="docs-search-results" role="listbox" aria-label="Search results" hidden></div>
+      <p class="docs-search-status visually-hidden" aria-live="polite"></p>
+    </div>
+    <a class="open-app-mobile" href="/open-chat">Open chat</a>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" id="docs-nav" aria-label="Documentation" hidden>
+      <div class="nav-content">
+      <a class="nav-link nav-app" href="/open-chat">Open chat</a>
+      <p class="nav-section">Guides</p>
+      <a class="nav-link" href="/docs">Home</a>
+      <a class="nav-link" href="/docs/getting-started">Getting started</a>
+      <a class="nav-link" href="/docs/download">Download</a>
+      <a class="nav-link" href="/docs/channels">Channels & invites</a>
+      <a class="nav-link" href="/docs/messages">Messages & media</a>
+      <a class="nav-link sub" href="/docs/threads">Threads</a>
+      <a class="nav-link active" href="/docs/notifications" aria-current="page">Notifications</a>
+      <a class="nav-link" href="/docs/privacy">Privacy & safety</a>
+      <p class="nav-section">Connect</p>
+      <a class="nav-link" href="/docs/clients">IRC clients</a>
+      <a class="nav-link" href="/docs/agents">Agents</a>
+      <a class="nav-link" href="/docs/bots">Bots</a>
+      <a class="nav-link" href="/docs/setup">Self-hosting</a>
+      <p class="nav-section">Reference</p>
+      <a class="nav-link" href="/docs/design">Design system</a>
+      <p class="nav-section">About</p>
+      <a class="nav-link" href="/docs/about">About Slirc</a>
+      <a class="nav-link" href="/docs/comparison">Footprint</a>
+      <a class="nav-link" href="/docs/faq">FAQ</a>
+      </div>
+    </nav>
+
+    <main id="main">
+      <div class="callout info prelaunch-note"><p>Slirc is in early access. Come say hi in <a href="/open-chat">#open-chat</a>.</p></div>
+      <p class="crumb">Guides / Notifications</p>
+      <h1>Notifications</h1>
+      <p class="lead">Slirc can notify you about messages in your channels and DMs, even when the app is closed.</p>
+<h2 id="turning-them-on">Turning them on</h2>
+<p>Open <strong>More → Profile</strong> on a phone. On desktop, open your profile from the rooms panel. Choose <strong>Change</strong> beside Notifications to turn them on, then allow notifications when your browser asks. Opening your profile does not request permission.</p>
+<p>If notifications are blocked, allow them in this site's browser settings, then reopen your profile. On iPhone, add Slirc to your Home Screen and open it there. Web push needs HTTPS and a browser that supports it.</p>
+<p>The Mac app and the iPhone app don't show notifications yet. For notifications on a computer, install Slirc from the browser; <a href="/docs/download">Download</a> shows how.</p>
+<h2 id="turning-them-off">Turning them off</h2>
+<p>Choose <strong>Change</strong> beside Notifications on your profile to turn them off. Off applies to every browser subscribed to your account. Turning notifications on enables this device and restores all-message notifications for your account.</p>
+<p>If you previously selected mentions-only in the legacy client, that preference stays in place until you use this switch.</p>
+<p>Notifications only arrive for channels you're a member of, and you won't be notified about your own messages. Multiline messages are bundled into one notification.</p>
+<h2 id="the-daily-gday">The daily G'day</h2>
+<p>Each morning <code>@welcome</code> posts a G'day gif in <code>#open-chat</code>. To stop seeing it, choose <strong>Change</strong> beside <strong>G'day greeting in #open-chat</strong> on your profile. Off hides the greeting in <code>#open-chat</code>, leaves it out of your unread count, and stops its notification. The first greeting you see has a note under it with <strong>Turn off</strong> and <strong>Keep</strong>, shown once per account. The setting follows your account to every device. Everyone else still sees the greeting, and <code>@welcome</code>'s other messages stay visible.</p>
+<p>Reminders from <code>@remind</code> arrive in your DM with remind, never in a channel. While Slirc is open on another conversation, a reminder also shows a toast that stays until you choose <strong>Open</strong> or <strong>Dismiss</strong>. For a <strong>Remind me</strong> reminder the button is the message link, such as <strong>View in #general</strong>.</p>
+<h2 id="unread-counts">Unread counts</h2>
+<p>Channels, DMs and threads show how many new messages you haven't read. Reading one on a device clears its count on your other devices when the server keeps your read position. Otherwise each device keeps its own count.</p>
+<h2 id="muting-a-conversation">Muting a conversation</h2>
+<p><strong>Mute</strong> in a channel or DM menu dims its mark in navigation on this device and hides its unread count, including its threads. It does not change push notifications. Use your profile to turn push notifications off.</p>
+<p>Mute and unmute are per device. Muting on your phone does not mute your laptop. The public channels, <code>#open-chat</code> and <code>#help</code>, start muted.</p>
+<h2 id="read-next">Read next</h2>
+<p>See <a href="/docs/privacy">privacy &amp; safety</a> for where your data lives and who can see it.</p>
+
+      <footer class="doc-footer">
+        <p class="doc-footer-meta"><a href="/docs">All guides</a> · <a href="/docs/notifications.md">markdown</a></p>
+        <nav class="pager" aria-label="Page navigation">
+        <a class="pager-box prev" href="/docs/threads"><small>← Previous</small><span>Threads</span></a>
+        <a class="pager-box next" href="/docs/privacy"><small>Next →</small><span>Privacy & safety</span></a>
+        </nav>
+      </footer>
+    </main>
+    <nav class="toc" id="page-nav" aria-label="On this page"></nav>
+  </div>
+
+  <script type="module" src="/docs/glow.js"></script>
+  <script src="/docs/docs.js?v=16" defer></script>
+  <script src="/docs/app-back.js?v=26d58c4a" defer></script>
+  <script type="module" src="/docs/search.js?v=1f3b3dfc&amp;index=9725c03e"></script>
+</body>
+</html>

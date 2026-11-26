@@ -1,0 +1,149 @@
+<!-- generated from app/docs/*.md — edit there, then run: bun run docs -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#11111b" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="description" content="Measured resource comparison: Campfire (Rails + Redis) against Slirc (Bun + Ergo IRC), RAM, CPU, processes, and image size." />
+  <title>Footprint: Slirc next to Campfire · Slirc docs</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="alternate" type="text/markdown" href="/docs/comparison.md" />
+  <script src="/theme.js?v=844fef47"></script>
+  <link rel="stylesheet" href="/docs/docs.css?v=39" />
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="app-back" id="app-back" hidden><a class="app-back-link" href="/more" aria-label="Back to Slirc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 4 12l7 7"/></svg>Back</a></div>
+
+  <header class="topbar">
+    <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-nav">
+      <svg class="menu-icon menu-bars" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>
+      <svg class="menu-icon menu-close" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+    <a class="brand" href="/docs"><img class="brand-lockup" src="/brand-org-dark.svg" width="233" height="73" alt="Slirc" /><span class="tag">docs</span></a>
+    <button class="search-toggle" id="search-toggle" type="button" aria-label="Search the docs" aria-expanded="false" aria-controls="docs-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 4.5 4.5"/></svg>
+    </button>
+    <div class="docs-search" id="docs-search" role="search" data-docs-search>
+      <label class="visually-hidden" for="docs-search-input">Search the docs</label>
+      <span class="docs-search-field">
+        <svg class="docs-search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5"/></svg>
+        <input id="docs-search-input" class="docs-search-input" type="search" placeholder="Search docs…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="docs-search-results" aria-autocomplete="list" />
+        <kbd class="docs-search-key" aria-hidden="true">⌘K</kbd>
+      </span>
+      <div id="docs-search-results" class="docs-search-results" role="listbox" aria-label="Search results" hidden></div>
+      <p class="docs-search-status visually-hidden" aria-live="polite"></p>
+    </div>
+    <a class="open-app-mobile" href="/open-chat">Open chat</a>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" id="docs-nav" aria-label="Documentation" hidden>
+      <div class="nav-content">
+      <a class="nav-link nav-app" href="/open-chat">Open chat</a>
+      <p class="nav-section">Guides</p>
+      <a class="nav-link" href="/docs">Home</a>
+      <a class="nav-link" href="/docs/getting-started">Getting started</a>
+      <a class="nav-link" href="/docs/download">Download</a>
+      <a class="nav-link" href="/docs/channels">Channels & invites</a>
+      <a class="nav-link" href="/docs/messages">Messages & media</a>
+      <a class="nav-link sub" href="/docs/threads">Threads</a>
+      <a class="nav-link" href="/docs/notifications">Notifications</a>
+      <a class="nav-link" href="/docs/privacy">Privacy & safety</a>
+      <p class="nav-section">Connect</p>
+      <a class="nav-link" href="/docs/clients">IRC clients</a>
+      <a class="nav-link" href="/docs/agents">Agents</a>
+      <a class="nav-link" href="/docs/bots">Bots</a>
+      <a class="nav-link" href="/docs/setup">Self-hosting</a>
+      <p class="nav-section">Reference</p>
+      <a class="nav-link" href="/docs/design">Design system</a>
+      <p class="nav-section">About</p>
+      <a class="nav-link" href="/docs/about">About Slirc</a>
+      <a class="nav-link active" href="/docs/comparison" aria-current="page">Footprint</a>
+      <a class="nav-link" href="/docs/faq">FAQ</a>
+      </div>
+    </nav>
+
+    <main id="main">
+      <div class="callout info prelaunch-note"><p>Slirc is in early access. Come say hi in <a href="/open-chat">#open-chat</a>.</p></div>
+      <p class="crumb">About / Footprint</p>
+      <h1>Footprint: Slirc next to Campfire</h1>
+      <p class="lead">Same job, group chat on our own hardware. Very different footprint.</p>
+<p>Campfire is an excellent alternative: open source, self-hosted, runs one command, and <a href="https://once.com/campfire">you get the code</a>. We measured both products side by side to see what the same job costs on our own hardware.</p>
+<h2 id="the-numbers">The numbers</h2>
+<table>
+<thead>
+<tr><th>metric</th><th>Campfire</th><th>Slirc</th></tr>
+</thead>
+<tbody>
+<tr><td>RAM, idle</td><td>1.62 GB (76% of its own 2 GB cap)</td><td>~20 MB total (13.6 MB app + 6.6 MB Ergo)</td></tr>
+<tr><td>CPU, idle</td><td>2.03%</td><td>~0.1%</td></tr>
+<tr><td>processes</td><td>220</td><td>12</td></tr>
+<tr><td>image size</td><td>~917 MB (877 MB app + 40 MB Redis)</td><td>~135 MB (97.8 MB app + 36.7 MB Ergo)</td></tr>
+<tr><td>extra services</td><td>separate Redis container</td><td>none</td></tr>
+</tbody>
+</table>
+<h2 id="how-it-adds-up">How it adds up</h2>
+<ul>
+<li>RAM: <strong>81×</strong></li>
+<li>CPU: <strong>~20×</strong></li>
+<li>processes: <strong>18×</strong></li>
+<li>disk images: <strong>6.8×</strong></li>
+</ul>
+<h2 id="capacity">Capacity</h2>
+<p>Campfire sits near its own 2 GiB cap before anyone connects. Slirc's whole stack uses about 1% of that, so the same cap holds roughly 80 Slirc stacks.</p>
+<p>Campfire alone eats 1.6 GB of its machine's 31 GB. Slirc's whole stack fits comfortably on its 3.8 GB host.</p>
+<h2 id="load">Load</h2>
+<p>Synthesized 250 concurrent IRC clients against the local Ergo instance: all registered and joined, then chattered at ~210 messages/s for 40 seconds, about 52k outbound deliveries after fanout.</p>
+<table>
+<thead>
+<tr><th>metric</th><th>250 users (measured)</th><th>500 users (modeled)</th></tr>
+</thead>
+<tbody>
+<tr><td>Ergo RAM, idle</td><td>17 MiB</td><td>17 MiB</td></tr>
+<tr><td>Ergo RAM, during load</td><td>39 MiB</td><td>60-80 MiB</td></tr>
+<tr><td>Ergo CPU, sustained</td><td>5-15% of one core</td><td>~10-30%</td></tr>
+<tr><td>Ergo CPU, burst spike</td><td>~49% of one core</td><td>under one core</td></tr>
+<tr><td>messages handled</td><td>8.4k in / 52k out</td><td>~2×</td></tr>
+</tbody>
+</table>
+<p>This is the chatty worst case, every user talking continuously. Real groups sit mostly idle at the WebSocket relay, so actual capacity is well above the model.</p>
+<h2 id="recommended-server">Recommended server</h2>
+<p>Same ladder Campfire publishes (they start at 250 users / 2 GB / 1 CPU). Slirc's numbers start from the measured load above and scale for the whole stack, app relay, Ergo, Caddy, and headroom, not bare Ergo. <a href="https://www.hetzner.com/cloud/">Hetzner Cloud</a> ARM servers hit these tiers out of the box, prices included.</p>
+<table>
+<thead>
+<tr><th>concurrent users</th><th>RAM</th><th>CPU</th><th>Hetzner</th><th>est. price</th></tr>
+</thead>
+<tbody>
+<tr><td>250</td><td>1 GB</td><td>1 CPU</td><td>cax11</td><td>~€7/mo</td></tr>
+<tr><td>1,000</td><td>2 GB</td><td>2 CPU</td><td>cax11</td><td>~€7/mo</td></tr>
+<tr><td>5,000</td><td>4 GB</td><td>4 CPU</td><td>cax21</td><td>~€13/mo</td></tr>
+<tr><td>10,000</td><td>8 GB</td><td>8 CPU</td><td>cax31</td><td>~€25/mo</td></tr>
+</tbody>
+</table>
+<p>Memory stays the cheap axis (Ergo idles at ~17 MiB and peaks under 40 MiB for 250 chatty users); the growth curve is CPU and the WebSocket fanout, which is why it climbs slower than Campfire's ladder.</p>
+<p>Personal agents add no server load. They run on your machine and connect as one more IRC client.</p>
+<h2 id="what-slirc-does-not-have">What Slirc does not have</h2>
+<p>Campfire and Slack both have server-side search. Slirc does not yet. Slack has voice and video; Slirc pastes a link. Matrix federates and encrypts end to end; Slirc does neither. This page is about what the same group chat costs to run, and the numbers only make sense next to that list.</p>
+<h2 id="method">Method</h2>
+<p>Both hosts measured 2026-09-07 with <code>podman stats</code> (three samples, two seconds apart), <code>podman images</code>, and <code>podman system df</code>. Load numbers measured 2026-09-15 with a 250-client synthetic script against the local stack.</p>
+
+      <footer class="doc-footer">
+        <p class="doc-footer-meta"><a href="/docs">All guides</a> · <a href="/docs/comparison.md">markdown</a></p>
+        <nav class="pager" aria-label="Page navigation">
+        <a class="pager-box prev" href="/docs/about"><small>← Previous</small><span>About Slirc</span></a>
+        <a class="pager-box next" href="/docs/faq"><small>Next →</small><span>FAQ</span></a>
+        </nav>
+      </footer>
+    </main>
+    <nav class="toc" id="page-nav" aria-label="On this page"></nav>
+  </div>
+
+  <script type="module" src="/docs/glow.js"></script>
+  <script src="/docs/docs.js?v=16" defer></script>
+  <script src="/docs/app-back.js?v=26d58c4a" defer></script>
+  <script type="module" src="/docs/search.js?v=1f3b3dfc&amp;index=9725c03e"></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+  <aside id="members-panel" class="members-panel" x-data="membersPanel" x-cloak x-show="isDesktop && members.canShow()" :class="members.open && 'open'" :aria-hidden="members.open ? 'false' : 'true'" x-effect="document.body.classList.toggle('members-docked', isDesktop && members.open && members.canShow()); $el.inert = !members.open" aria-label="Members">
+    <div class="members-head"><strong>Members</strong><small x-text="members.countLabel()"></small><button type="button" class="link-button members-close" aria-label="Hide members" data-tooltip="Hide" x-tooltip x-on:click="members.dismiss()"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('x')"></span></button></div>
+    <template x-for="group in members.groups()" :key="group.presence">
+      <div class="members-group">
+        <p class="members-label"><span x-text="group.label"></span><span x-text="group.rows.length"></span></p>
+        <template x-for="row in group.rows" :key="row.nick">
+          <button type="button" class="member-row" :class="row.presence" :aria-label="members.tooltip(row)" :data-tooltip="members.tooltip(row)" x-tooltip x-on:click="members.openMember(row)">
+            <span class="room-mark peer-avatar avatar-status-host" :data-status="row.presence" aria-hidden="true"><img :src="avatarUrl(row.nick)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span>
+            <span class="member-copy"><span class="member-nick"><span x-text="row.nick"></span><span class="admin-badge" x-show="row.role === 'admin'" role="img" aria-label="Administrator" x-html="lucideIcon('user-star')"></span><span class="agent-mark" x-show="row.kind === 'agent'">agent</span><span class="agent-mark" x-show="row.kind === 'bot'">bot</span></span><small x-text="members.memberNote(row)"></small></span>
+          </button>
+        </template>
+      </div>
+    </template>
+    <div class="members-group" x-show="members.pendingInvitations().length">
+      <p class="members-label"><span>Pending invitations</span><span x-text="members.pendingInvitations().length"></span></p>
+      <template x-for="invite in members.pendingInvitations()" :key="invite.email">
+        <div class="member-row"><span class="member-copy"><span class="member-nick" x-text="invite.email"></span><small x-text="invite.status === 'uncertain' ? 'Delivery uncertain' : invite.status === 'sending' ? 'Sending…' : 'Awaiting acceptance'"></small></span></div>
+      </template>
+    </div>
+    <p class="members-empty" x-show="!members.rows().length" x-text="members.emptyText()"></p>
+    <button type="button" class="link-button members-retry" x-show="members.error()" x-on:click="members.request()">Try again</button>
+  </aside>
+  <dialog class="custom-modal sheet-modal" aria-label="Members" x-cloak x-effect="const open = !isDesktop && members.open && members.canShow(); if (open && !$el.open) $el.showModal(); else if (!open && $el.open) $el.close()" x-on:cancel.prevent="members.close()" x-on:close="members.close()" x-on:click="if ($event.target === $el) members.close()">
+    <section class="action-sheet members-sheet">
+      <div class="sheet-head"><strong>Members</strong><span x-text="members.countLabel()"></span></div>
+      <div class="members-sheet-list">
+        <template x-for="group in members.groups()" :key="'sheet-' + group.presence">
+          <div class="members-group">
+            <p class="members-label"><span x-text="group.label"></span><span x-text="group.rows.length"></span></p>
+            <template x-for="row in group.rows" :key="'sheet-' + row.nick">
+              <button type="button" class="member-row" :class="row.presence" :aria-label="members.tooltip(row)" x-on:click="members.close(); members.openMember(row)">
+                <span class="room-mark peer-avatar avatar-status-host" :data-status="row.presence" aria-hidden="true"><img :src="avatarUrl(row.nick)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span>
+                <span class="member-copy"><span class="member-nick"><span x-text="row.nick"></span><span class="admin-badge" x-show="row.role === 'admin'" role="img" aria-label="Administrator" x-html="lucideIcon('user-star')"></span><span class="agent-mark" x-show="row.kind === 'agent'">agent</span><span class="agent-mark" x-show="row.kind === 'bot'">bot</span></span><small x-text="members.memberNote(row)"></small></span>
+              </button>
+            </template>
+          </div>
+        </template>
+        <div class="members-group" x-show="members.pendingInvitations().length">
+          <p class="members-label"><span>Pending invitations</span><span x-text="members.pendingInvitations().length"></span></p>
+          <template x-for="invite in members.pendingInvitations()" :key="'sheet-' + invite.email">
+            <div class="member-row"><span class="member-copy"><span class="member-nick" x-text="invite.email"></span><small x-text="invite.status === 'uncertain' ? 'Delivery uncertain' : invite.status === 'sending' ? 'Sending…' : 'Awaiting acceptance'"></small></span></div>
+          </template>
+        </div>
+        <p class="members-empty" x-show="!members.rows().length" x-text="members.emptyText()"></p>
+        <button type="button" class="link-button members-retry" x-show="members.error()" x-on:click="members.request()">Try again</button>
+      </div>
+    </section>
+  </dialog>

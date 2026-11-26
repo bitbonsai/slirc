@@ -1,0 +1,59 @@
+services:
+  ergo:
+    image: ghcr.io/bitbonsai/slirc-ergo:v2.19.1-63c743a@sha256:c3ee80d97cfda5b6b1524a07d3bad2127ead14f7243d0b8d5a8a122164046cb8
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        TOKEN=$$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n');
+        printf '%s' "$$TOKEN" > /run/secrets/ergo-api-token;
+        export ERGO__API__BEARER_TOKENS="[\"$$TOKEN\"]";
+        exec /ircd-bin/run.sh
+    ports:
+      - "6697:6697"           # TLS IRC
+    environment:
+      ERGO__ACCOUNTS__REQUIRE_SASL__ENABLED: "false"
+      ERGO__ACCOUNTS__DEFAULT_USER_MODES: "+iR"
+      ERGO__API__ENABLED: "true"
+      ERGO__API__LISTENER: ":8089"
+    volumes:
+      - ergo-data:/ircd
+      - ergo-api:/run/secrets
+      - ./ergo/ergo.yaml:/ircd/ircd.yaml:ro
+      - ./ergo/ergo.motd:/ircd/ergo.motd:ro
+    networks:
+      default:
+        ipv4_address: 10.89.0.2
+    restart: unless-stopped
+
+  app:
+    build: ./app
+    depends_on:
+      - ergo
+    # ponytail: alpha uses CNI without container DNS, so app targets Ergo's fixed private address.
+    environment:
+      DB_PATH: /data/chat.sqlite
+      ERGO_HOST: 10.89.0.2
+      ERGO_PORT: "6667"
+      ERGO_API_URL: http://10.89.0.2:8089
+      ERGO_API_TOKEN_FILE: /run/secrets/ergo-api-token
+      # This stack lists its open channels, so it runs in public_playground mode.
+      SLIRC_MODE: "public_playground"
+      IRC_CHANNEL: "#untitled"
+      OPEN_CHANNELS: "#open-chat,#help"
+    ports:
+      - "127.0.0.1:9010:8080" # PWA, only reachable via caddy on the host
+    volumes:
+      - app-data:/data
+      - ergo-api:/run/secrets:ro
+    restart: unless-stopped
+
+volumes:
+  ergo-data:
+  ergo-api:
+  app-data:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 10.89.0.0/24

@@ -1,0 +1,6 @@
+// Default signing settings for local builds.
+// Copy Signing.xcconfig.example to Signing.xcconfig to override locally.
+DEVELOPMENT_TEAM =
+PRODUCT_BUNDLE_IDENTIFIER = com.example.slirc.app
+
+#include? "Signing.xcconfig"

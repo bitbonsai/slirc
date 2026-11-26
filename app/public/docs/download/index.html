@@ -1,0 +1,118 @@
+<!-- generated from app/docs/*.md — edit there, then run: bun run docs -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#11111b" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="description" content="Install Slirc on Mac, iPhone, Windows, Android, or Linux, or connect an IRC client." />
+  <title>Download and install · Slirc docs</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="alternate" type="text/markdown" href="/docs/download.md" />
+  <script src="/theme.js?v=844fef47"></script>
+  <link rel="stylesheet" href="/docs/docs.css?v=39" />
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="app-back" id="app-back" hidden><a class="app-back-link" href="/more" aria-label="Back to Slirc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 4 12l7 7"/></svg>Back</a></div>
+
+  <header class="topbar">
+    <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-nav">
+      <svg class="menu-icon menu-bars" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>
+      <svg class="menu-icon menu-close" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+    <a class="brand" href="/docs"><img class="brand-lockup" src="/brand-org-dark.svg" width="233" height="73" alt="Slirc" /><span class="tag">docs</span></a>
+    <button class="search-toggle" id="search-toggle" type="button" aria-label="Search the docs" aria-expanded="false" aria-controls="docs-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 4.5 4.5"/></svg>
+    </button>
+    <div class="docs-search" id="docs-search" role="search" data-docs-search>
+      <label class="visually-hidden" for="docs-search-input">Search the docs</label>
+      <span class="docs-search-field">
+        <svg class="docs-search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5"/></svg>
+        <input id="docs-search-input" class="docs-search-input" type="search" placeholder="Search docs…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="docs-search-results" aria-autocomplete="list" />
+        <kbd class="docs-search-key" aria-hidden="true">⌘K</kbd>
+      </span>
+      <div id="docs-search-results" class="docs-search-results" role="listbox" aria-label="Search results" hidden></div>
+      <p class="docs-search-status visually-hidden" aria-live="polite"></p>
+    </div>
+    <a class="open-app-mobile" href="/open-chat">Open chat</a>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" id="docs-nav" aria-label="Documentation" hidden>
+      <div class="nav-content">
+      <a class="nav-link nav-app" href="/open-chat">Open chat</a>
+      <p class="nav-section">Guides</p>
+      <a class="nav-link" href="/docs">Home</a>
+      <a class="nav-link" href="/docs/getting-started">Getting started</a>
+      <a class="nav-link active" href="/docs/download" aria-current="page">Download</a>
+      <a class="nav-link" href="/docs/channels">Channels & invites</a>
+      <a class="nav-link" href="/docs/messages">Messages & media</a>
+      <a class="nav-link sub" href="/docs/threads">Threads</a>
+      <a class="nav-link" href="/docs/notifications">Notifications</a>
+      <a class="nav-link" href="/docs/privacy">Privacy & safety</a>
+      <p class="nav-section">Connect</p>
+      <a class="nav-link" href="/docs/clients">IRC clients</a>
+      <a class="nav-link" href="/docs/agents">Agents</a>
+      <a class="nav-link" href="/docs/bots">Bots</a>
+      <a class="nav-link" href="/docs/setup">Self-hosting</a>
+      <p class="nav-section">Reference</p>
+      <a class="nav-link" href="/docs/design">Design system</a>
+      <p class="nav-section">About</p>
+      <a class="nav-link" href="/docs/about">About Slirc</a>
+      <a class="nav-link" href="/docs/comparison">Footprint</a>
+      <a class="nav-link" href="/docs/faq">FAQ</a>
+      </div>
+    </nav>
+
+    <main id="main">
+      <div class="callout info prelaunch-note"><p>Slirc is in early access. Come say hi in <a href="/open-chat">#open-chat</a>.</p></div>
+      <p class="crumb">Guides / Download and install</p>
+      <h1>Download and install</h1>
+      <p class="lead">Install the Slirc app on your Mac, iPhone, or any browser, or connect an IRC client. The same channels everywhere.</p>
+<h2 id="mac">Mac</h2>
+<p>The Mac app is built from the <code>desktop/</code> directory in the repository for macOS 14 or later. If your operator distributes a signed DMG, open it and drag Slirc to Applications. On first launch, enter any verified HTTPS Slirc instance address (hosted or self-hosted). Up to six workspaces stay live in one window, and <strong>Switch Workspace…</strong> in the Slirc menu (Option-Cmd-O) or the left workspace rail switches between them.</p>
+<p>The Mac app has no notifications yet. If you want them, install Slirc from the browser as below.</p>
+<h2 id="iphone">iPhone</h2>
+<p>The iPhone app is built from the <code>native/</code> directory and can be distributed through TestFlight, Apple's app for test builds. When your instance configures <code>TESTFLIGHT_URL</code>, signed-in members find the install link under <strong>More → Get the iPhone app</strong> on a phone.</p>
+<ol>
+<li>Install TestFlight from the App Store.</li>
+<li>Open the TestFlight link your instance provides.</li>
+<li>Tap <strong>Install</strong>.</li>
+<li>Open Slirc and enter any verified HTTPS Slirc instance address (hosted or self-hosted).</li>
+</ol>
+<p>The iPhone app has no notifications yet. For notifications, add Slirc to the Home Screen from Safari instead. Open your instance, tap the share button, then <strong>Add to Home Screen</strong>. <a href="/docs/getting-started#save-slirc-to-your-home-screen">Getting started</a> has a video.</p>
+<h2 id="windows-android-and-linux">Windows, Android and Linux</h2>
+<p>Open your instance in the browser, sign in, and install it as an app. Each instance gets its own window and icon.</p>
+<ul>
+<li>In <strong>Edge</strong>, open the ⋯ menu, then <strong>More tools</strong>, <strong>Apps</strong> and <strong>Install this site as an app</strong>.</li>
+<li>In <strong>Chrome</strong>, open the ⋮ menu, then <strong>Cast, save and share</strong> and <strong>Install page as app</strong>.</li>
+<li>In <strong>Chrome on Android</strong>, open the ⋮ menu, tap <strong>Add to home screen</strong>, then <strong>Install</strong>. An Android app is planned.</li>
+</ul>
+<p>Firefox on Linux can't install web apps, so there Slirc stays a browser tab.</p>
+<h2 id="irc-clients">IRC clients</h2>
+<p>IRC clients like Halloy connect to any Slirc instance over TLS. <a href="/docs/clients">Set one up</a>.</p>
+<h2 id="install-details">Install details</h2>
+<h3 id="start-at-login">Start at login</h3>
+<p>To open Slirc when you sign in to your computer, find it in <code>chrome://apps</code> or <code>edge://apps</code> and turn on start at login.</p>
+<h3 id="notifications-on-windows-and-linux">Notifications on Windows and Linux</h3>
+<p>Open the installed Slirc window and turn notifications on in your profile there, as on the <a href="/docs/notifications">notifications page</a>. In a browser tab, Edge only allows them while the tab is open. In the installed app they arrive while the browser runs, even with the Slirc window closed. Edge keeps running in the background on Windows. In Chrome, turn on <strong>Continue running background apps when Google Chrome is closed</strong> under Settings, System.</p>
+
+      <footer class="doc-footer">
+        <p class="doc-footer-meta"><a href="/docs">All guides</a> · <a href="/docs/download.md">markdown</a></p>
+        <nav class="pager" aria-label="Page navigation">
+        <a class="pager-box prev" href="/docs/getting-started"><small>← Previous</small><span>Getting started</span></a>
+        <a class="pager-box next" href="/docs/channels"><small>Next →</small><span>Channels & invites</span></a>
+        </nav>
+      </footer>
+    </main>
+    <nav class="toc" id="page-nav" aria-label="On this page"></nav>
+  </div>
+
+  <script type="module" src="/docs/glow.js"></script>
+  <script src="/docs/docs.js?v=16" defer></script>
+  <script src="/docs/app-back.js?v=26d58c4a" defer></script>
+  <script type="module" src="/docs/search.js?v=1f3b3dfc&amp;index=9725c03e"></script>
+</body>
+</html>

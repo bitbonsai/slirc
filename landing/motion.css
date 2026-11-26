@@ -1,0 +1,45 @@
+/* Page motion for slirc.org. Scroll-driven where the browser supports it, one entrance on load,
+   and nothing at all under prefers-reduced-motion. Scrolling itself is never taken over. */
+@media (prefers-reduced-motion: no-preference) {
+  /* Hero: copy rises line by line, then the app surfaces underneath it. */
+  @keyframes rise { from { opacity: 0; translate: 0 1.25rem; } }
+  .hero-copy > * { animation: rise .7s cubic-bezier(.2, .7, .2, 1) both; }
+  .hero-copy > :nth-child(2) { animation-delay: .08s; }
+  .hero-copy > :nth-child(3) { animation-delay: .16s; }
+  .hero-copy > :nth-child(4) { animation-delay: .24s; }
+  @keyframes emerge { from { opacity: 0; translate: 0 2.5rem; scale: .985; } }
+  .hero-stage { animation: emerge 1s cubic-bezier(.2, .7, .2, 1) .3s both; }
+
+  /* Chapters: each reveals as it enters the viewport, driven by scroll position, no JS. */
+  @supports (animation-timeline: view()) {
+    @keyframes reveal { from { opacity: 0; translate: 0 2rem; } to { opacity: 1; translate: 0 0; } }
+    .reveal { animation: reveal linear both; animation-timeline: view(); animation-range: entry 5% entry 40%; }
+  }
+
+  /* Switcher: frames crossfade with a touch of scale, the stage height follows. */
+  .switcher .stage { transition: height .36s cubic-bezier(.2, .7, .2, 1); }
+  .switcher .stage > .frame { transition: opacity .4s ease, translate .45s cubic-bezier(.2, .7, .2, 1), scale .45s cubic-bezier(.2, .7, .2, 1), rotate .45s cubic-bezier(.2, .7, .2, 1); }
+  .switcher .after { transition: opacity .5s ease .15s, translate .5s cubic-bezier(.2, .7, .2, 1) .15s; }
+  .tabs [role="tab"] { transition: color .15s ease, background-color .15s ease; }
+}
+
+/* Dialogs ease in; the backdrop fades. */
+@media (prefers-reduced-motion: no-preference) {
+  .sheet { opacity: 0; translate: 0 .75rem; transition: opacity .22s ease, translate .28s cubic-bezier(.2, .7, .2, 1), overlay .28s allow-discrete, display .28s allow-discrete; }
+  .sheet[open] { opacity: 1; translate: 0 0; }
+  @starting-style { .sheet[open] { opacity: 0; translate: 0 .75rem; } }
+  .sheet::backdrop { opacity: 0; transition: opacity .28s ease, overlay .28s allow-discrete, display .28s allow-discrete; }
+  .sheet[open]::backdrop { opacity: 1; }
+  @starting-style { .sheet[open]::backdrop { opacity: 0; } }
+}
+
+/* Footer heart: a slow, relaxed beat while the footer is hovered. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes heartbeat { 0%, 100% { scale: 1; } 14% { scale: 1.14; } 28% { scale: 1; } 42% { scale: 1.08; } 56% { scale: 1; } }
+  footer:hover .heart { animation: heartbeat 1.8s ease-in-out infinite; }
+}
+
+/* Guide links grow a touch and go lime on hover. */
+@media (prefers-reduced-motion: no-preference) {
+  .more, .alt a { transition: scale .18s cubic-bezier(.2, .7, .2, 1), color .18s ease; }
+}

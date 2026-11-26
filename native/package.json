@@ -1,0 +1,23 @@
+{
+  "name": "slirc-native",
+  "private": true,
+  "scripts": {
+    "hosts": "bun write-hosts.ts",
+    "sync": "bun run hosts && cap sync ios",
+    "test": "bun test",
+    "ios": "bun run hosts && cap sync ios && cap open ios",
+    "assets": "capacitor-assets generate --ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/ios": "^8.6.0",
+    "@capacitor/preferences": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.6.0",
+    "typescript": "^5.9.0"
+  }
+}

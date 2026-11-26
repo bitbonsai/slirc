@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#11111b">
+  <meta name="description" content="A message sent to multiple IRC targets shared one ID. Ergo's delete lookup ignored the target channel, so I patched it.">
+  <link rel="icon" href="/favicon.ico" sizes="32x32">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+  <link rel="icon" type="image/svg+xml" href="/logo.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="canonical" href="https://mauriciowolff.com/blog/ergo">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="My first patch to Ergo">
+  <meta name="twitter:description" content="A message sent to multiple IRC targets shared one ID. Ergo's delete lookup ignored the target channel, so I patched it.">
+  <meta name="twitter:image" content="https://slirc.org/img/og.png">
+  <meta property="og:title" content="My first patch to Ergo">
+  <meta property="og:description" content="A message sent to multiple IRC targets shared one ID. Ergo's delete lookup ignored the target channel, so I patched it.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://mauriciowolff.com/blog/ergo">
+  <meta property="og:image" content="https://slirc.org/img/og.png">
+  <meta name="author" content="Mauricio Wolff">
+  <meta property="article:published_time" content="2026-10-03">
+  <meta property="article:author" content="Mauricio Wolff">
+  <title>My first patch to Ergo | Slirc blog</title>
+  <link rel="stylesheet" href="/blog/blog.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap">
+    <img src="/slirc-mark.png?v=2" alt="">
+    <a class="brand" href="/">Slirc</a>
+    <div class="links">
+      <a href="/blog/">Blog</a>
+      <a href="https://docs.slirc.org/">Docs</a>
+      <a href="/about/">About</a>
+      <a class="icon" href="https://github.com/bitbonsai/slirc" rel="noreferrer" aria-label="Slirc on GitHub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2.17c-3.2.7-3.87-1.37-3.87-1.37-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.7 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.04 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.58.23 2.75.11 3.04.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.05.78 2.12v3.14c0 .31.21.67.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg></a>
+      <a class="btn primary" href="https://app.slirc.org/open-chat">Open chat</a>
+    </div>
+  </div>
+</nav>
+
+<article>
+  <div class="wrap">
+    <p class="eyebrow"><a href="/blog/">blog</a> · Building Slirc</p>
+    <h1>My first patch to Ergo</h1>
+    <div class="byline">
+      <img class="avatar" src="/blog/img/mauricio-wolff.webp" width="40" height="40" alt="Mauricio Wolff">
+      <a href="https://mauriciowolff.com" rel="author noreferrer">Mauricio Wolff</a>
+      <span class="dot"></span>
+      <time datetime="2026-10-03">3 October 2026</time>
+      <span class="dot"></span>
+      <span>3 min read</span>
+      <p class="first">First published on <a href="https://mauriciowolff.com/blog/ergo">mauriciowolff.com</a>.</p>
+    </div>
+    <div class="content">
+<aside class="update-callout" role="note">
+<p class="update-callout-label"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Update, October 6 · False alarm</p>
+<p>Ergo gives each target its own msgid, so <code>PRIVMSG #a,#b :hello</code> creates two messages and the bug below can't happen. Slingamn, Ergo's maintainer, <a href="https://github.com/ergochat/ergo/pull/2462#issuecomment-5997674369">showed it with one command</a>.</p>
+<p>My test passed because it wrote the duplicate rows straight into the database. I closed the PR. Next time I'll reproduce the bug on a real server first.</p>
+<p>The post below stays as I wrote it. Ergo didn't have a bug, my method did. <strong>Lesson learned.</strong></p>
+</aside>
+<p>I was testing message deletion in <strong>Slirc</strong> when I found an Ergo bug: deleting a message from one channel could affect a copy in another.</p>
+<p>A message sent to multiple IRC targets gets one msgid, but Ergo stores one history row per target. <code>HistServ</code> replied, “Successfully deleted message.” It could have deleted the copy from another channel instead.</p>
+<h2>One message, two channels</h2>
+<p>An IRC message has a <code>msgid</code>. You can send one message to more than one channel at once, like <code>PRIVMSG #a,#b :hello</code>. Ergo stores a history row in each channel, with the same msgid:</p>
+<table>
+<thead>
+<tr><th>Channel</th><th>msgid</th><th>History row</th></tr>
+</thead>
+<tbody>
+<tr><td>#a</td><td>m42</td><td>101</td></tr>
+<tr><td>#b</td><td>m42</td><td>102</td></tr>
+</tbody>
+</table>
+<p>The old database lookup searched for <code>m42</code> and stopped at the first row. It didn't check which channel the delete named. An operator's <code>HistServ</code> delete for <code>#a</code> could remove the <code>#b</code> copy and still report success, leaving <code>#a</code> untouched. For regular users, finding the wrong copy could make a valid delete fail its permission check.</p>
+<h2>Keep the channel in the lookup</h2>
+<p>The fix passes the channel through both lookup and deletion. Ergo now matches the msgid and channel name together, then removes the matching row from that channel. A delete for <code>#a</code> leaves the copy in <code>#b</code> alone. I made the same change for SQLite, MySQL and PostgreSQL.</p>
+<p>The regression test stores the same msgid in two channels, deletes it from one, then checks that the other copy is still there. The patch is in <a href="https://github.com/ergochat/ergo/pull/2462">Ergo PR #2462</a>.</p>
+<pre><code class="language-diff">diff --git a/irc/sqlite/history.go b/irc/sqlite/history.go
+@@ DeleteMsgid
+-_, id, _, _, err := s.lookupMsgid(ctx, msgid, true)
++rows, err := s.db.QueryContext(ctx, `SELECT history.id FROM history
++    INNER JOIN sequence ON history.id = sequence.history_id
++    WHERE sequence.target = ? AND history.msgid = ?;`, target, msgid)
+@@
+-err = s.deleteHistoryIDs(ctx, []uint64{id})
++err = s.deleteHistoryIDs(ctx, ids)
+
+--- a/irc/sqlite/delete_test.go
++++ b/irc/sqlite/delete_test.go
+@@
++db.DeleteMsgid(&quot;#unregistered&quot;, &quot;shared-msgid&quot;)
++// The #other copy remains; the #unregistered copy is gone.
+</code></pre>
+<p>That fix belongs in Ergo. It's the server's job to keep the permission check and history deletion on the same channel. It doesn't change who can delete messages; it makes sure the request affects the channel it was authorized for.</p>
+<h2>So, that means you know Go, right?</h2>
+<p>Not really. I don't know Go. But I knew the bug: deleting the message in <code>#a</code> should leave its copy in <code>#b</code>. GPT-6 Luna helped me turn that into a patch. I reviewed the diff and regression test to make sure the other target stayed untouched.</p>
+<p>That's what I like about working with AI. I can explain what I need, understand the trade-offs, and review the code well enough to decide whether I'm comfortable submitting it. I don't need to know the language already. This time, I learned enough to send a PR to Ergo.</p>
+<p>The PR is still open. I’ve published patched Ergo images for AMD64 and ARM64 and deployed them to Slirc.org.</p>
+<h2>What's next</h2>
+<ul>
+<li><strong>October 6th:</strong> pre-launch. The waiting list gets into app.slirc.org.</li>
+<li><strong>October 12th:</strong> the source code goes public.</li>
+</ul>
+<p><a href="https://slirc.org/#waitlist">Join the waiting list</a>, and see you on the 6th.</p>
+    </div>
+  </div>
+</article>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <div class="brandline"><img src="/slirc-mark.png?v=2" alt="">Slirc</div>
+        <p>A server you own, with code you can read.</p>
+      </div>
+      <div><h4>Product</h4><ul>
+        <li><a href="https://app.slirc.org/open-chat">Open chat</a></li>
+        <li><a href="https://app.slirc.org/help">Help room</a></li>
+      </ul></div>
+      <div><h4>Docs</h4><ul>
+        <li><a href="https://docs.slirc.org/getting-started">Getting started</a></li>
+        <li><a href="https://docs.slirc.org/agents">Agents</a></li>
+        <li><a href="https://docs.slirc.org/bots">Bots</a></li>
+        <li><a href="https://docs.slirc.org/clients">IRC clients</a></li>
+        <li><a href="https://docs.slirc.org/privacy">Privacy</a></li>
+        <li><a href="https://docs.slirc.org/comparison">Comparison</a></li>
+      </ul></div>
+      <div><h4>Source</h4><ul>
+        <li><a href="https://github.com/bitbonsai/slirc" rel="noreferrer">GitHub</a></li>
+        <li><a href="https://www.npmjs.com/package/slirc-agent" rel="noreferrer">slirc-agent on npm</a></li>
+        <li><a href="https://github.com/bitbonsai/slirc/issues" rel="noreferrer">Issues</a></li>
+      </ul></div>
+    </div>
+    <p class="bottom">Made with <span class="heart">&#9829;</span> by <a href="https://mauriciowolff.com" rel="noreferrer">@bitbonsai</a> · Built on <a href="https://ergo.chat" rel="noreferrer">Ergo IRC</a> · No analytics on this page.</p>
+  </div>
+</footer>
+
+<script src="/blog/lightbox.js" defer></script>
+</body>
+</html>

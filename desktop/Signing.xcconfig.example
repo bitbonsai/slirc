@@ -1,0 +1,6 @@
+// Copy this file to Signing.xcconfig (gitignored) and fill in your own values.
+// Note: in .xcconfig files, "//" starts a comment, so write "https:/$()/" for URLs.
+DEVELOPMENT_TEAM = YOUR_TEAM_ID
+PRODUCT_BUNDLE_IDENTIFIER = com.example.slirc.desktop
+SPARKLE_FEED_URL = https:/$()/example.com/download/appcast.xml
+SPARKLE_PUBLIC_ED_KEY =

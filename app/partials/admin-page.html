@@ -1,0 +1,110 @@
+  <div x-data="adminPage" class="profile-page admin-page" data-phone-screen="admin" :class="isDesktop ? 'profile-page-desktop' : 'mobile-screen profile-screen'" x-cloak x-show="authenticated && adminRoute">
+    <div class="mobile-screen-head" x-show="!isDesktop"><div class="home-brand"><a class="home-brand profile-back" href="/more" aria-label="Back to More" x-on:click.prevent="openMore()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a><strong>Admin</strong></div></div>
+    <div class="profile-page-body" :class="{ 'mobile-screen-body': !isDesktop }">
+      <section class="profile-dialog-card profile-screen-card">
+        <div class="profile-heading" x-show="isDesktop"><div class="profile-modal-avatar"><img :src="avatarUrl(account)" alt="" /></div><div><h2><span x-text="me"></span><span class="admin-badge" x-show="isAdmin" role="img" aria-label="Administrator" x-html="lucideIcon('user-star')"></span></h2><p x-text="'@' + account"></p></div></div>
+<!-- include: account-navigation -->
+        <section class="irc-settings admin-status">
+          <div class="admin-status-head">
+            <h3>Status</h3>
+            <button type="button" class="link-button admin-refresh" :disabled="adminStatus.loading" :aria-busy="adminStatus.loading ? 'true' : 'false'" x-on:click="adminStatus.load()"><span class="spinner" aria-hidden="true" x-show="adminStatus.loading"></span><span x-text="adminStatus.loading ? 'Refreshing…' : 'Refresh'">Refresh</span></button>
+          </div>
+          <p class="profile-error" role="alert" x-show="adminStatus.error" x-text="adminStatus.error"></p>
+          <p class="profile-note loading" x-show="adminStatus.loading && !adminStatus.loaded"><span class="spinner" aria-hidden="true"></span>Loading status…</p>
+          <p class="profile-note" x-show="adminStatus.loaded && !adminStatus.view && !adminStatus.error">No status yet. The server writes it every five minutes.</p>
+          <template x-if="adminStatus.view">
+            <div class="admin-status-body">
+              <p class="admin-status-updated" :class="adminStatus.view.updated.tone" x-text="adminStatus.view.updated.text"></p>
+              <template x-for="part in adminStatus.view.sections" :key="part.key">
+                <section class="admin-status-section">
+                  <h4><span x-text="part.title"></span> <span x-show="part.state" :class="part.state?.tone" x-text="part.state?.text"></span></h4>
+                  <p class="bad" x-show="part.error" x-text="'Unavailable: ' + part.error"></p>
+                  <dl x-show="part.pairs.length"><template x-for="pair in part.pairs" :key="pair.term"><div><dt x-text="pair.term"></dt><dd :class="pair.value.tone" x-text="pair.value.text"></dd></div></template></dl>
+                  <template x-for="(table, t) in part.tables" :key="t">
+                    <div class="admin-status-table"><table>
+                      <thead><tr><template x-for="(heading, h) in table.head" :key="h"><th x-text="heading"></th></template></tr></thead>
+                      <tbody><template x-for="(row, r) in table.rows" :key="r"><tr><template x-for="(value, c) in row" :key="c"><td :class="value.tone" x-text="value.text"></td></template></tr></template></tbody>
+                    </table></div>
+                  </template>
+                  <template x-for="(note, n) in part.notes" :key="n"><p :class="note.tone" x-text="note.text"></p></template>
+                </section>
+              </template>
+            </div>
+          </template>
+        </section>
+        <section class="irc-settings admin-branding" aria-labelledby="admin-branding-title" x-show="!workspace.logo">
+          <div class="admin-status-head"><h3 id="admin-branding-title">Branding</h3></div>
+          <p class="profile-note">The workspace icon shows in the sidebar and in the Workspaces list, here and in other workspaces. Without one, Slirc shows the letter tile.</p>
+          <div class="admin-branding-row">
+            <span class="workspace-badge admin-branding-preview" aria-hidden="true" :class="workspace.logo ? 'logo' : workspace.iconReady ? 'logo icon' : ''" :style="workspace.logo || workspace.iconReady ? '' : 'background:' + workspace.color"><img x-show="workspace.logo || workspace.iconReady" :src="workspace.logo || workspace.icon || null" alt="" x-on:load="if (!workspace.logo) workspace.iconReady = true" x-on:error="workspace.iconReady = false" /><span x-show="!workspace.logo && !workspace.iconReady" x-text="workspace.letter"></span></span>
+            <label class="btn-secondary admin-branding-pick" :class="branding.busy && 'disabled'"><span x-text="workspace.iconReady ? 'Change icon' : 'Upload icon'">Upload icon</span><input class="sr-only" type="file" accept="image/png,image/jpeg,image/webp" :disabled="!!branding.busy" x-on:change="branding.pick($event)" /></label>
+            <button type="button" class="link-button danger" x-show="workspace.iconReady" :disabled="!!branding.busy" x-on:click="branding.remove()" x-text="branding.busy === 'remove' ? 'Removing…' : 'Remove'">Remove</button>
+          </div>
+          <p class="profile-error" role="alert" x-show="branding.error && !branding.crop" x-text="branding.error"></p>
+          <p class="profile-note" role="status" x-show="branding.note" x-text="branding.note"></p>
+        </section>
+        <section class="irc-settings admin-agents">
+          <div class="admin-status-head"><h3>Agents</h3></div>
+          <p class="profile-note">Every member's coding agents. Removing one disconnects it and takes it out of every channel.</p>
+          <p class="profile-error" role="alert" x-show="adminStatus.agentsError && !adminStatus.removeTarget" x-text="adminStatus.agentsError"></p>
+          <div class="agent-list" x-show="adminStatus.agentsLoaded">
+            <p class="profile-note" x-show="!adminStatus.agents.length">No agents yet.</p>
+            <template x-for="agent in adminStatus.agents" :key="agent.nick">
+              <div class="agent-row">
+                <span class="agent-avatar" aria-hidden="true"><img :src="avatarUrl(agent.nick)" alt="" /></span>
+                <span class="agent-copy"><strong x-text="agent.name"></strong><small x-text="adminStatus.agentSubtitle(agent)"></small></span>
+                <span class="agent-status" :data-state="agent.status" x-text="agent.status === 'ready' ? 'Ready' : 'Offline'"></span>
+                <button type="button" class="link-button danger agent-remove" :aria-label="'Remove ' + agent.nick" x-on:click="adminStatus.askRemoveAgent(agent, $el)">Remove</button>
+              </div>
+            </template>
+          </div>
+        </section>
+        <section class="irc-settings admin-bots" aria-labelledby="admin-bots-title">
+          <div class="admin-status-head"><h3 id="admin-bots-title">Bots</h3></div>
+          <p class="profile-note">IRC accounts your scripts log in as. Slirc creates the account; your script connects with its name and password. <a href="/docs/bots" target="_blank" rel="noopener">Bot guide</a></p>
+          <p class="profile-error" role="alert" x-show="adminStatus.botsError && !adminStatus.botRemoveTarget" x-text="adminStatus.botsError"></p>
+          <div class="irc-credential" x-show="adminStatus.credential">
+            <h4>Save this password now</h4>
+            <p x-text="adminStatus.credential?.rotated ? 'The old password for ' + adminStatus.credential?.nick + ' no longer works. This one appears once.' : 'It appears once. Put it in the script that logs in as ' + adminStatus.credential?.nick + '.'"></p>
+            <div class="irc-password"><code x-text="adminStatus.credential?.password"></code><button type="button" class="btn-secondary" x-on:click="adminStatus.copyCredential()" x-text="adminStatus.copied ? 'Copied' : 'Copy'">Copy</button></div>
+            <button type="button" class="btn-primary irc-done" x-on:click="adminStatus.closeCredential()">Done</button>
+          </div>
+          <div class="admin-stack" x-show="!adminStatus.credential">
+            <div class="agent-list" x-show="adminStatus.botsLoaded">
+              <p class="profile-note" x-show="!adminStatus.bots.length">No bots yet.</p>
+              <template x-for="bot in adminStatus.bots" :key="bot.nick">
+                <div class="agent-row admin-bot-row">
+                  <span class="agent-avatar" aria-hidden="true"><img :src="avatarUrl(bot.nick)" alt="" /></span>
+                  <span class="agent-copy"><strong x-text="bot.nick"></strong><small x-text="adminStatus.botSubtitle(bot)"></small></span>
+                  <button type="button" class="link-button" :disabled="!!adminStatus.botBusy" :aria-label="'New password for ' + bot.nick" x-on:click="adminStatus.rotateBot(bot)" x-text="adminStatus.botBusy === 'rotate:' + bot.nick ? 'Rotating…' : 'New password'"></button>
+                  <button type="button" class="link-button danger agent-remove" :disabled="!!adminStatus.botBusy" :aria-label="'Remove ' + bot.nick" x-on:click="adminStatus.askRemoveBot(bot, $el)">Remove</button>
+                </div>
+              </template>
+            </div>
+            <form class="irc-device-form" x-show="adminStatus.botsLoaded && adminStatus.botsUsed < adminStatus.botLimit" x-on:submit.prevent="adminStatus.createBot()">
+              <label>Bot name<input id="admin-bot-name" type="text" maxlength="32" placeholder="deploy" autocomplete="off" spellcheck="false" x-model="adminStatus.botName" /></label>
+              <p class="field-hint">This becomes its nick, so people add it with /invite. If the name is taken, Slirc adds your nick to it.</p>
+              <div class="profile-actions"><button type="submit" class="btn-primary" :disabled="!!adminStatus.botBusy || !adminStatus.botName.trim()" x-text="adminStatus.botBusy === 'create' ? 'Creating…' : 'Create bot'"></button></div>
+            </form>
+            <p class="profile-note" x-show="adminStatus.botsLoaded && adminStatus.botsUsed >= adminStatus.botLimit" x-text="'You have ' + adminStatus.botLimit + ' bots, the limit. Remove one to add another.'"></p>
+          </div>
+        </section>
+      </section>
+    </div>
+    <dialog class="custom-modal" aria-labelledby="admin-icon-crop-title" tabindex="-1" x-cloak x-effect="const show = !booting && authenticated && adminRoute && !!branding.crop; if (show && !$el.open) { $el.showModal(); $nextTick(() => $el.querySelector('.icon-crop-zoom input')?.focus()); } else if (!show && $el.open) $el.close()" x-on:cancel.prevent="branding.cancel()">
+      <section class="notice-card icon-crop-card">
+        <h2 id="admin-icon-crop-title">Crop icon</h2>
+        <p>Drag to move the image. Zoom with the slider.</p>
+        <div class="icon-crop" tabindex="0" role="group" aria-label="Icon crop. Arrow keys move the image, plus and minus zoom." x-on:pointerdown="branding.pointerDown($event)" x-on:pointermove="branding.pointerMove($event)" x-on:pointerup="branding.pointerUp($event)" x-on:pointercancel="branding.pointerUp($event)" x-on:wheel="branding.wheel($event)" x-on:keydown="branding.keydown($event)"><img :src="branding.src || null" :style="branding.style()" alt="" draggable="false" /></div>
+        <label class="icon-crop-zoom"><span>Zoom</span><input type="range" min="1" :max="branding.maxZoom" step="0.01" :value="branding.crop?.zoom ?? 1" x-on:input="branding.setZoom($event.target.value)" /></label>
+        <p class="profile-error" role="alert" x-show="branding.error" x-text="branding.error"></p>
+        <div class="pair-actions"><button type="button" class="btn-secondary" :disabled="!!branding.busy" x-on:click="branding.cancel()">Cancel</button><button type="button" class="btn-primary" :disabled="!!branding.busy" x-on:click="branding.save()" x-text="branding.busy === 'save' ? 'Saving…' : 'Save icon'">Save icon</button></div>
+      </section>
+    </dialog>
+    <dialog class="custom-modal" aria-labelledby="admin-bot-remove-title" tabindex="-1" x-on:keydown="adminStatus.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && adminRoute && adminStatus.botRemoveTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!adminStatus.botBusy) adminStatus.closeRemoveBot()">
+      <section class="notice-card"><h2 id="admin-bot-remove-title">Remove <span x-text="adminStatus.botRemoveTarget?.nick"></span>?</h2><p>Its IRC account stops working and it leaves every channel. Scripts using it lose access. You can create a new bot later.</p><p class="profile-error" role="alert" x-show="adminStatus.botsError" x-text="adminStatus.botsError"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="!!adminStatus.botBusy" x-on:click="adminStatus.closeRemoveBot()">Cancel</button><button type="button" class="btn-danger" :disabled="!!adminStatus.botBusy" x-on:click="adminStatus.confirmRemoveBot()" x-text="adminStatus.botBusy ? 'Removing…' : 'Remove'"></button></div></section>
+    </dialog>
+    <dialog class="custom-modal" aria-labelledby="admin-agent-remove-title" tabindex="-1" x-on:keydown="adminStatus.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && adminRoute && adminStatus.removeTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!adminStatus.removing) adminStatus.closeRemoveAgent()">
+      <section class="notice-card"><h2 id="admin-agent-remove-title">Remove <span x-text="adminStatus.removeTarget?.name"></span>?</h2><p>This disconnects <span x-text="adminStatus.removeTarget?.owner"></span>'s agent, removes its DM and takes it out of every channel. They can pair a new one.</p><p class="profile-error" role="alert" x-show="adminStatus.agentsError" x-text="adminStatus.agentsError"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="adminStatus.removing" x-on:click="adminStatus.closeRemoveAgent()">Cancel</button><button type="button" class="btn-danger" :disabled="adminStatus.removing" x-on:click="adminStatus.confirmRemoveAgent()" x-text="adminStatus.removing ? 'Removing…' : 'Remove'"></button></div></section>
+    </dialog>
+  </div>

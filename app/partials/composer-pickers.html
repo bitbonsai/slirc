@@ -1,0 +1,38 @@
+  <div class="command-palette" x-data="slashHelpPanel" x-ref="list" x-effect="composer; dismissed; $nextTick(() => sync())" role="listbox" aria-label="Commands" :style="matches().length ? commandPaletteStyle() : 'display:none'" x-cloak x-show="matches().length" x-on:mousedown.prevent>
+    <template x-for="(item, i) in matches()" :key="item.name">
+      <button type="button" :class="i === index && 'active'" role="option" :aria-selected="i === index" x-on:click="choose(item)"><code x-text="'/' + item.name"></code><span x-text="item.description"></span></button>
+    </template>
+  </div>
+
+  <div class="command-palette mention-palette" x-data="mentionPicker" x-ref="list" x-effect="composer; dismissed; roomMembers.length; contacts.length; directs.length; messages.length; $nextTick(() => sync())" role="listbox" aria-label="People" :style="matches().length ? commandPaletteStyle() : 'display:none'" x-cloak x-show="matches().length" x-on:mousedown.prevent>
+    <template x-for="(nick, i) in matches()" :key="nick">
+      <button type="button" :class="i === index && 'active'" role="option" :aria-selected="i === index" x-on:click="choose(nick)"><span class="mention-avatar" aria-hidden="true"><img :src="avatarUrl(nick)" alt="" /></span><span x-text="label(nick)"></span><code class="mention-nick" x-show="label(nick) !== nick" x-text="'@' + nick"></code></button>
+    </template>
+  </div>
+
+  <div id="emoji-picker" class="command-palette emoji-palette" x-data="emojiPicker" x-ref="list" x-effect="composer; caret; dismissed; browse; custom.length; $nextTick(() => sync())" role="listbox" aria-label="Insert emoji" :style="isOpen() ? commandPaletteStyle() : 'display:none'" x-cloak x-show="isOpen()" x-on:mousedown.prevent>
+    <template x-for="(row, i) in matches()" :key="row.code">
+      <button type="button" :id="'emoji-option-' + i" role="option" :aria-selected="i === index" :class="i === index && 'active'" x-on:mouseenter="index = i" x-on:click="choose(row)"><span class="emoji-glyph"><template x-if="row.image"><img class="custom-emoji" :src="row.image" :alt="':' + row.code + ':'" /></template><span x-show="!row.image" x-text="row.emoji"></span></span><span class="emoji-code" x-text="':' + row.code + ':'"></span></button>
+    </template>
+  </div>
+
+  <!-- Giphy picker (composer tray). Separate from a sent message's Giphy URL: this only searches
+       /giphy results and queues the `[Giphy: query] url` line on pick. See isGiphyUrl for message
+       rendering. -->
+  <div class="giphy-panel" x-data="giphyPicker" x-effect="giphy.giphyOpen; giphy.giphyResults.length; giphy.giphyBusy; $nextTick(() => sync())" x-cloak x-show="giphy.giphyOpen" :style="giphy.giphyOpen ? giphyPanelStyle() : 'display:none'" role="dialog" aria-label="GIF search">
+    <div class="giphy-head">
+      <strong x-text="'GIFs: ' + giphy.giphyQuery"></strong>
+      <small class="giphy-count" x-show="!giphy.giphyBusy" x-text="giphy.giphyResults.length + (giphy.giphyResults.length === 1 ? ' result' : ' results')"></small>
+      <button type="button" class="giphy-close" aria-label="Close GIF search" x-tooltip x-on:click="giphy.closeGiphy()">×</button>
+    </div>
+    <p class="giphy-status" role="status" x-show="giphy.giphyBusy">Searching…</p>
+    <p class="giphy-status" role="alert" x-show="!giphy.giphyBusy && giphy.giphyError" x-text="giphy.giphyError"></p>
+    <div class="giphy-strip" x-show="!giphy.giphyBusy && giphy.giphyResults.length">
+      <div class="giphy-results" x-ref="results" role="listbox" aria-label="GIF results">
+        <template x-for="(gif, i) in giphy.giphyResults" :key="gif.url">
+          <button type="button" role="option" :class="i === index && 'selected'" :aria-selected="i === index" :aria-label="gif.title || 'Send GIF'" x-on:click="giphy.chooseGiphy(gif)" x-on:focus="$el.scrollIntoView({ block: 'nearest', inline: 'nearest' })"><img :src="gif.preview" alt="" loading="lazy" width="80" height="64" /></button>
+        </template>
+      </div>
+      <div class="giphy-fade" x-show="moreRight" aria-hidden="true"></div>
+    </div>
+  </div>

@@ -1,0 +1,36 @@
+  <dialog id="message-sheet" class="custom-modal sheet-modal" aria-label="Message actions" x-cloak x-on:contextmenu.prevent x-effect="const open = !isDesktop && !!actions.actionMessage(); if (open && !$el.open) $el.showModal(); else if (!open && $el.open) $el.close()" x-on:cancel.prevent="actions.reactionSearch ? actions.closeReactionSearch() : actions.closeMessageMenu(true)" x-on:click="if ($event.target === $el) actions.closeMessageMenu(false)">
+    <template x-if="actions.actionMessage()">
+      <section class="action-sheet">
+        <div class="sheet-head"><strong x-text="actions.actionMessage()?.authorNick"></strong><span x-text="formatTime(actions.actionMessage()?.time)"></span></div>
+        <div class="sheet-reactions" x-show="!actions.remindOpen && !actions.reactionSearch">
+          <template x-for="emoji in reactionPresets" :key="'sheet-' + emoji">
+            <button type="button" :disabled="!reactionsReady()" :aria-label="'React with ' + emoji" x-on:click="actions.fromSheet((message) => chooseReaction(message, emoji))" x-text="emoji"></button>
+          </template>
+          <button type="button" class="reaction-search-open" :disabled="!reactionsReady()" aria-label="Add reaction" x-on:click="actions.openReactionSearch()"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('smile-plus')"></span></button>
+        </div>
+        <template x-if="actions.reactionSearch">
+          <div class="reaction-search sheet-reaction-search">
+<!-- include: reaction-search -->
+            <button type="button" class="btn-secondary reaction-search-back" x-on:click="actions.closeReactionSearch()">Back</button>
+          </div>
+        </template>
+        <div class="sheet-divider" x-show="!actions.remindOpen && !actions.reactionSearch"></div>
+        <div class="sheet-actions" x-show="!actions.remindOpen && !actions.reactionSearch">
+          <button type="button" x-show="canEdit(actions.actionMessage())" x-on:click="actions.fromSheet(startEdit)"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('pencil')"></span>Edit</button>
+          <button type="button" x-show="!activeThread" x-on:click="actions.fromSheet(openThreadForMessage)"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('corner-down-right')"></span>Reply in thread</button>
+          <button type="button" x-on:click="actions.openRemind()"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('bell')"></span>Remind me</button>
+          <button type="button" x-show="!notesOpen" x-on:click="actions.fromSheet(copyMessageLink)"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('link')"></span>Copy link</button>
+          <button type="button" class="danger" x-show="canDelete(actions.actionMessage())" x-on:click="actions.fromSheet(actions.requestDelete)"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('trash')"></span>Delete</button>
+        </div>
+        <div class="sheet-actions remind-presets" x-show="actions.remindOpen && !actions.remindForm" role="group" aria-label="Remind me">
+          <template x-for="preset in actions.remindPresets" :key="'sheet-' + preset.when"><button type="button" x-on:click="actions.remindAt(preset.when)" x-text="preset.label"></button></template>
+          <button type="button" x-on:click="actions.openRemindForm()">Custom…</button>
+        </div>
+        <form class="remind-form" x-show="actions.remindForm" novalidate x-on:submit.prevent="actions.remindCustom()">
+          <label>Date and time<input type="datetime-local" x-model="actions.remindValue" :min="actions.remindMin" :max="actions.remindMax" x-on:input="actions.remindError = ''" x-on:keydown.enter.prevent="actions.remindCustom()" /></label>
+          <p class="profile-error" role="alert" x-show="actions.remindError" x-text="actions.remindError"></p>
+          <div class="remind-form-actions"><button type="button" class="btn-secondary" x-on:click="actions.remindBack()">Back</button><button type="submit" class="btn-primary">Set reminder</button></div>
+        </form>
+      </section>
+    </template>
+  </dialog>

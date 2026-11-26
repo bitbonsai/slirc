@@ -1,0 +1,17 @@
+  <dialog x-data="mediaView" id="media-lightbox" class="lightbox" :class="{ maximized: mediaView.lightboxMax, zoomed: mediaView.lightboxZoom }" x-cloak x-on:cancel.prevent="mediaView.escapeLightbox()" x-on:click="if ($event.target === $el) mediaView.closeLightbox()">
+    <div class="lightbox-media" x-on:pointerdown="mediaView.startLightboxPan($event)">
+      <template x-if="mediaView.lightbox?.kind === 'image'"><img :src="mediaView.lightbox.src" :alt="mediaView.lightbox.alt || ''" draggable="false" x-on:click="mediaView.toggleLightboxZoom($event)" /></template>
+      <template x-if="mediaView.lightbox?.kind === 'player'"><iframe :src="mediaView.lightbox.src" :style="'--ar: ' + (mediaView.lightbox.aspect || 1.7778)" :class="mediaView.lightbox.compact && 'compact'" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"></iframe></template>
+    </div>
+    <div class="lightbox-footer">
+      <p class="lightbox-caption" x-show="mediaView.lightbox?.alt || mediaView.lightbox?.title">
+        <a x-show="mediaView.lightbox?.kind === 'player' && mediaView.lightbox?.url" :href="mediaView.lightbox?.url || '#'" target="_blank" rel="noopener noreferrer" x-text="mediaView.lightbox?.title || mediaView.lightbox?.site || ''"></a>
+        <span x-show="mediaView.lightbox?.kind !== 'player'" x-text="mediaView.lightbox?.alt || ''"></span>
+      </p>
+      <div class="lightbox-actions">
+        <button type="button" class="lightbox-btn" x-show="mediaView.lightbox?.kind === 'image'" :aria-label="mediaView.lightboxZoom ? 'Fit to window' : 'Actual size'" x-tooltip x-on:click="mediaView.toggleLightboxZoom()" x-html="lucideIcon(mediaView.lightboxZoom ? 'zoom-out' : 'zoom-in')"></button>
+        <button type="button" class="lightbox-btn" :aria-label="mediaView.lightboxMax ? 'Restore size' : 'Fill the window'" x-tooltip x-on:click="mediaView.lightboxMax = !mediaView.lightboxMax" x-html="lucideIcon(mediaView.lightboxMax ? 'minimize' : 'maximize')"></button>
+        <button type="button" class="lightbox-btn" aria-label="Close" x-tooltip x-on:click="mediaView.closeLightbox()" x-html="lucideIcon('x')"></button>
+      </div>
+    </div>
+  </dialog>

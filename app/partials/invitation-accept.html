@@ -1,0 +1,73 @@
+  <div x-data="invitationAccept" class="profile-page invitation-page" data-phone-screen="join" :class="isDesktop ? 'profile-page-desktop' : 'mobile-screen profile-screen'" x-cloak x-show="joinRoute">
+    <div class="mobile-screen-head" x-show="!isDesktop"><div class="home-brand"><button class="home-brand profile-back" type="button" aria-label="Back" x-on:click="invitationAccept.goHome()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button><strong>Invitation</strong></div></div>
+    <div class="profile-page-body" :class="{ 'mobile-screen-body': !isDesktop }">
+      <div class="mobile-spacer" x-show="!isDesktop"></div>
+      <section class="profile-dialog-card profile-screen-card invitation-card" aria-labelledby="invitation-title">
+        <div class="invite-heading">
+          <p class="join-eyebrow" x-text="invitationAccept.isEmailInvite() ? 'Private conversation' : 'Channel invite'"></p>
+          <h1 id="invitation-title" class="join-heading" x-text="'You are invited to ' + invitationAccept.destinationLabel()"></h1>
+          <p class="join-note" x-show="invitationAccept.loading">Checking this invite…</p>
+        </div>
+        <p class="profile-error" role="alert" x-show="invitationAccept.error"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('circle-alert')"></span><span x-text="invitationAccept.error"></span></p>
+
+        <template x-if="invitationAccept.info && !invitationAccept.error">
+          <div class="invitation-body">
+            <div x-show="!authenticated && invitationAccept.isEmailInvite() && !invitationAccept.signupSent">
+              <p class="join-note">Choose the name people will see. No password needed.</p>
+              <form x-on:submit.prevent="invitationAccept.requestSignup()">
+                <label>Display name<input x-ref="inviteName" type="text" maxlength="80" autocomplete="nickname" required x-model="invitationAccept.name" :disabled="invitationAccept.signupBusy" x-effect="!authenticated && invitationAccept.isEmailInvite() && !invitationAccept.signupSent && !booting && (!document.activeElement || document.activeElement === document.body) && $nextTick(() => $refs.inviteName?.focus())" /></label>
+                <button type="submit" class="btn-primary" :class="invitationAccept.working() && 'busy'" :aria-busy="invitationAccept.working() ? 'true' : 'false'" :disabled="invitationAccept.working() || !invitationAccept.name.trim()" x-text="invitationAccept.working() ? 'Joining…' : 'Join'"></button>
+              </form>
+            </div>
+
+            <div x-show="invitationAccept.signupSent">
+              <h2>Check your inbox</h2>
+              <p x-show="invitationAccept.devLink">This local test link signs you in. No email was sent.</p>
+              <p x-show="!invitationAccept.devLink">This address already has a Slirc account, so we sent it a code. Type it here<span class="email-link-hint">, or open the link in the email</span>.</p>
+              <form class="login-code" x-show="!invitationAccept.devLink" x-on:submit.prevent="invitationAccept.submitCode()">
+                <label>Code<input type="text" name="code" x-code="digits" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" placeholder="000000" x-model="invitationAccept.code" :disabled="invitationAccept.codeBusy" x-on:input="invitationAccept.codeInput()" /></label>
+                <button type="submit" class="btn-primary" :class="invitationAccept.codeBusy && 'busy'" :aria-busy="invitationAccept.codeBusy ? 'true' : 'false'" :disabled="invitationAccept.codeBusy || invitationAccept.code.length !== 6" x-text="invitationAccept.codeBusy ? 'Checking…' : 'Join'"></button>
+              </form>
+              <p class="profile-error" role="alert" x-show="invitationAccept.codeError" x-text="invitationAccept.codeError"></p>
+              <div class="dev-link" x-show="invitationAccept.devLink">
+                <p>Local test link</p>
+                <a :href="invitationAccept.devLink" x-text="invitationAccept.devLink"></a>
+              </div>
+            </div>
+
+            <div x-show="!authenticated && !invitationAccept.isEmailInvite() && !signIn.linkSent">
+              <p class="join-note">Sign in to join this channel. The link in your email brings you back to this invite.</p>
+              <form x-on:submit.prevent="signIn.requestLink()">
+                <label>Email<input x-code="trim" type="email" name="email" autocomplete="email" required x-model="signIn.email" :disabled="signIn.linkBusy" /></label>
+                <button type="submit" class="btn-primary" :disabled="signIn.linkBusy || !validSignInEmail(signIn.email)" x-text="signIn.linkBusy ? 'Sending…' : 'Send sign-in link'"></button>
+              </form>
+            </div>
+            <div x-show="!authenticated && !invitationAccept.isEmailInvite() && signIn.linkSent">
+              <h2>Check your inbox</h2>
+              <p x-show="signIn.devLink">This local test link signs you in. No email was sent.</p>
+              <p x-show="!signIn.devLink">We sent a code to <strong x-text="signIn.email"></strong>. Type it here<span class="email-link-hint">, or open the link in the email</span>.</p>
+              <form class="login-code" x-show="!signIn.devLink" x-on:submit.prevent="signIn.submitCode()">
+                <label>Code<input type="text" name="code" x-code="digits" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" placeholder="000000" x-model="signIn.code" :disabled="signIn.codeBusy" x-on:input="signIn.codeInput()" /></label>
+                <button type="submit" class="btn-primary" :disabled="signIn.codeBusy || signIn.code.length !== 6" x-text="signIn.codeBusy ? 'Checking…' : 'Sign in'"></button>
+              </form>
+              <p class="profile-error" role="alert" x-show="signIn.codeError" x-text="signIn.codeError"></p>
+              <div class="dev-link" x-show="signIn.devLink">
+                <p>Local test link</p>
+                <a :href="signIn.devLink" x-text="signIn.devLink"></a>
+              </div>
+            </div>
+
+            <div x-show="authenticated">
+              <p class="join-note" x-show="!invitationAccept.accountMismatch">Signed in as <strong x-text="'@' + account"></strong>.</p>
+              <p class="profile-error" role="alert" x-show="invitationAccept.accountMismatch"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('circle-alert')"></span><span>This invitation belongs to a different account. Sign out, then reopen this invite link to use the invited account.</span></p>
+              <button type="button" class="join-accept btn-primary" x-show="!invitationAccept.accountMismatch" :class="invitationAccept.working() && 'busy'" :aria-busy="invitationAccept.working() ? 'true' : 'false'" :disabled="invitationAccept.working()" x-on:click="invitationAccept.accept()" x-text="invitationAccept.working() ? 'Joining…' : 'Join'"></button>
+              <button type="button" class="btn-secondary" x-show="invitationAccept.accountMismatch" :disabled="invitationAccept.busy" x-on:click="invitationAccept.switchAccount()">Sign out and switch account</button>
+            </div>
+
+            <p class="profile-error" role="alert" x-show="invitationAccept.acceptError && !invitationAccept.accountMismatch"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('circle-alert')"></span><span x-text="invitationAccept.acceptError"></span></p>
+            <button type="button" class="btn-secondary invitation-dismiss" x-on:click="invitationAccept.goHome()">Not now</button>
+          </div>
+        </template>
+      </section>
+    </div>
+  </div>

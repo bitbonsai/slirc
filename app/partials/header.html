@@ -1,0 +1,35 @@
+  <header x-cloak x-show="!booting && (authenticated || peekRoom) && !joinRoute && (isDesktop || (mobileNav === null && !profileRoute && !settingsRoute && !channelsRoute && !invitationsRoute && !ircRoute && !agentsRoute && !adminRoute))">
+    <button class="mobile-back" type="button" aria-label="Back" x-show="!isDesktop && authenticated" x-on:click="goBack()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
+    <a class="header-logo" href="/" aria-label="Slirc" x-show="!(authenticated && isDesktop && roomsOpen)" x-on:click.prevent><img class="header-wordmark brand-wordmark" src="/brand-org-dark.svg" width="233" height="73" alt="Slirc" /></a>
+    <button type="button" class="workspace-mark" x-show="authenticated && isDesktop && roomsOpen && workspace.name" aria-haspopup="dialog" :aria-label="'Workspaces, now ' + workspace.name" :data-tooltip="workspace.name" :aria-expanded="String(workspaceDialog)" x-tooltip x-on:click="openWorkspaces()"><span class="workspace-badge" aria-hidden="true" :class="workspace.logo ? 'logo' : workspace.iconReady ? 'logo icon' : ''" :style="workspace.logo || workspace.iconReady ? '' : 'background:' + workspace.color"><img x-show="workspace.logo || workspace.iconReady" :src="workspace.logo || workspace.icon || null" alt="" x-on:load="if (!workspace.logo) workspace.iconReady = true" x-on:error="workspace.iconReady = false" /><span x-show="!workspace.logo && !workspace.iconReady" x-text="workspace.letter"></span></span></button>
+    <button id="rooms-toggle" class="rooms-toggle" type="button" data-peek-ok x-show="isDesktop" :aria-label="roomsOpen ? 'Collapse sidebar' : 'Expand sidebar'" :aria-expanded="roomsOpen" aria-controls="rooms" :data-tooltip="roomsOpen ? 'Collapse sidebar' : 'Expand sidebar'" x-tooltip x-on:click="toggleRooms()"><span class="menu-icon" x-html="lucideIcon('panel-left')"></span></button>
+    <span id="status" class="status header-status" x-show="authenticated && phase !== 'live'">
+      <span class="status-spinner" aria-hidden="true"></span>
+      <span x-text="phase === 'connecting' ? 'Connecting…' : phase"></span>
+    </span>
+    <div class="room-heading">
+      <div class="room-heading-main">
+        <div class="history-nav" role="group" aria-label="History" x-show="isDesktop && authenticated">
+          <button type="button" class="history-btn" aria-label="Back" x-tooltip :disabled="!canGoBack()" x-on:click="goBack()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+          <button type="button" class="history-btn" aria-label="Forward" x-tooltip :disabled="!canGoForward()" x-on:click="goForward()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+        </div>
+        <button id="room-title" class="room-title" type="button" x-show="!profileRoute && !settingsRoute && !channelsRoute && !invitationsRoute && !ircRoute && !agentsRoute && !adminRoute" :disabled="isDesktop && ((!direct && !!activeThread) || notesOpen)" :aria-label="isDesktop ? (direct ? 'Open profile for ' + channel : (activeThread ? null : 'Open channel settings for ' + channel)) : (direct && !notesOpen ? 'Open profile for ' + channel + ' · ' + avatarStatusLabel(channel) : 'Open channels from ' + channel)" :data-tooltip="headerTooltip()" x-tooltip x-on:click="isDesktop ? (notesOpen ? null : direct ? people.openWhois(channel) : (activeThread ? null : channelPrefs.openChannelSettings(channel))) : (direct && !notesOpen ? people.openWhois(channel) : openHome())">
+          <span class="room-mark" x-show="notesOpen" aria-hidden="true"><span class="menu-icon" x-html="lucideIcon('notebook-pen')"></span></span>
+          <span class="room-mark channel" x-show="!direct && !notesOpen" aria-hidden="true" :class="isOpenRoom(channel) && 'open'"><span class="lock-icon" x-show="!isOpenRoom(channel)"></span><span class="channel-hash" x-show="isOpenRoom(channel)">#</span></span>
+          <template x-if="direct"><span class="room-mark peer-avatar avatar-status-host" aria-hidden="true" :data-status="avatarStatus(channel)"><span>@</span><img :src="avatarUrl(channel)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span></template>
+          <span class="room-title-text"><span x-text="headerTitle()"></span><span class="room-subtitle" x-show="headerSubtitle()" x-text="headerSubtitle()"></span></span>
+        </button>
+        <span class="room-title profile-title" x-show="profileRoute || settingsRoute || channelsRoute || invitationsRoute || ircRoute || agentsRoute || adminRoute">
+          <span class="room-mark" aria-hidden="true" x-html="adminRoute ? lucideIcon('user-star') : agentsRoute ? lucideIcon('bot') : channelsRoute ? lucideIcon('hash') : invitationsRoute ? lucideIcon('mail') : settingsRoute ? lucideIcon('smartphone') : ircRoute ? lucideIcon('terminal') : lucideIcon('user')"></span>
+          <span class="room-title-text"><span x-text="adminRoute ? 'Admin' : agentsRoute ? 'Agents' : channelsRoute ? 'Create channel' : invitationsRoute ? 'People' : settingsRoute ? 'Devices' : ircRoute ? 'IRC clients' : 'You'"></span></span>
+        </span>
+      </div>
+    </div>
+    <div class="view-switch" role="group" aria-label="View" x-cloak x-show="library.available()">
+      <button type="button" :class="library.on && 'on'" :aria-pressed="library.on ? 'true' : 'false'" x-on:click="library.show('links')">Links</button>
+      <button type="button" :class="!library.on && 'on'" :aria-pressed="library.on ? 'false' : 'true'" x-on:click="library.show('messages')">Messages</button>
+    </div>
+    <button type="button" class="header-icon members-toggle" x-show="members.canShow()" :class="members.open && 'active'" :aria-expanded="members.open ? 'true' : 'false'" aria-controls="members-panel" aria-label="Members" data-tooltip="Members" x-tooltip x-on:click="members.toggle()"><span class="members-icon" aria-hidden="true"></span></button>
+  </header>

@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark light" />
+<title>Slirc</title>
+<style>
+  /* Tokens copied from app/public/style.css so the picker matches the sign-in card that follows it. */
+  :root {
+    color-scheme: dark;
+    --bg: #11111b;
+    --bg-glow: radial-gradient(max(50vw, 34rem) 34rem at 50% -10rem, #1e1e2e, var(--bg));
+    --panel: #181825;
+    --line: #313244;
+    --text: #cdd6f4;
+    --muted: #7f849c;
+    --brand: #a6e3a1;
+    --brand-fill: #a6e3a1;
+    --on-brand: #11111b;
+    --danger: #f38ba8;
+    --radius-md: .55rem;
+    --radius-lg: .75rem;
+    --radius-xl: 1rem;
+    --text-sm: .875rem;
+    --text-base: 1rem;
+    --text-lg: 1.25rem;
+    --ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  /* Light values follow the system setting, as the web client does on first run. */
+  @media (prefers-color-scheme: light) {
+    :root {
+      color-scheme: light;
+      --bg: #eff1f5;
+      --bg-glow: radial-gradient(max(50vw, 34rem) 34rem at 50% -10rem, #fff, var(--bg));
+      --panel: #e6e9ef;
+      --line: #ccd0da;
+      --text: #4c4f69;
+      --muted: #65687e;
+      --brand: #237719;
+      --on-brand: #4c4f69;
+      --danger: #af425a;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: grid; place-items: center;
+    padding: calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+    background: var(--bg-glow), var(--bg); color: var(--text); font: var(--text-base)/1.45 var(--ui);
+    -webkit-text-size-adjust: 100%;
+  }
+  /* Hidden until we know whether a saved workspace opens straight away, so the form never flashes. */
+  main { width: min(100%, 22rem); padding: 1.25rem; border: 1px solid var(--line); border-radius: var(--radius-xl); background: var(--panel); visibility: hidden; }
+  main.ready { visibility: visible; }
+  /* Shown while a saved workspace is checked and opened, until the form or the workspace takes over. */
+  .opening { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 1rem; color: var(--muted); font-size: var(--text-sm); }
+  .opening img { margin: 0; animation: opening-pulse 1.6s ease-in-out infinite; }
+  main.ready ~ .opening { display: none; }
+  @keyframes opening-pulse { 50% { opacity: .45; } }
+  @media (prefers-reduced-motion: reduce) { .opening img { animation: none; } }
+  img { display: block; height: 2.25rem; width: auto; margin: 0 auto 1.1rem; }
+  h1 { margin: 0 0 .35rem; font-size: var(--text-lg); line-height: 1.25; }
+  h1 span { color: var(--brand); }
+  p { margin: 0 0 1rem; color: var(--muted); font-size: var(--text-sm); }
+  form { display: grid; gap: 1rem; }
+  label { display: grid; gap: .3rem; color: var(--muted); font-size: var(--text-sm); }
+  /* At 16px, iOS does not zoom the page when the field is tapped. */
+  .field { display: flex; align-items: center; font-size: var(--text-base); border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg); color: var(--text); }
+  .field:focus-within { border-color: var(--brand); }
+  input { flex: 1; min-width: 0; padding: .7rem .8rem; border: 0; outline: none; background: transparent; color: inherit; font: inherit; text-align: left; }
+  button { min-height: 2.75rem; border: 0; border-radius: var(--radius-md); background: var(--brand-fill); color: var(--on-brand); font: 700 var(--text-sm)/1 var(--ui); }
+  button:disabled { opacity: .5; }
+  /* Saved workspaces are cards you tap to open. Swipe a card left, or tap Edit, to reveal Remove behind it. */
+  .saved { display: grid; gap: .55rem; margin: 1rem 0 0; }
+  .saved:empty { display: none; }
+  .slot { position: relative; overflow: hidden; border-radius: var(--radius-lg); }
+  .slot-remove { position: absolute; inset: 0 0 0 auto; width: 6.5rem; padding-left: 1rem; border-radius: 0; background: var(--danger); color: #11111b; }
+  .card { position: relative; display: flex; align-items: center; gap: .75rem; width: 100%; min-height: 4rem; padding: .7rem .85rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg); color: var(--text); font: inherit; text-align: left; touch-action: pan-y; transition: transform .18s ease-out; }
+  .card.last { border-color: color-mix(in srgb, var(--brand) 40%, transparent); }
+  .card.dragging { transition: none; }
+  .slot.open .card { transform: translateX(-5.5rem); }
+  /* Edit narrows every card instead, so names stay readable. */
+  .saved.editing .card { width: calc(100% - 5.5rem); transform: none; }
+  .saved.editing .tag, .saved.editing .chev { display: none; }
+  .card.join { background: transparent; border-style: dashed; }
+  /* Initials on pastel fills keep dark ink in both themes, as avatars do in the web client. */
+  .mark { flex: none; display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-md); color: #11111b; font: 700 var(--text-base)/1 var(--ui); }
+  .card.join .mark { border: 1px dashed var(--line); color: var(--brand); }
+  .who { flex: 1; min-width: 0; display: grid; gap: .1rem; }
+  .who b, .who small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .who b { font: 600 var(--text-base)/1.2 var(--ui); }
+  .who small { color: var(--muted); font: 400 .8125rem/1.2 var(--ui); }
+  .card.failed { border-color: color-mix(in srgb, var(--danger) 55%, transparent); }
+  .tag.failed { background: color-mix(in srgb, var(--danger) 13%, transparent); color: var(--danger); }
+  .retry { width: 100%; margin: 0 0 1rem; }
+  .retry[hidden] { display: none; }
+  .tag { flex: none; padding: .15rem .45rem; border-radius: 999px; background: color-mix(in srgb, var(--brand) 13%, transparent); color: var(--brand); font: 600 .6875rem/1.2 var(--ui); }
+  .chev { flex: none; width: 1rem; height: 1rem; color: var(--muted); }
+  form button[hidden], .hint[hidden] { display: none; }
+  .hint { margin: .6rem 0 0; text-align: center; font-size: .75rem; }
+  .hint button { min-height: 0; padding: .25rem; background: none; color: var(--brand); font-size: .75rem; }
+  [role="alert"] { margin: -.4rem 0 1rem; color: var(--danger); font-size: var(--text-sm); }
+  [role="alert"]:empty { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <picture>
+    <source srcset="brand-org-light.svg" media="(prefers-color-scheme: light)" />
+    <img src="brand-org-dark.svg" width="233" height="73" alt="Slirc" />
+  </picture>
+  <h1>Open your workspace<span>.</span></h1>
+  <p class="lead">Enter the address your team uses for Slirc. We remember it on this device.</p>
+  <p role="alert"></p>
+  <button type="button" class="retry" hidden>Try again</button>
+  <form novalidate>
+    <label>Workspace address
+      <span class="field">
+        <input name="workspace" type="text" enterkeyhint="go" inputmode="url" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="yourteam or chat.example.com" required />
+      </span>
+    </label>
+    <button type="submit">Continue</button>
+  </form>
+  <div class="saved" role="list" aria-label="Saved workspaces"></div>
+  <p class="hint" hidden>Swipe left on a workspace to remove it. <button type="button">Edit</button></p>
+</main>
+<div class="opening" role="status">
+  <picture>
+    <source srcset="brand-org-light.svg" media="(prefers-color-scheme: light)" />
+    <img src="brand-org-dark.svg" width="233" height="73" alt="Slirc" />
+  </picture>
+  <span></span>
+</div>
+<script src="hosts.js"></script>
+<script src="picker.js"></script>
+<script>
+  // The whole shell: pick a workspace, then hand the web view to that origin, where the web
+  // client runs with its usual cookie session. Launching with ?pick or ?unreachable shows the form.
+  // The rules for addresses and launch live in picker.js, where native/test covers them.
+  const { NOT_FOUND, OPEN_WORKSPACE, offersOpenWorkspace, hostOf, nameOf, filterWorkspaces, workspaceOrigin, opens, isWorkspace, addWorkspace, removeWorkspace, launch } = window.slircPicker;
+  const HOSTS = window.SLIRC_HOSTS || ["*"];
+  const http = window.Capacitor?.Plugins?.CapacitorHttp;
+  const prefs = window.Capacitor?.Plugins?.Preferences;
+  const params = new URLSearchParams(location.search);
+  const main = document.querySelector("main");
+  const form = document.querySelector("form");
+  const input = form.elements.workspace;
+  input.addEventListener("input", (event) => {
+    // A pasted address loses its outer whitespace before submit trims.
+    if (event.inputType === "insertFromPaste" || event.inputType === "insertFromDrop") input.value = input.value.trim();
+    // With saved workspaces the field also filters them.
+    if (store.workspaces.length) { alertBox.textContent = ""; renderSaved(); }
+  });
+  const button = form.querySelector("button");
+  const alertBox = document.querySelector('[role="alert"]');
+  const lead = document.querySelector(".lead");
+  const savedList = document.querySelector(".saved");
+  const fieldLabel = form.querySelector("label").firstChild;
+  const hint = document.querySelector(".hint");
+  const editButton = hint.querySelector("button");
+  const retryButton = document.querySelector(".retry");
+  let editing = false;
+  let store = { workspaces: [], last: null };
+  // A workspace the shell couldn't load: its card says so, and Try again opens it again.
+  let failed = null;
+
+  // Preferences holds the saved workspaces as JSON under "workspaces", the last used one under
+  // "last", and the single value earlier builds saved under "workspace". The browser fallback is
+  // for opening this page outside the app.
+  const get = async (key) => (prefs ? (await prefs.get({ key })).value : localStorage.getItem(key));
+  const set = async (key, value) => (prefs ? prefs.set({ key, value }) : localStorage.setItem(key, value));
+  const remove = async (key) => (prefs ? prefs.remove({ key }) : localStorage.removeItem(key));
+  const load = async () => ({ workspaces: await get("workspaces"), last: await get("last"), legacy: await get("workspace") });
+  async function persist(next) {
+    await set("workspaces", JSON.stringify(next.workspaces));
+    if (next.last) await set("last", next.last); else await remove("last");
+    await remove("workspace");
+    store = next;
+  }
+
+  // The logo screen with "Opening <host>…" while the shell loads a workspace.
+  function opening(url) {
+    main.classList.remove("ready");
+    document.querySelector(".opening span").textContent = "Opening " + hostOf(workspaceOrigin(url) || url) + "…";
+  }
+
+  async function navigateToWorkspace(url) {
+    opening(url);
+    const shell = window.Capacitor?.Plugins?.SlircShell;
+    if (shell?.openWorkspace) {
+      await shell.openWorkspace({ url });
+    } else {
+      location.replace(url);
+    }
+  }
+
+  async function open(origin) {
+    await persist(addWorkspace(store, origin));
+    await navigateToWorkspace(origin + "/");
+  }
+
+  const FILLS = ["#a6e3a1", "#89b4fa", "#f9e2af", "#cba6f7", "#94e2d5", "#fab387"];
+  const CHEVRON = '<svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5"/></svg>';
+
+  // A card is a button with an initial, the name and host, and a chevron. Built with DOM calls and
+  // textContent, so a stored address can never become markup.
+  function card(className, markText, name, host, fill) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = className;
+    const mark = document.createElement("span");
+    mark.className = "mark";
+    mark.textContent = markText;
+    if (fill) mark.style.background = fill;
+    const who = document.createElement("span");
+    who.className = "who";
+    const b = document.createElement("b");
+    b.textContent = name;
+    const small = document.createElement("small");
+    small.textContent = host;
+    who.append(b, small);
+    button.append(mark, who);
+    button.insertAdjacentHTML("beforeend", CHEVRON);
+    return button;
+  }
+
+  // Dragging a card left past half the Remove width leaves it open. A tap on an open card closes it
+  // instead of opening the workspace.
+  function swipeable(slot, button, onTap) {
+    let startX = null, startY = 0, moved = false;
+    // Matches the 5.5rem the open card slides by.
+    const width = () => 5.5 * parseFloat(getComputedStyle(document.documentElement).fontSize);
+    button.addEventListener("pointerdown", (event) => {
+      startX = event.clientX; startY = event.clientY; moved = false;
+    });
+    button.addEventListener("pointermove", (event) => {
+      if (startX === null) return;
+      const dx = event.clientX - startX;
+      if (!moved && Math.abs(dx) < 8) return;
+      if (!moved && Math.abs(event.clientY - startY) > Math.abs(dx)) { startX = null; return; }
+      moved = true;
+      button.classList.add("dragging");
+      const base = slot.classList.contains("open") ? -width() : 0;
+      button.style.transform = `translateX(${Math.min(0, Math.max(-width(), base + dx))}px)`;
+    });
+    const end = (event) => {
+      if (startX === null) return;
+      if (moved) {
+        const shift = parseFloat(button.style.transform.slice(11)) || 0;
+        for (const other of savedList.querySelectorAll(".slot.open")) if (other !== slot) other.classList.remove("open");
+        slot.classList.toggle("open", shift < -width() / 2);
+      }
+      button.classList.remove("dragging");
+      button.style.transform = "";
+      startX = null;
+    };
+    button.addEventListener("pointerup", end);
+    button.addEventListener("pointercancel", end);
+    button.addEventListener("click", () => {
+      if (moved) return void (moved = false);
+      if (slot.classList.contains("open")) return void slot.classList.remove("open");
+      if (editing) return;
+      onTap();
+    });
+  }
+
+  function renderSaved() {
+    if (store.workspaces.length === 0) editing = false;
+    const saved = store.workspaces.length > 0;
+    const offer = offersOpenWorkspace(store, HOSTS);
+    // The field filters only once there is something saved; on first launch it is a plain address field.
+    const { matches, open: typed } = filterWorkspaces([...store.workspaces, ...(offer ? [OPEN_WORKSPACE] : [])], saved ? input.value : "");
+    const rows = matches.filter((origin) => store.workspaces.includes(origin)).map((origin) => {
+      const host = hostOf(origin);
+      const slot = document.createElement("div");
+      slot.className = "slot";
+      slot.setAttribute("role", "listitem");
+      const removeButton = document.createElement("button");
+      removeButton.type = "button";
+      removeButton.className = "slot-remove";
+      removeButton.textContent = "Remove";
+      removeButton.setAttribute("aria-label", "Remove " + host);
+      removeButton.addEventListener("click", async () => {
+        await persist(removeWorkspace(store, origin));
+        renderSaved();
+      });
+      const fill = FILLS[[...host].reduce((sum, c) => sum + c.charCodeAt(0), 0) % FILLS.length];
+      const isLast = origin === store.last;
+      const isFailed = origin === failed;
+      const cardButton = card("card" + (isFailed ? " failed" : isLast ? " last" : ""), nameOf(origin)[0].toUpperCase(), nameOf(origin), host, fill);
+      if (isLast || isFailed) {
+        const tag = document.createElement("span");
+        tag.className = isFailed ? "tag failed" : "tag";
+        tag.textContent = isFailed ? "Couldn't reach" : "Current";
+        cardButton.querySelector(".who").after(tag);
+      }
+      swipeable(slot, cardButton, () => open(origin));
+      slot.append(removeButton, cardButton);
+      return slot;
+    });
+    // app.slirc.org in one tap until it is saved: in the list beside saved ones, under the form on first launch.
+    if (offer && matches.includes(OPEN_WORKSPACE)) {
+      const slot = document.createElement("div");
+      slot.className = "slot plain";
+      slot.setAttribute("role", "listitem");
+      const join = card("card join", "+", "Join app.slirc.org", "Slirc's own workspace");
+      join.addEventListener("click", () => {
+        input.value = hostOf(OPEN_WORKSPACE);
+        submit();
+      });
+      slot.append(join);
+      rows.push(slot);
+    }
+    // Nothing matches what was typed: one card opens it, through the same check as Continue.
+    if (typed) {
+      const slot = document.createElement("div");
+      slot.className = "slot plain";
+      slot.setAttribute("role", "listitem");
+      const add = card("card join", "+", "Open " + typed.label, "Add this workspace");
+      add.addEventListener("click", () => submit());
+      slot.append(add);
+      rows.push(slot);
+    }
+    savedList.replaceChildren(...rows);
+    savedList.classList.toggle("editing", editing);
+    lead.textContent = saved ? "Tap a workspace to open it, or type to find or add one." : "Enter the address your team uses for Slirc. We remember it on this device.";
+    // With saved workspaces the field searches them and the Open card replaces Continue.
+    fieldLabel.nodeValue = saved ? "Find or open a workspace" : "Workspace address";
+    input.placeholder = saved ? "Name or address" : "yourteam or chat.example.com";
+    button.hidden = saved;
+    hint.hidden = !saved;
+    editButton.textContent = editing ? "Done" : "Edit";
+  }
+
+  editButton.addEventListener("click", () => {
+    editing = !editing;
+    renderSaved();
+  });
+
+  function show(origin, message) {
+    if (origin) input.value = hostOf(origin);
+    renderSaved();
+    alertBox.textContent = message || "";
+    main.classList.add("ready");
+    // With saved workspaces the field is a search: focus it so typing starts at once. First launch
+    // leaves it alone, as before, and so does an unreachable workspace, so the keyboard doesn't
+    // cover Try again.
+    retryButton.hidden = !failed;
+    if (store.workspaces.length && !failed) input.focus();
+  }
+
+  retryButton.addEventListener("click", async () => {
+    alertBox.textContent = "";
+    await navigateToWorkspace(failed + "/");
+  });
+
+  // Go on the keyboard: with saved workspaces, the first card that matches, else the typed address.
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (store.workspaces.length) {
+      const offer = offersOpenWorkspace(store, HOSTS);
+      const { matches } = filterWorkspaces([...store.workspaces, ...(offer ? [OPEN_WORKSPACE] : [])], input.value);
+      if (!input.value.trim()) return;
+      const first = matches[0];
+      if (first && store.workspaces.includes(first)) return void open(first);
+      if (first) input.value = hostOf(first);
+    }
+    submit();
+  });
+
+  async function submit() {
+    const origin = workspaceOrigin(input.value);
+    if (!origin) return show(null, "That doesn't look like a workspace address.");
+    if (!opens(origin, HOSTS)) return show(null, "That workspace address isn't allowed in this build. Check the address.");
+    button.disabled = true;
+    alertBox.textContent = "";
+    // Nothing is saved until the address proves to be a workspace.
+    const found = await isWorkspace(http, origin, 6000);
+    if (found !== "yes") {
+      button.disabled = false;
+      return show(null, found === "no" ? NOT_FOUND : "We couldn't reach that workspace. Check the address and your connection.");
+    }
+    await open(origin);
+  }
+
+  launch({ load, persist, hosts: HOSTS, params, check: (origin) => isWorkspace(http, origin, 3000) })
+    .then(async (next) => {
+      store = next.store;
+      failed = next.failed ?? null;
+      if ("open" in next) await navigateToWorkspace(next.url ?? next.open + "/");
+      else show(next.show, next.message);
+    })
+    .catch(() => show(null));
+</script>
+</body>
+</html>

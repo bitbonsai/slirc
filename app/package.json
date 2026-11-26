@@ -1,0 +1,28 @@
+{
+  "name": "slirc",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun src/main.ts",
+    "dev": "mkdir -p .data && DEV_IRC_NICK=bitbonsai SLIRC_BOT_ENABLED=false DB_PATH=.data/chat.sqlite bun --env-file=../.env --watch src/main.ts",
+    "docs": "bun run scripts/build-docs.ts",
+    "assemble": "bun run scripts/assemble-html.ts",
+    "version": "bun run assemble && bun run scripts/version-assets.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "dexie": "^4.4.6",
+    "hono": "^4.13.19",
+    "mediabunny": "1.66.4",
+    "nanostores": "^1.5.4",
+    "resend": "^6.26.0",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.1",
+    "@types/web-push": "^3.6.4",
+    "emojibase-data": "^17.0.0",
+    "fake-indexeddb": "^6.2.5"
+  }
+}

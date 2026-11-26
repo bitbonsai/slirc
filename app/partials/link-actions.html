@@ -1,0 +1,4 @@
+  <div x-data="linkActions" class="link-popover" x-cloak x-show="links.linkPopup" :style="links.linkPopupStyle()" role="group" aria-label="Link actions" x-on:click.outside="links.closeLinkPopup(false)" x-on:keydown.escape.stop.prevent="links.closeLinkPopup()">
+    <a data-first-action :href="links.linkPopup?.href" target="_blank" rel="noopener noreferrer" x-on:click="links.closeLinkPopup(false)"><span x-html="lucideIcon('external-link')"></span><span>Go to</span></a>
+    <button type="button" x-show="canEdit(links.linkPopupMessage())" x-on:click="links.editMessageLink(links.linkPopup.messageId, links.linkPopup.raw, links.linkPopup.occurrence)"><span x-html="lucideIcon('pencil')"></span><span>Edit</span></button>
+  </div>

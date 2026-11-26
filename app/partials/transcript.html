@@ -1,0 +1,168 @@
+  <main x-data="transcript" id="chat" class="chat" x-ref="chat" x-cloak x-show="(authenticated || peekRoom) && !profileRoute && !settingsRoute && !channelsRoute && !invitationsRoute && !ircRoute && !agentsRoute && !adminRoute && (isDesktop || mobileNav === null) && !library.on" x-on:scroll.passive="transcript.onChatScroll()" x-on:touchmove.passive="transcript.noteInput()" x-on:wheel.passive="transcript.noteInput()" x-on:pointerdown="transcript.noteInput()" x-on:keydown.window="transcript.noteKey($event)" x-on:dragover="onDragOver($event)" x-on:dragleave="onDragLeave($event)" x-on:drop="onDrop($event)">
+    <div class="pull-indicator" x-data="pullRefresh('chat')" :class="['is-' + pullState, pullArmed() && 'armed']" :style="pullStyle()"><img class="pull-logo" src="/logo.webp" alt="" /><span class="pull-label" role="status" x-text="pullLabel()"></span></div>
+    <div class="drop-offer" x-cloak x-show="dragActive" aria-hidden="true"><p>Drop a photo to add it</p></div>
+    <div class="notify-banner" x-cloak x-show="error || sendError || threadError || capsNote || sendReason || draftNote">
+      <p x-text="error || sendError || threadError || capsNote || sendReason || draftNote"></p>
+    </div>
+    <div id="messages" aria-live="polite">
+      <section class="channel-intro pending-intro" x-cloak x-show="pendingDm" role="status">
+        <h2 x-text="roomLabel || channel"></h2>
+        <p class="channel-intro-topic muted" x-show="pendingDmState !== 'failed'">Waiting for IRC server sync…</p>
+        <p class="channel-intro-topic" x-show="pendingDmState === 'failed'" x-text="pendingDmError || 'Could not start this conversation yet.'"></p>
+        <p class="channel-intro-meta"><button type="button" class="thread-parent-link" x-cloak x-show="pendingDmState === 'failed'" x-on:click="retryPendingDirect()">Try again</button></p>
+      </section>
+      <section class="channel-intro thread-intro" x-cloak x-show="pendingThread" role="status">
+        <span class="channel-intro-mark" aria-hidden="true"><svg viewBox="0 0 24 24" style="width:1.5rem;height:1.5rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="m15 10 5 5-5 5"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/></svg></span>
+        <h2 x-text="pendingThread?.title"></h2>
+        <p class="channel-intro-meta" x-text="'Thread in ' + (pendingThread?.parentLabel || '')"></p>
+        <p class="channel-intro-topic muted" x-show="pendingThread?.rootText && threadRootTextDiffers(pendingThread?.title, pendingThread?.rootText)" x-text="pendingThread?.rootText"></p>
+        <p class="channel-intro-topic muted" x-text="pendingThread?.sendOnReady ? 'Starting thread… your reply sends when it is ready.' : 'Starting thread…'"></p>
+      </section>
+      <section class="channel-intro thread-intro" x-cloak x-show="activeThread">
+        <span class="channel-intro-mark" aria-hidden="true"><svg viewBox="0 0 24 24" style="width:1.5rem;height:1.5rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="m15 10 5 5-5 5"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/></svg></span>
+        <h2 x-text="activeThread?.title"></h2>
+        <p class="channel-intro-meta"><button type="button" class="thread-parent-link" x-on:click="openThreadParent()"><svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><path d="M8 12h8"/></svg><span x-text="'Thread in ' + (activeThread?.parentLabel || '')"></span></button></p>
+        <p class="channel-intro-topic muted" x-show="activeThread?.rootText && threadRootTextDiffers(activeThread?.title, activeThread?.rootText)" x-text="activeThread?.rootText"></p>
+        <p class="channel-intro-topic muted" x-show="!activeThread?.rootText">This is the start of the thread. Replies stay here, out of the channel.</p>
+      </section>
+      <section class="channel-intro notes-intro" x-cloak x-show="notesOpen && notes.loaded && !notes.list.length">
+        <span class="channel-intro-mark" aria-hidden="true"><span class="menu-icon" x-html="lucideIcon('notebook-pen')"></span></span>
+        <h2>Notes</h2>
+        <p class="channel-intro-topic muted">Only you can see these. They stay in Slirc, off IRC, and show on all your devices.</p>
+      </section>
+      <template x-for="(message, index) in transcript.displayedMessages()" :key="message.id">
+        <div class="message-entry" x-show="!pendingThread">
+          <div class="date-divider" x-show="transcript.dateDivider(message, index)" x-text="transcript.dateDivider(message, index)"></div>
+          <template x-if="polls.card(message)">
+            <section class="poll-card" :class="{ 'is-loading': polls.card(message) === 'loading', 'is-closed': !!polls.card(message)?.closedAt }" :aria-label="polls.card(message) === 'loading' ? 'Poll' : 'Poll: ' + polls.card(message).question" :data-message-id="message.id" :data-poll-id="message.poll?.id">
+              <template x-if="polls.card(message) === 'loading'">
+                <p class="poll-loading">Loading poll…</p>
+              </template>
+              <template x-if="polls.card(message) !== 'loading'">
+                <div class="poll-card-body" x-data="{ get view() { return polls.card(message) } }">
+                  <div class="poll-head">
+                    <span class="poll-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 21V10"/><path d="M12 21V4"/><path d="M19 21v-7"/></svg></span>
+                    <p class="poll-byline"><span class="poll-eyebrow" x-text="view.closedAt ? 'Poll closed' : 'Poll'"></span><span class="poll-by" x-text="'by ' + (polls.voterName(view.creator) === 'You' ? 'you' : view.creator)"></span><span class="poll-flag" x-show="view.anonymous"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide/sprite.svg#eye-off"></use></svg>Anonymous</span></p>
+                    <time class="poll-time" :datetime="message.time" x-text="formatTime(message.time)"></time>
+                    <div class="poll-menu-host" x-on:click.outside="if (polls.menuFor === view.id) polls.menuFor = 0" x-on:keydown.escape.stop="polls.menuFor = 0; $refs.more.focus()">
+                      <button type="button" class="poll-more" x-ref="more" aria-label="Poll actions" aria-haspopup="menu" :aria-expanded="polls.menuFor === view.id" x-tooltip x-on:click.stop="polls.toggleMenu(view); polls.menuFor && $nextTick(() => $refs.menu.querySelector('button')?.focus())"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('ellipsis')"></span></button>
+                      <div class="poll-menu" role="menu" x-ref="menu" x-show="polls.menuFor === view.id" x-on:keydown.arrow-down.prevent="($event.target.nextElementSibling || $el.firstElementChild).focus()" x-on:keydown.arrow-up.prevent="($event.target.previousElementSibling || $el.lastElementChild).focus()">
+                        <button type="button" role="menuitem" x-on:click="polls.openVotes(view, $refs.more)"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('list')"></span>View votes</button>
+                        <button type="button" role="menuitem" class="danger" x-show="view.canClose" :disabled="!!polls.busy[view.id]" x-on:click="polls.close(view)"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('lock')"></span>Close poll</button>
+                      </div>
+                    </div>
+                  </div>
+                  <h3 class="poll-question" :id="'poll-q-' + message.id" x-text="view.question"></h3>
+                  <p class="poll-hint" x-text="polls.hint(view)"></p>
+                  <div class="poll-options" :role="view.multi ? 'group' : 'radiogroup'" :aria-labelledby="'poll-q-' + message.id">
+                    <template x-for="(option, index) in view.options" :key="index">
+                      <button type="button" class="poll-option" :class="[polls.isMine(view, index) && 'is-mine', polls.isWinner(view, index) && 'is-winner']" :role="view.multi ? 'checkbox' : 'radio'" :aria-checked="polls.isMine(view, index) ? 'true' : 'false'" :aria-disabled="view.closedAt ? 'true' : null" :aria-label="polls.optionLabel(view, index)" x-on:click.stop="polls.vote(view, index + 1)">
+                        <span class="poll-tick" :class="view.multi ? 'is-box' : 'is-dot'" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
+                        <span class="poll-option-main">
+                          <span class="poll-option-row">
+                            <span class="poll-option-label" x-text="option.label"></span>
+                            <span class="poll-winner" x-show="polls.isWinner(view, index)" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></span>
+                            <span class="poll-voters" aria-hidden="true" x-show="!view.anonymous && option.count">
+                              <template x-for="voter in polls.topVoters(option)" :key="voter.nick"><img width="18" height="18" :src="avatarUrl(voter.nick)" alt="" x-on:error="$el.style.visibility = 'hidden'" /></template>
+                            </span>
+                            <span class="poll-count" aria-hidden="true" x-text="option.count"></span>
+                          </span>
+                          <span class="poll-bar" aria-hidden="true"><span :style="'width:' + polls.share(view, option) + '%'"></span></span>
+                        </span>
+                      </button>
+                    </template>
+                  </div>
+                  <p class="profile-error poll-error" role="alert" x-show="polls.errors[view.id]" x-text="polls.errors[view.id]"></p>
+                  <footer class="poll-foot">
+                    <span class="poll-total" x-text="view.voters === 1 ? '1 person voted' : view.voters + ' people voted'"></span>
+                    <button type="button" class="poll-view-votes" x-on:click.stop="polls.openVotes(view, $event.currentTarget)">View votes</button>
+                  </footer>
+                </div>
+              </template>
+            </section>
+          </template>
+          <template x-if="jobCards.card(message)">
+            <section class="poll-card job-card" :aria-label="'Jobs, ' + jobCards.day(jobCards.card(message).day)" :data-message-id="message.id" x-data="{ get view() { return jobCards.card(message) } }">
+              <div class="poll-card-body">
+                <div class="poll-head">
+                  <span class="poll-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span>
+                  <p class="poll-byline"><span class="poll-eyebrow" x-text="'Jobs · ' + jobCards.day(view.day)"></span><span class="poll-by" x-text="view.summary"></span></p>
+                  <time class="poll-time" :datetime="message.time" x-text="formatTime(message.time)"></time>
+                </div>
+                <div class="job-tabs" role="group" aria-label="Filter jobs" x-show="view.groups.length > 1">
+                  <button type="button" :class="!jobCards.tab(message) && 'on'" :aria-pressed="!jobCards.tab(message) ? 'true' : 'false'" x-on:click.stop="jobCards.pick(message, '')" x-text="'All ' + view.jobs.length"></button>
+                  <template x-for="group in view.groups" :key="group.name"><button type="button" :class="jobCards.tab(message) === group.name && 'on'" :aria-pressed="jobCards.tab(message) === group.name ? 'true' : 'false'" x-on:click.stop="jobCards.pick(message, group.name)" x-text="group.name + ' ' + group.count"></button></template>
+                </div>
+                <ul class="job-list">
+                  <template x-for="(job, n) in jobCards.rows(message, view).rows" :key="job.url + n">
+                    <li><a class="job-row" :href="job.url" target="_blank" rel="noopener noreferrer" x-on:click.stop>
+                      <span class="job-logo" aria-hidden="true"><span x-text="job.letter"></span><template x-if="job.logo"><img :src="job.logo" alt="" loading="lazy" width="32" height="32" x-on:error="$el.remove()" /></template></span>
+                      <span class="job-main"><strong x-text="job.title"></strong><small x-text="job.company + ' · ' + job.flag + ' ' + job.where"></small></span>
+                      <span class="job-pay" :class="!job.salary && 'none'" x-text="job.salary || 'no salary'"></span>
+                    </a></li>
+                  </template>
+                </ul>
+                <button type="button" class="job-more" x-show="jobCards.rows(message, view).hidden" x-on:click.stop="jobCards.expand(message)" x-text="'Show ' + jobCards.rows(message, view).hidden + ' more'"></button>
+                <footer class="job-foot">
+                  <template x-if="view.more"><a :href="view.more.url" target="_blank" rel="noopener noreferrer" x-on:click.stop x-text="view.more.label + ' →'"></a></template>
+                  <span x-show="view.boards.length">Also <template x-for="(board, n) in view.boards" :key="board.url"><span><span x-show="n"> · </span><a :href="board.url" target="_blank" rel="noopener noreferrer" x-on:click.stop x-text="board.label"></a></span></template></span>
+                </footer>
+              </div>
+            </section>
+          </template>
+          <template x-if="agentOffline(message)">
+            <section class="agent-offline-card" role="status" :aria-label="agentOffline(message).title" :data-message-id="message.id">
+              <div class="agent-offline-full">
+                <span class="agent-offline-mark" aria-hidden="true"><img width="28" height="28" :src="avatarUrl(message.authorNick)" alt="" x-on:error="$el.hidden = true" /></span>
+                <div class="agent-offline-main">
+                  <p class="agent-offline-head"><span class="agent-offline-title" x-text="agentOffline(message).title"></span><span class="agent-offline-state">Offline</span><time class="agent-offline-time" :datetime="message.time" x-text="formatTime(message.time)"></time></p>
+                  <p class="agent-offline-hint" x-text="agentOffline(message).hint"></p>
+                  <div class="agent-pair agent-offline-command" x-show="agentOffline(message).command">
+                    <code><template x-for="(line, n) in agentOffline(message).lines" :key="n"><span class="agent-offline-line" x-text="line"></span></template></code>
+                    <button type="button" class="copy-button" :class="copiedAgentCommand === message.id && 'copied'" :aria-label="copiedAgentCommand === message.id ? 'Copied to clipboard' : 'Copy resume command'" x-tooltip x-on:click.stop="copyAgentCommand(message)">
+                      <span class="menu-icon copy-glyph" aria-hidden="true" x-html="lucideIcon('copy')"></span>
+                      <span class="menu-icon check-glyph" aria-hidden="true" x-html="lucideIcon('check')"></span>
+                    </button>
+                  </div>
+                  <div class="agent-offline-actions"><button type="button" class="btn-secondary" x-on:click.stop="agents.askRemove({ nick: message.authorNick }, $el)">Remove agent</button></div>
+                </div>
+              </div>
+            </section>
+          </template>
+          <template x-if="!agentOffline(message) && !polls.card(message) && !jobCards.card(message)">
+          <div class="msg" :class="[transcript.continuesPrevious(message, index) && 'cont', (message.state === 'saving' || message.state === 'queued' || message.state === 'sending') && 'pending', actions.actionMessageId === message.id && 'menu-open', replyThreadRootId && message.serverId === replyThreadRootId && 'thread-open', replyThreadFaded[message.serverId] && 'thread-fade', isAction(message) && 'action', notesOpen && 'note']" tabindex="-1" :data-message-id="message.id" x-on:keydown="actions.messageKeydown($event, message)" x-on:click="if (!getSelection()?.toString() && !$event.target.closest('button, a')) $event.currentTarget.focus()" x-on:touchstart.passive="actions.pressStart($event, message)" x-on:touchmove.passive="actions.pressMove($event)" x-on:touchend="actions.pressEnd($event)" x-on:touchcancel="actions.pressCancel()" x-on:contextmenu="actions.pressContextMenu($event, message)">
+            <button x-show="message.state === 'confirmed' && message.serverId" type="button" class="message-more" :style="actions.popupAnchorStyles(message.id, 'more')" aria-label="More message actions" x-tooltip :aria-expanded="actions.actionMessageId === message.id" x-on:click.stop="actions.toggleThreadMenu(message)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+            </button>
+            <button x-show="message.state === 'confirmed' && message.serverId && !notesOpen" type="button" class="message-add" :style="actions.popupAnchorStyles(message.id, 'add')" aria-label="Add reaction" x-tooltip :disabled="!reactionsReady()" x-on:click.stop="actions.toggleReactionPicker(message)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.267 2.08a10 10 0 108.653 8.653"/><path d="M15 10V9"/><path d="M16 5h6"/><path d="M16.472 15a6 6 0 01-8.943 0"/><path d="M19 2v6"/><path d="M9 10V9"/></svg>
+            </button>
+            <div x-show="actions.actionMessageId === message.id && !actions.panelMenu" class="message-menu" :style="actions.actionMessageId === message.id ? actions.menuStyle() : 'display:none'" x-on:click.stop x-on:click.outside="actions.closeMessageMenu(false)" x-on:keydown="actions.menuKeydown($event)" x-on:focusout="if (!$el.contains($event.relatedTarget) && !(actions.remindOpen && !$event.relatedTarget)) actions.closeMessageMenu(false)">
+              <!-- include: message-menu -->
+            </div>
+            <span class="time" x-text="formatTime(message.time)"></span>
+            <span class="nick"><span x-text="message.authorNick"></span></span>
+            <button type="button" class="message-avatar avatar-status-host" :data-status="channel === '#help' ? '' : avatarStatus(message.authorNick)" :aria-label="message.authorNick + (channel === '#help' ? '' : ' · ' + avatarStatusLabel(message.authorNick))" x-tooltip x-on:touchstart.stop="actions.pressStart($event, message, () => people.openWhois(message.authorNick))" x-on:click.stop="people.openWhois(message.authorNick)">
+              <img loading="lazy" width="24" height="24" :src="avatarUrl(message.authorNick)" alt="" x-on:load="$el.hidden = false" x-on:error="$el.hidden = true" />
+              <span aria-hidden="true" :style="'background:' + ['#f5c2e7','#cba6f7','#eba0ac','#fab387','#f9e2af','#a6e3a1','#94e2d5','#89dceb','#74c7ec','#89b4fa','#b4befe'][([...((message.authorAccount || message.authorNick || '').toLowerCase())].reduce((v, c) => Math.imul(31, v) + c.charCodeAt(0) | 0, 0) >>> 0) % 11] + ';color:#11111b'" x-text="(message.authorNick || '?').slice(0, 1).toUpperCase()"></span>
+            </button>
+            <span class="mobile-time" x-text="formatTime(message.time)"></span>
+            <!-- include: message-body -->
+          </div>
+          </template>
+          <template x-for="prompt in addPrompts.forMessage(message.id)" :key="prompt.id">
+<!-- include: add-prompt -->
+          </template>
+          <template x-if="greetingNote.forMessage(message.id)">
+<!-- include: greeting-note -->
+          </template>
+        </div>
+      </template>
+      <template x-for="prompt in addPrompts.forEnd(currentConversationId)" :key="prompt.id">
+<!-- include: add-prompt -->
+      </template>
+      <template x-if="greetingNote.atEnd(currentConversationId)">
+<!-- include: greeting-note -->
+      </template>
+    </div>
+  </main>

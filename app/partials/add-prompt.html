@@ -1,0 +1,10 @@
+            <div class="add-prompt" :data-add-prompt="prompt.nick">
+                <p class="add-prompt-text"><template x-for="(part, n) in addPrompts.segments(prompt)" :key="n"><span><span x-show="part.text" x-text="part.text"></span><span class="add-prompt-who" x-show="part.nick"><span class="mention-avatar" aria-hidden="true"><img loading="lazy" :src="avatarUrl(part.nick)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /><span x-text="(part.nick || '?').slice(0, 1).toUpperCase()"></span></span><span x-text="'@' + part.nick"></span></span></span></template><span class="add-prompt-private" tabindex="0" role="img" aria-label="Only visible to you" data-tooltip="Only visible to you" x-tooltip x-html="lucideIcon('eye-off')"></span></p>
+                <div class="add-prompt-actions" x-show="prompt.state !== 'done'">
+                  <button type="button" class="add-prompt-add" :disabled="!addPrompts.canAdd(prompt)" x-on:click="addPrompts.add(prompt)" x-text="addPrompts.label(prompt)"></button>
+                  <button type="button" class="add-prompt-dismiss" :disabled="prompt.state === 'busy'" x-on:click="addPrompts.ignore(prompt)">Dismiss</button>
+                </div>
+                <div class="add-prompt-actions" x-show="prompt.state === 'done'">
+                  <button type="button" class="add-prompt-dismiss" x-on:click="addPrompts.ignore(prompt)">Dismiss</button>
+                </div>
+            </div>

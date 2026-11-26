@@ -1,0 +1,53 @@
+# Bun app server. Its own Compose project, so Ergo keeps running across app deploys.
+#
+# By hand on the host:
+#   cd /srv/slirc
+#   SLIRC_CONFIG_DIR=./config SLIRC_IRC_KEY_PATH=~/.config/slirc-keys/slirc/irc-key \
+#     podman-compose --in-pod=false -p slirc -f deploy/app.compose.yaml up -d --build
+#
+# The `slirc` network, `slirc-data` and `slirc-ergo-api` are external: `just bootstrap`
+# creates them once on a fresh host. `just deploy` wraps this command, runs the test suite,
+# and fails if Ergo's start time moves. Ergo itself is declared in deploy/ergo.compose.yaml.
+services:
+  app:
+    image: ${SLIRC_APP_IMAGE:-localhost/slirc-app:latest}
+    build: ../app
+    container_name: ${SLIRC_APP_CONTAINER:-slirc}
+    env_file:
+      - ${SLIRC_CONFIG_DIR:-./config}/env
+    # Targets Ergo's fixed private address so this works on CNI networks without container DNS.
+    # Mode, IRC_CHANNEL and OPEN_CHANNELS belong to the instance env file (see deploy/README.md).
+    # Setting them here would override every instance sharing this Compose file.
+    environment:
+      DB_PATH: /data/chat.sqlite
+      ERGO_HOST: ${ERGO_IP:-10.89.0.2}
+      ERGO_PORT: "6667"
+      ERGO_API_URL: http://${ERGO_IP:-10.89.0.2}:8089
+      ERGO_API_TOKEN_FILE: /run/secrets/ergo-api-token
+      # Clock zone for @remind ("tomorrow 9:00"). Instance default until accounts carry their own zone.
+      TZ: ${TZ:-Europe/Amsterdam}
+    ports:
+      - "127.0.0.1:${SLIRC_APP_PORT:-9010}:8080" # PWA, only reachable via caddy on the host
+    volumes:
+      - slirc-data:/data
+      - slirc-ergo-api:/run/secrets:ro
+      # The IRC password key (app/src/irc-key.ts), kept outside the backed-up config folder. No
+      # default: an instance that forgot it must not start on another instance's key.
+      - ${SLIRC_IRC_KEY_PATH:?set SLIRC_IRC_KEY_PATH to this instance's irc-key file}:/run/slirc-irc-key:ro
+    # Mapping form, so deploy/app.fixed-ip.compose.yaml can add an address to the same network.
+    networks:
+      slirc: {}
+    restart: unless-stopped
+
+networks:
+  slirc:
+    name: ${SLIRC_NETWORK:-slirc}
+    external: true
+
+volumes:
+  slirc-data:
+    name: ${SLIRC_APP_DATA_VOLUME:-slirc-data}
+    external: true
+  slirc-ergo-api:
+    name: ${SLIRC_ERGO_API_VOLUME:-slirc-ergo-api}
+    external: true

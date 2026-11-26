@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- The Mac app's screen for a workspace that doesn't answer. See mac-unreachable.js, and
+     picker.css for the look it shares with the picker. -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'" />
+<title>Slirc</title>
+<link rel="stylesheet" href="picker.css" />
+</head>
+<body>
+  <main class="notice-card" role="alertdialog" aria-labelledby="title" aria-describedby="detail">
+    <h1 id="title">Couldn't reach your workspace</h1>
+    <p id="detail">Check your connection, then try again.</p>
+    <div class="choices">
+      <button type="button" class="secondary quit">Quit</button>
+      <button type="button" class="secondary switch">Switch Workspace</button>
+      <button type="button" class="primary retry">Try Again</button>
+    </div>
+  </main>
+  <script src="mac-unreachable.js"></script>
+</body>
+</html>

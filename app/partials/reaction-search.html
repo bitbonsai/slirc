@@ -1,0 +1,9 @@
+  <!-- Add reaction search, shared by the desktop picker and the phone sheet. -->
+  <input type="search" class="picker-search-input reaction-search-input" x-model="actions.reactionQuery" x-on:input="actions.reactionQueryChanged()" x-on:keydown="actions.reactionSearchKeydown($event)" placeholder="Find an emoji…" aria-label="Find an emoji" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" />
+  <div class="reaction-search-grid" role="listbox" aria-label="Emoji" x-show="actions.reactionRows().length">
+    <template x-for="(row, i) in actions.reactionRows()" :key="row.code + row.emoji">
+      <button type="button" role="option" tabindex="-1" :aria-selected="i === actions.reactionIndex" :class="i === actions.reactionIndex && 'active'" :disabled="!reactionsReady()" :aria-label="row.code ? ':' + row.code + ':' : row.emoji" x-on:mouseenter="actions.reactionIndex = i" x-on:mousedown.prevent x-on:click.stop="actions.reactWith(row)"><template x-if="row.image"><img class="custom-emoji" :src="row.image" alt="" /></template><span x-show="!row.image" x-text="row.emoji"></span></button>
+    </template>
+  </div>
+  <p class="picker-empty" x-show="!actions.reactionRows().length">No matches</p>
+  <p class="reaction-search-code" x-show="actions.reactionRows()[actions.reactionIndex]?.code" x-text="':' + actions.reactionRows()[actions.reactionIndex]?.code + ':'"></p>

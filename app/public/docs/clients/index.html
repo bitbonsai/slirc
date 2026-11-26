@@ -1,0 +1,198 @@
+<!-- generated from app/docs/*.md — edit there, then run: bun run docs -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#11111b" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="description" content="IRC clients that can connect to Slirc and how PWA features appear outside the web app." />
+  <title>IRC clients · Slirc docs</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="alternate" type="text/markdown" href="/docs/clients.md" />
+  <script src="/theme.js?v=844fef47"></script>
+  <link rel="stylesheet" href="/docs/docs.css?v=39" />
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="app-back" id="app-back" hidden><a class="app-back-link" href="/more" aria-label="Back to Slirc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 4 12l7 7"/></svg>Back</a></div>
+
+  <header class="topbar">
+    <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-nav">
+      <svg class="menu-icon menu-bars" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>
+      <svg class="menu-icon menu-close" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+    <a class="brand" href="/docs"><img class="brand-lockup" src="/brand-org-dark.svg" width="233" height="73" alt="Slirc" /><span class="tag">docs</span></a>
+    <button class="search-toggle" id="search-toggle" type="button" aria-label="Search the docs" aria-expanded="false" aria-controls="docs-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 4.5 4.5"/></svg>
+    </button>
+    <div class="docs-search" id="docs-search" role="search" data-docs-search>
+      <label class="visually-hidden" for="docs-search-input">Search the docs</label>
+      <span class="docs-search-field">
+        <svg class="docs-search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5"/></svg>
+        <input id="docs-search-input" class="docs-search-input" type="search" placeholder="Search docs…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="docs-search-results" aria-autocomplete="list" />
+        <kbd class="docs-search-key" aria-hidden="true">⌘K</kbd>
+      </span>
+      <div id="docs-search-results" class="docs-search-results" role="listbox" aria-label="Search results" hidden></div>
+      <p class="docs-search-status visually-hidden" aria-live="polite"></p>
+    </div>
+    <a class="open-app-mobile" href="/open-chat">Open chat</a>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" id="docs-nav" aria-label="Documentation" hidden>
+      <div class="nav-content">
+      <a class="nav-link nav-app" href="/open-chat">Open chat</a>
+      <p class="nav-section">Guides</p>
+      <a class="nav-link" href="/docs">Home</a>
+      <a class="nav-link" href="/docs/getting-started">Getting started</a>
+      <a class="nav-link" href="/docs/download">Download</a>
+      <a class="nav-link" href="/docs/channels">Channels & invites</a>
+      <a class="nav-link" href="/docs/messages">Messages & media</a>
+      <a class="nav-link sub" href="/docs/threads">Threads</a>
+      <a class="nav-link" href="/docs/notifications">Notifications</a>
+      <a class="nav-link" href="/docs/privacy">Privacy & safety</a>
+      <p class="nav-section">Connect</p>
+      <a class="nav-link active" href="/docs/clients" aria-current="page">IRC clients</a>
+      <a class="nav-link" href="/docs/agents">Agents</a>
+      <a class="nav-link" href="/docs/bots">Bots</a>
+      <a class="nav-link" href="/docs/setup">Self-hosting</a>
+      <p class="nav-section">Reference</p>
+      <a class="nav-link" href="/docs/design">Design system</a>
+      <p class="nav-section">About</p>
+      <a class="nav-link" href="/docs/about">About Slirc</a>
+      <a class="nav-link" href="/docs/comparison">Footprint</a>
+      <a class="nav-link" href="/docs/faq">FAQ</a>
+      </div>
+    </nav>
+
+    <main id="main">
+      <div class="callout info prelaunch-note"><p>Slirc is in early access. Come say hi in <a href="/open-chat">#open-chat</a>.</p></div>
+      <p class="crumb">Connect / IRC clients</p>
+      <h1>IRC clients</h1>
+      <p class="lead">Slirc remains IRC underneath, so the conversation does not depend on one client.</p>
+<p>Everything Slirc shows in the app is also on the IRC server. This page is for people who want a terminal or desktop client next to the PWA, or instead of it.</p>
+<h2 id="client-shortlist">Client shortlist</h2>
+<table>
+<thead>
+<tr><th>Client</th><th>Platforms</th><th>Interface</th><th>Source</th><th>Good fit for</th></tr>
+</thead>
+<tbody>
+<tr><td><a href="https://sr.ht/~taiite/senpai/">Senpai</a></td><td>Linux, macOS</td><td>terminal</td><td>open</td><td>a focused keyboard-driven client</td></tr>
+<tr><td><a href="https://halloy.chat/">Halloy</a></td><td>Linux, macOS, Windows</td><td>desktop</td><td>open</td><td>a modern cross-platform GUI</td></tr>
+<tr><td><a href="https://www.codeux.com/textual/">Textual</a></td><td>macOS, iOS</td><td>native</td><td>commercial</td><td>a polished Apple client</td></tr>
+<tr><td><a href="https://github.com/MCMrARM/revolution-irc">Revolution IRC</a></td><td>Android</td><td>native</td><td>open</td><td>lightweight mobile IRC</td></tr>
+<tr><td><a href="https://weechat.org/">WeeChat</a></td><td>Linux, macOS, BSD</td><td>terminal</td><td>open</td><td>scripting and deep customization</td></tr>
+</tbody>
+</table>
+<p>These clients support registered IRC accounts through SASL. Exact history and media presentation varies by client.</p>
+<h2 id="how-slirc-features-appear">How Slirc features appear</h2>
+<ul>
+<li>Channels remain ordinary IRC conversations. PWA direct messages appear as private <code>#dm-*</code> channels in terminal clients, so offline messages persist without fake presence.</li>
+<li>Email invitations only deliver the link. Whoever accepts is a normal account with normal channel access, so <code>/list</code>, auto-join and history behave as in any other room.</li>
+<li>Thread replies arrive in the same channel or DM with an IRCv3 <code>+reply</code> tag.</li>
+<li>Images, videos, GIFs, and previews remain readable URLs.</li>
+<li>Topics use the standard IRC topic.</li>
+<li>Edits and reactions use IRCv3 metadata. Halloy renders reactions under their message; clients without reaction support ignore them.</li>
+</ul>
+<h2 id="how-to-connect">How to connect</h2>
+<div class="config-builder" data-irc-config>
+  <label><span>Nick</span><input type="text" value="yournick" maxlength="32" autocomplete="nickname" data-irc-nick /></label>
+  <label><span>Server name</span><input type="text" value="slirc" maxlength="32" spellcheck="false" data-irc-server /></label>
+  <small>Server name is the local label in your IRC client. The connection still goes to chat.example.com.</small>
+</div>
+<p>The commands and config below update as you type. Values stay in this browser. The in-app <strong>IRC clients</strong> tab fills in a workspace-specific server name (such as <code>slirc-yourteam</code>) for Halloy and WeeChat so multiple workspaces do not collide.</p>
+<h3 id="connect-with-a-password">Connect with a password</h3>
+<ol>
+<li>Open <strong>More → Profile → IRC clients</strong> on a phone, or <strong>Profile → IRC</strong> on desktop.</li>
+<li>Choose <strong>Use a password</strong> and name the device, for example <code>Halloy on MacBook</code>.</li>
+<li>Save the password when it appears. Slirc shows it once.</li>
+<li>Copy the setup block for your client.</li>
+</ol>
+<p>Clients connect to <code>chat.example.com</code> on port <code>6697</code> with TLS and SASL PLAIN. Adding or removing a password device rotates the account password, and so does <strong>New password</strong>, which makes one without adding a device. Older password clients must use the newest password before they can reconnect.</p>
+<p>For Halloy, add this to <code>config.toml</code>:</p>
+<pre><code class="language-toml">[servers.{{server}}]
+server = &quot;chat.example.com&quot;
+port = 6697
+use_tls = true
+nickname = &quot;{{nick}}&quot;
+username = &quot;{{nick}}&quot;
+
+[servers.{{server}}.sasl.plain]
+username = &quot;{{nick}}&quot;
+password = &quot;the password Slirc showed you&quot;
+</code></pre>
+<h4 id="local-development-endpoint">Local development endpoint</h4>
+<p>A local development instance advertises its own IRC endpoint instead of <code>chat.example.com</code>, such as <code>127.0.0.1:6797</code>, and the generated blocks use that host and port. A loopback address only works on the machine running the stack; another computer cannot reach it.</p>
+<p>That local Ergo uses a self-signed certificate, so the generated Halloy block adds <code>dangerously_accept_invalid_certs = true</code> with a warning comment. It accepts only this local certificate and must not be copied into a production config. Other clients get the same host and port but no certificate bypass; they need their own way to trust the local certificate, or the TLS handshake fails.</p>
+<h4 id="quiet-server-events-in-halloy">Quiet server events in Halloy</h4>
+<p>Halloy shows IRC joins, leaves, mode changes, and kicks in channel history. To keep Slirc conversations focused, add this optional block. It only hides these events for the server name above; ordinary messages remain visible.</p>
+<pre><code class="language-toml">[buffer.server_messages.change_mode]
+exclude = { servers = [&quot;{{server}}&quot;] }
+
+[buffer.server_messages.join]
+exclude = { servers = [&quot;{{server}}&quot;] }
+
+[buffer.server_messages.part]
+exclude = { servers = [&quot;{{server}}&quot;] }
+
+[buffer.server_messages.quit]
+exclude = { servers = [&quot;{{server}}&quot;] }
+
+[buffer.server_messages.kick]
+exclude = { servers = [&quot;{{server}}&quot;] }
+</code></pre>
+<h3 id="connect-with-a-certificate">Connect with a certificate</h3>
+<p>A certificate gives each client its own credential. Revoking one certificate does not interrupt other clients.</p>
+<p>Generate an ECDSA P-256 key and self-signed certificate:</p>
+<pre><code class="language-sh">nick={{nick}}; server={{server}}; openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -days 3650 -subj &quot;/CN=$nick&quot; -keyout &quot;$server-$nick.key&quot; -out &quot;$server-$nick.crt&quot; &amp;&amp; cat &quot;$server-$nick.key&quot; &quot;$server-$nick.crt&quot; &gt; &quot;$server-$nick.pem&quot; &amp;&amp; chmod 600 &quot;$server-$nick.key&quot; &quot;$server-$nick.pem&quot; &amp;&amp; openssl x509 -in &quot;$server-$nick.crt&quot; -noout -fingerprint -sha256
+</code></pre>
+<p>Keep <code>.key</code> and <code>.pem</code> private. Anyone with either file can sign in as you. Open <strong>Profile → IRC → Use a certificate</strong>, name the device, and paste the SHA-256 fingerprint printed by OpenSSL.</p>
+<h4 id="halloy">Halloy</h4>
+<p>Add this to Halloy's <code>config.toml</code>, using absolute paths:</p>
+<pre><code class="language-toml">[servers.{{server}}]
+server = &quot;chat.example.com&quot;
+port = 6697
+use_tls = true
+nickname = &quot;{{nick}}&quot;
+username = &quot;{{nick}}&quot;
+
+[servers.{{server}}.sasl.external]
+cert = &quot;/path/to/{{server}}-{{nick}}.crt&quot;
+key = &quot;/path/to/{{server}}-{{nick}}.key&quot;
+</code></pre>
+<h4 id="weechat">WeeChat</h4>
+<p>Copy the combined PEM to WeeChat's private certificate directory, then configure server:</p>
+<pre><code class="language-text">/server add {{server}} chat.example.com/6697 -tls
+/set irc.server.{{server}}.nicks &quot;{{nick}}&quot;
+/set irc.server.{{server}}.tls_cert &quot;%h/tls/{{server}}-{{nick}}.pem&quot;
+/set irc.server.{{server}}.sasl_mechanism external
+/connect {{server}}
+</code></pre>
+<p>Older WeeChat releases call <code>tls_cert</code> <code>ssl_cert</code> and use <code>-ssl</code> instead of <code>-tls</code>.</p>
+<h4 id="textual">Textual</h4>
+<p>Convert certificate to PKCS #12, import it into macOS Keychain, then select identity certificate in Textual's server settings and choose SASL EXTERNAL:</p>
+<pre><code class="language-sh">openssl pkcs12 -export -inkey {{server}}-{{nick}}.key -in {{server}}-{{nick}}.crt -out {{server}}-{{nick}}.p12
+</code></pre>
+<p>Textual on iOS must receive identity through iOS certificate/profile management before it appears in server settings. Textual versions without SASL EXTERNAL must use password setup above.</p>
+<h4 id="senpai">Senpai</h4>
+<p>Senpai currently supports SASL PLAIN only and has no client-certificate setting. Use <strong>Use a password</strong> in Slirc for Senpai. Do not add PEM paths to Senpai config; current releases ignore them.</p>
+<p>Never enter your magic-link URL into an IRC client. Magic links sign in to web app. IRC clients use password or certificate from device setup.</p>
+
+      <footer class="doc-footer">
+        <p class="doc-footer-meta"><a href="/docs">All guides</a> · <a href="/docs/clients.md">markdown</a></p>
+        <nav class="pager" aria-label="Page navigation">
+        <a class="pager-box prev" href="/docs/privacy"><small>← Previous</small><span>Privacy & safety</span></a>
+        <a class="pager-box next" href="/docs/agents"><small>Next →</small><span>Agents</span></a>
+        </nav>
+      </footer>
+    </main>
+    <nav class="toc" id="page-nav" aria-label="On this page"></nav>
+  </div>
+
+  <script type="module" src="/docs/glow.js"></script>
+  <script src="/docs/docs.js?v=16" defer></script>
+  <script src="/docs/app-back.js?v=26d58c4a" defer></script>
+  <script type="module" src="/docs/search.js?v=1f3b3dfc&amp;index=9725c03e"></script>
+</body>
+</html>

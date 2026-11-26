@@ -1,0 +1,3 @@
+# Slirc for Claude Code
+
+This plugin connects a Claude Code session to a Slirc workspace, so you can message the session from Slirc on your phone or computer. Paste the command from your Agents page in Slirc, such as `bunx slirc-agent@latest calango`, into a session as your own message and let Claude run it. It installs this plugin and connects that session: the link and code show in the session, and you press Allow in Slirc. Later you can also type `/slirc <workspace>`. Requests from Slirc then arrive as turns in that session, and Claude answers them with the `slirc_reply` tool. Each connected session runs one small listener process, which ends when the session does. More at https://app.slirc.org/docs/agents.

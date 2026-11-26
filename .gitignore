@@ -1,0 +1,18 @@
+node_modules/
+*.log
+.env
+.env.*
+!.env.example
+.data/
+*.db
+*.sqlite*
+cert/
+.accounts
+app/.git/
+ergo/ergo.yaml
+.plans/next.md
+.plans/next.prev.md
+__pycache__/
+
+# Local-only tools and notes, never committed.
+.local/

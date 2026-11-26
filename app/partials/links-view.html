@@ -1,0 +1,143 @@
+  <main id="links-view" class="chat links-view" x-cloak x-show="library.on && (isDesktop || mobileNav === null)" x-on:scroll.passive="library.onScroll($event)" x-on:keydown.escape="library.closeSheet()" aria-label="Links">
+    <div class="links-frame">
+      <div class="links-main">
+        <form class="links-search" role="search" aria-label="Search or add links" x-on:submit.prevent="library.submit()">
+          <div class="links-field">
+            <span class="links-field-icon" aria-hidden="true" x-html="lucideIcon('search')"></span>
+            <input id="links-search-input" type="text" inputmode="search" enterkeyhint="search" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Search links, or paste one to add" aria-controls="links-results" :placeholder="library.placeholder()" :value="library.query.text" x-on:input="library.onInput($event)" x-on:keydown="library.onInputKeydown($event)" />
+            <button id="links-filters-button" type="button" class="links-filters-button" :class="library.filterCount() && 'on'" :aria-expanded="library.sheet ? 'true' : 'false'" aria-controls="links-filters" x-on:click="library.openSheet()"><span>Filters</span><span class="links-filters-count" x-show="library.filterCount()" x-text="library.filterCount()"></span></button>
+          </div>
+          <div class="links-action" x-cloak x-show="library.mode() !== 'search'">
+            <button type="submit" class="btn-primary links-add" x-show="library.mode() === 'add'" :disabled="library.adding"><span>Add link</span><kbd>Enter</kbd></button>
+            <template x-if="library.mode() === 'saved'"><div class="links-known"><span>Already saved.</span><button type="button" class="link-filter" x-on:click="library.showKnown()">Show it</button></div></template>
+          </div>
+          <p class="links-note" role="status" x-cloak x-show="library.note" x-text="library.note"></p>
+          <div class="links-tokens" x-cloak x-show="!library.isEmpty() && library.mode() === 'search'">
+            <template x-for="token in library.tokens()" :key="token.key"><button type="button" class="links-token" :aria-label="'Remove filter ' + token.label" x-on:click="library.toggle(token.kind, token.value)"><span x-text="token.label"></span><span class="links-token-x" aria-hidden="true" x-html="lucideIcon('x')"></span></button></template>
+            <button type="button" class="links-clear" x-on:click="library.clear()">Clear all</button>
+          </div>
+          <p class="links-count" role="status" aria-live="polite" x-cloak x-show="library.loaded && !library.isEmpty() && library.mode() === 'search'" x-text="library.status()"></p>
+        </form>
+
+        <div class="notify-banner" x-cloak x-show="library.error"><p x-text="library.error"></p></div>
+        <section class="links-empty" x-cloak x-show="library.loaded && !library.loading && !library.rows.length && library.isEmpty()">
+          <h2>No links here yet</h2>
+          <p x-show="library.isHome()">Paste a link in the field above and press Enter. Links posted in any channel that has <strong>links</strong> in it land here too.</p>
+          <p x-show="!library.isHome()">Links posted in this channel are kept here.</p>
+        </section>
+        <section class="links-empty" x-cloak x-show="library.loaded && !library.loading && !library.rows.length && !library.isEmpty() && library.mode() === 'search'">
+          <h2>Nothing matches that</h2>
+          <p>Try fewer words, or take a filter off.</p>
+          <button type="button" class="btn-secondary" x-on:click="library.clear()">Clear search</button>
+        </section>
+
+        <div id="links-results">
+          <template x-for="day in library.days" :key="day.key">
+            <section class="links-day">
+              <h2 class="links-day-heading" x-show="day.heading"><span x-text="day.heading"></span><span class="links-day-new" x-show="day.isNew">new</span></h2>
+              <ol class="links-list">
+                <template x-for="link in day.rows" :key="link.id">
+                  <li class="link-row" :data-link-row="link.id" :class="[library.post(link) && 'post', library.editing === link.id && 'editing', link.image ? 'has-image' : 'no-image', link.imageKind === 'avatar' && 'avatar', day.lastHere === link.id && 'last-here']">
+                    <p class="links-last-here" role="separator" x-show="day.lastHere === link.id"><span>You were last here</span></p>
+                    <a class="link-thumb" :href="link.url" target="_blank" rel="noopener noreferrer" tabindex="-1" aria-hidden="true"><template x-if="link.image"><img class="link-thumb-image" :src="'/api/links/' + link.id + '/image'" alt="" width="96" height="60" loading="lazy" decoding="async" x-on:error="$el.remove()" /></template><template x-if="!link.image && !library.post(link)"><span class="link-icon"><span class="link-icon-none" x-html="lucideIcon('link')"></span><img :src="'/api/links/favicon?host=' + encodeURIComponent(library.host(link.url))" alt="" width="16" height="16" loading="lazy" decoding="async" x-on:error="$el.remove()" /></span></template></a>
+                    <div class="link-body">
+                      <template x-if="!library.post(link)"><h3><a class="link-title" :href="link.url" target="_blank" rel="noopener noreferrer" x-on:click="library.mainClick(link, $event)" x-text="library.title(link)"></a><button type="button" class="link-host" :aria-label="'Only links from ' + library.host(link.url)" x-on:click="library.filterBy('site', library.host(link.url))"><span class="link-icon inline" aria-hidden="true" x-show="link.image"><img :src="'/api/links/favicon?host=' + encodeURIComponent(library.host(link.url))" alt="" width="14" height="14" loading="lazy" decoding="async" x-on:error="$el.parentElement.remove()" /></span><span x-text="library.host(link.url)"></span></button><button type="button" class="link-copy" data-link-copy x-show="link.copy" x-on:click="library.openReader(link)">Saved copy</button><span class="link-gone" x-show="link.gone">original is gone</span></h3></template>
+                      <template x-if="library.post(link)">
+                        <div class="link-post" x-data="{ quoted: library.post(link) }" x-effect="quoted = library.post(link)">
+                          <template x-if="quoted.linked"><h3><a class="link-title" :href="quoted.linked.url" target="_blank" rel="noopener noreferrer" x-text="quoted.linked.title"></a><button type="button" class="link-host" :aria-label="'Only links from ' + quoted.linked.host" x-on:click="library.filterBy('site', quoted.linked.host)" x-text="quoted.linked.host"></button></h3></template>
+                          <blockquote class="link-quote">
+                            <p class="link-quote-by"><a class="link-handle" :class="!quoted.linked && 'main'" :href="quoted.postUrl" target="_blank" rel="noopener noreferrer" x-on:click="library.mainClick(link, $event)" x-text="quoted.handle"></a><a class="link-onx" :href="quoted.postUrl" target="_blank" rel="noopener noreferrer" :aria-label="'Open the post by ' + quoted.handle + ' on X'">on X</a><button type="button" class="link-copy" data-link-copy x-show="link.copy" x-on:click="library.openReader(link)">Saved copy</button><span class="link-gone" x-show="link.gone">original is gone</span></p>
+                            <p class="link-quote-text" x-text="quoted.text"></p>
+                          </blockquote>
+                        </div>
+                      </template>
+                      <p class="link-summary" x-show="!library.post(link) && library.summary(link)" x-text="library.summary(link)"></p>
+                      <div class="link-meta">
+                        <template x-for="topic in link.topics" :key="topic"><span class="link-topic-item"><button type="button" class="link-topic" :class="library.isOn('topic', topic) && 'on'" :aria-label="'Filter by topic ' + topic" x-on:click="library.filterBy('topic', topic)" x-text="'#' + topic"></button><button type="button" class="link-topic-x" x-show="library.editing === link.id" :aria-label="'Remove topic ' + topic" x-on:click="library.removeTopic(link, topic)" x-html="lucideIcon('x')"></button></span></template>
+                        <button type="button" class="link-topic-add" :class="!link.topics.length && 'empty'" x-show="library.editing !== link.id" :data-link-topics="link.id" :aria-label="'Edit topics of ' + library.title(link)" aria-haspopup="listbox" x-on:click="library.openTopics(link)"><span class="link-topic-plus" aria-hidden="true" x-html="lucideIcon('plus')"></span><span x-show="!link.topics.length">add topic</span></button>
+                        <template x-if="library.editing === link.id">
+                          <div class="topic-editor" :class="!isDesktop && 'sheet'">
+                            <p class="topic-editor-title">Topics</p>
+                            <div class="topic-editor-current" x-show="link.topics.length"><template x-for="topic in link.topics" :key="topic"><button type="button" class="links-token" :aria-label="'Remove topic ' + topic" x-on:click="library.removeTopic(link, topic)"><span x-text="'#' + topic"></span><span class="links-token-x" aria-hidden="true" x-html="lucideIcon('x')"></span></button></template></div>
+                            <input id="links-topic-input" type="text" role="combobox" aria-label="Add a topic" aria-autocomplete="list" aria-expanded="true" aria-controls="links-topic-options" :aria-activedescendant="library.topicOptions().length ? 'links-topic-option-' + library.topicIndex : null" placeholder="Add a topic" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="48" enterkeyhint="done" :value="library.topicText" x-on:input="library.onTopicInput($event)" x-on:keydown="library.onTopicKeydown($event)" />
+                            <ul id="links-topic-options" class="topic-options" role="listbox" aria-label="Topics" x-show="library.topicOptions().length">
+                              <template x-for="(option, index) in library.topicOptions()" :key="option.label"><li :id="'links-topic-option-' + index" role="option" class="topic-option" :class="[index === library.topicIndex && 'active', option.create && 'create']" :aria-selected="index === library.topicIndex ? 'true' : 'false'" x-on:pointerdown.prevent x-on:click="library.pickTopic(option)" x-on:pointermove="library.topicIndex = index"><span x-text="option.label"></span><span class="topic-option-count" x-show="!option.create" x-text="library.count(option.count)"></span></li></template>
+                            </ul>
+                            <p class="topic-editor-error" role="alert" x-show="library.topicError" x-text="library.topicError"></p>
+                            <button type="button" class="topic-editor-done" x-on:click="library.closeTopics()">Done</button>
+                          </div>
+                        </template>
+                        <button type="button" class="link-filter by" x-show="link.sharedBy" :aria-label="'Only links shared by ' + link.sharedBy" x-on:click="library.filterBy('sharer', link.sharedBy)"><span>shared by </span><span class="link-by-name" x-text="link.sharedBy"></span></button>
+                        <span class="link-extra" x-show="link.shareCount > 1" x-text="link.shareCount + ' times'"></span>
+                        <span class="link-extra link-private" x-show="link.private" x-text="'only in ' + link.private"></span>
+                        <button type="button" class="link-remove" x-show="link.canRemove" :data-link-remove="link.id" x-on:click="library.askRemove(link)">Remove</button>
+                      </div>
+                    </div>
+                  </li>
+                </template>
+              </ol>
+              <button type="button" class="links-fold" x-show="day.hidden" x-on:click="library.openDay(day)" x-text="day.more"></button>
+              <p class="links-last-here" role="separator" x-show="day.lastHere === 'end'"><span>You were last here</span></p>
+            </section>
+          </template>
+        </div>
+        <p class="links-more" x-cloak x-show="library.loading && library.rows.length" role="status">Loading…</p>
+        <button type="button" class="btn-secondary links-older" x-cloak x-show="library.capped()" x-on:click="library.showOlder()" x-text="library.olderLabel()"></button>
+      </div>
+
+      <button type="button" class="links-sheet-backdrop" x-cloak x-show="library.sheet" aria-label="Close filters" tabindex="-1" x-on:click="library.closeSheet()"></button>
+      <aside id="links-filters" class="links-filters" :class="library.sheet && 'open'" aria-label="Filters">
+        <div class="links-sheet-head">
+          <h2>Filters</h2>
+          <button type="button" class="links-clear" x-show="!library.isEmpty()" x-on:click="library.clear()">Clear all</button>
+          <button type="button" class="links-sheet-close btn-primary" x-on:click="library.closeSheet()" x-text="'Show ' + library.status()"></button>
+        </div>
+        <button type="button" class="links-clear links-clear-column" x-cloak x-show="!library.isEmpty()" x-on:click="library.clear()">Clear all</button>
+        <template x-for="group in library.groups" :key="group.id">
+          <section class="links-group">
+            <h3 x-text="group.title"></h3>
+            <ul>
+              <template x-for="entry in library.shown(group)" :key="entry.key">
+                <li><button type="button" class="links-entry" :class="library.isOn(entry.kind, entry.value) && 'on'" :aria-pressed="library.isOn(entry.kind, entry.value) ? 'true' : 'false'" x-on:click="library.toggle(entry.kind, entry.value)"><span class="links-entry-label" x-text="entry.label"></span><span class="links-entry-count" x-text="library.count(entry.count)"></span></button></li>
+              </template>
+            </ul>
+            <button type="button" class="links-show-all" x-show="group.entries.length > group.short" :aria-expanded="library.expanded[group.id] ? 'true' : 'false'" x-on:click="library.expand(group)" x-text="library.expanded[group.id] ? 'Show fewer' : 'Show all ' + group.entries.length"></button>
+          </section>
+        </template>
+      </aside>
+    </div>
+  </main>
+
+  <dialog id="links-remove-dialog" class="custom-modal" x-cloak x-on:cancel.prevent="library.cancelRemove()" x-on:click="if ($event.target === $el) library.cancelRemove()">
+    <section class="notice-card delete-confirmation" role="alertdialog" aria-labelledby="links-remove-title">
+      <h2 id="links-remove-title">Remove this link?</h2>
+      <p class="links-remove-name" x-text="library.removeTarget ? library.title(library.removeTarget) : ''"></p>
+      <p>It leaves the library for everyone. Send it to links in a DM to bring it back.</p>
+      <p class="profile-error" role="alert" x-show="library.removeError" x-text="library.removeError"></p>
+      <div class="pair-actions">
+        <button type="button" class="btn-secondary" autofocus x-on:click="library.cancelRemove()">Cancel</button>
+        <button type="button" class="btn-danger" :class="library.removing && 'busy'" :disabled="library.removing" x-on:click="library.confirmRemove()">Remove</button>
+      </div>
+    </section>
+  </dialog>
+
+  <dialog id="links-reader" class="custom-modal links-reader" x-cloak x-on:cancel.prevent="library.closeReader()" x-on:click="if ($event.target === $el) library.closeReader()">
+    <section class="notice-card links-reader-card" role="document" aria-labelledby="links-reader-title">
+      <div class="links-reader-head">
+        <p class="links-reader-kicker">Saved copy<span x-show="library.reader && library.reader.gone"> · the original is gone</span></p>
+        <h2 id="links-reader-title" x-text="library.reader ? library.reader.title : (library.readerError ? 'No saved copy' : 'Opening…')"></h2>
+        <p class="links-reader-meta" x-show="library.reader"><span x-text="library.reader ? library.reader.host : ''"></span><span x-show="library.reader && library.reader.byline" x-text="library.reader ? ' · ' + library.reader.byline : ''"></span><span x-text="library.reader ? ' · saved ' + library.reader.saved : ''"></span></p>
+        <div class="links-reader-actions">
+          <a class="btn-secondary" x-show="library.reader && !library.reader.gone" :href="library.reader ? library.reader.url : '#'" target="_blank" rel="noopener noreferrer">Open the original</a>
+          <button type="button" class="btn-secondary" autofocus x-on:click="library.closeReader()">Close</button>
+        </div>
+      </div>
+      <p class="profile-error" role="alert" x-show="library.readerError" x-text="library.readerError"></p>
+      <template x-if="library.reader">
+        <article class="links-reader-text">
+          <template x-if="library.reader.image"><img class="links-reader-image thumb-img" :src="'/api/links/' + library.reader.id + '/image'" :style="library.reader.imageStyle" alt="" loading="lazy" decoding="async" x-init="$el.complete && library.markLoaded($el)" x-on:load="library.markLoaded($el)" x-on:error="$el.remove()" /></template>
+          <template x-for="(block, index) in library.reader.blocks" :key="index"><p :class="'reader-' + block.kind" x-text="block.text"></p></template>
+        </article>
+      </template>
+    </section>
+  </dialog>

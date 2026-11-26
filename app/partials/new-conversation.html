@@ -1,0 +1,63 @@
+  <dialog x-data="newConversation" id="new-conversation-dialog" class="custom-modal new-conversation-dialog" aria-labelledby="new-conversation-title" x-cloak x-on:cancel.prevent="newConversation.close()" x-on:click="if ($event.target === $el) newConversation.close()">
+    <section class="notice-card new-conversation-card"><div class="new-conversation-content">
+      <div class="new-conversation-head">
+        <div class="new-conversation-title-row">
+          <h2 id="new-conversation-title" x-text="newConversation.invitationSent() ? 'Invitation sent' : newConversation.destination ? 'Invite to ' + newConversation.destination : 'New DM'"></h2>
+        </div>
+        <button type="button" class="dialog-close" aria-label="Close" x-on:click="newConversation.close()" x-html="lucideIcon('x')"></button>
+      </div>
+
+      <div class="new-conversation-form" x-show="!newConversation.invitationSent()">
+      <div class="new-conversation-field">
+          <input id="new-conversation-search" type="search" maxlength="254" :placeholder="newConversation.destination ? 'Email' : 'Name or email'" :aria-label="newConversation.destination ? 'Email' : 'Name or email'" autocomplete="off" x-model="newConversation.query" :disabled="newConversation.busy" x-on:input="newConversation.active = 0" x-on:input.debounce.250ms="newConversation.search()" x-on:keydown="newConversation.keydown($event)" />
+      </div>
+      <p class="profile-error" role="alert" x-show="newConversation.searchError" x-text="newConversation.searchError"></p>
+
+      <p class="field-hint" x-show="newConversation.destination && !newConversation.isEmailQuery()">For someone already on Slirc, use <code>/invite @name</code>.</p>
+
+      <div class="new-conversation-email" x-show="newConversation.isEmailQuery()">
+          <p class="field-hint" x-text="newConversation.destination ? 'Send an invitation to join this channel.' : 'Send an invitation to start a direct message.'"></p>
+          <p class="field-hint">Your name and email address are included in the invitation.</p>
+          <div class="new-conversation-email-actions">
+            <p class="field-hint" x-show="newConversation.limit"><strong x-text="newConversation.remaining"></strong> email invites left</p>
+            <p class="field-hint" x-show="newConversation.unlimited">Unlimited email invites</p>
+            <button type="button" class="btn-primary" :disabled="newConversation.busy || newConversation.settled" x-on:click="newConversation.submitEmailQuery()" x-text="newConversation.busy ? 'Sending…' : 'Send invite'"></button>
+          </div>
+      </div>
+
+      <div class="new-conversation-results" x-show="!newConversation.isEmailQuery() && !newConversation.destination">
+          <p class="new-conversation-hint" x-show="newConversation.searchBusy">Searching…</p>
+          <template x-for="(person, index) in newConversation.visiblePeople()" :key="person.accountId">
+            <button type="button" class="new-conversation-person" :class="index === newConversation.active && 'active'" :aria-current="index === newConversation.active ? 'true' : null" :disabled="newConversation.busy" x-on:click="newConversation.choosePerson(person)" x-on:mouseenter="newConversation.active = index">
+              <span class="room-mark peer-avatar" aria-hidden="true"><span>@</span><img loading="lazy" :src="person.avatarUrl || avatarUrl(person.nick)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" /></span>
+              <span class="new-conversation-person-main"><strong x-text="person.displayName || person.nick"></strong><small x-text="'@' + person.nick"></small></span>
+            </button>
+          </template>
+          <p class="new-conversation-hint" x-show="!newConversation.searchBusy && newConversation.query.trim().length >= 2 && !newConversation.results.length && !newConversation.searchError">No one matches that search.</p>
+          <p class="new-conversation-hint" x-show="newConversation.query.trim().length < 2 && !newConversation.contactSuggestions().length">Type at least 2 characters to find people.</p>
+      </div>
+
+      <ul class="new-conversation-outcomes" x-show="newConversation.outcomes.length">
+          <template x-for="(outcome, index) in newConversation.outcomes" :key="index + '-' + (outcome.accountId || outcome.email || '')">
+            <li :class="(outcome.status === 'failed' || outcome.status === 'uncertain') ? 'warn' : ''">
+              <strong x-text="outcome.nick || outcome.email || 'Recipient'"></strong>
+              <span x-text="newConversationStatusLabel(outcome.status)"></span>
+              <small x-show="outcome.error" x-text="outcome.error"></small>
+            </li>
+          </template>
+      </ul>
+
+      <p class="field-hint" x-show="newConversation.note" x-text="newConversation.note"></p>
+      <p class="profile-error" role="alert" x-show="newConversation.error" x-text="newConversation.error"></p>
+      <p class="field-hint bulk-invite-entry" x-show="isAdmin && !newConversation.busy">Inviting a whole team? <button type="button" class="link-button" x-on:click="const channel = newConversation.destination || ''; newConversation.close(); bulkInvite.open(null, channel)">Invite many</button></p>
+      </div>
+      <div class="new-conversation-success" x-show="newConversation.invitationSent()">
+        <p>Sent to <strong x-text="newConversation.query.trim()"></strong>.</p>
+        <p class="field-hint">Your DM will appear when they accept.</p>
+        <div class="pair-actions new-conversation-actions">
+          <button type="button" class="btn-secondary" x-on:click="newConversation.setMode('direct')">Invite someone else</button>
+          <button id="new-conversation-done" type="button" class="btn-primary" x-on:click="newConversation.close()">Done</button>
+        </div>
+      </div>
+    </div></section>
+  </dialog>

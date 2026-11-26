@@ -1,0 +1,90 @@
+# Slirc self-hosted stack (Docker Compose)
+# Installed in /opt/slirc and managed via /usr/local/bin/slirc.
+# Keep deploy/app.compose.yaml and deploy/ergo.compose.yaml for rootless Podman setups.
+
+services:
+  caddy:
+    image: ${CADDY_IMAGE:-caddy:2-alpine}
+    container_name: slirc-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      APP_HOST: ${SLIRC_DOMAIN:?set SLIRC_DOMAIN in .env}
+      ACME_EMAIL: ${SLIRC_ACME_EMAIL:?set SLIRC_ACME_EMAIL in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${SLIRC_DATA_DIR:-/var/lib/slirc}/caddy/data:/data
+      - ${SLIRC_DATA_DIR:-/var/lib/slirc}/caddy/config:/config
+    depends_on:
+      - slirc
+    networks:
+      slirc:
+        ipv4_address: ${CADDY_IP:-10.89.42.10}
+
+  ergo:
+    image: ${ERGO_IMAGE:-ghcr.io/bitbonsai/slirc-ergo:v2.19.1}
+    container_name: slirc-ergo
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        TOKEN=$$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n');
+        printf '%s' "$$TOKEN" > /run/secrets/ergo-api-token;
+        export ERGO__API__BEARER_TOKENS="[\"$$TOKEN\"]";
+        exec /ircd-bin/run.sh
+    ports:
+      - "${ERGO_TLS_BIND:-127.0.0.1}:6697:6697"
+    environment:
+      ERGO__ACCOUNTS__DEFAULT_USER_MODES: "+iR"
+      ERGO__API__ENABLED: "true"
+      ERGO__API__LISTENER: ":8089"
+    volumes:
+      - ${SLIRC_DATA_DIR:-/var/lib/slirc}/ergo:/ircd
+      - ergo-api:/run/secrets
+      - ./ergo.yaml:/ircd/ircd.yaml:ro
+      - ./ergo.motd:/ircd/ergo.motd:ro
+    networks:
+      slirc:
+        ipv4_address: ${ERGO_IP:-10.89.42.30}
+
+  slirc:
+    image: ${SLIRC_IMAGE:-ghcr.io/bitbonsai/slirc:latest}
+    container_name: slirc
+    restart: unless-stopped
+    env_file:
+      - ./app.env
+    environment:
+      DB_PATH: /data/chat.sqlite
+      ERGO_HOST: ${ERGO_IP:-10.89.42.30}
+      ERGO_PORT: "6667"
+      ERGO_API_URL: http://${ERGO_IP:-10.89.42.30}:8089
+      ERGO_API_TOKEN_FILE: /run/secrets/ergo-api-token
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ${SLIRC_DATA_DIR:-/var/lib/slirc}/app:/data
+      - ergo-api:/run/secrets:ro
+      - ${SLIRC_KEYS_DIR:-/var/lib/slirc-keys}/irc-key:/run/slirc-irc-key:ro
+    depends_on:
+      - ergo
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const r = await fetch('http://127.0.0.1:8080/healthz'); if (!r.ok) process.exit(1);"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    networks:
+      slirc:
+        ipv4_address: ${APP_IP:-10.89.42.20}
+
+networks:
+  slirc:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${SLIRC_SUBNET:-10.89.42.0/24}
+
+volumes:
+  ergo-api:

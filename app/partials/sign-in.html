@@ -1,0 +1,69 @@
+  <div x-data="signIn" class="custom-modal auth-modal" x-cloak x-show="(booting || !authenticated || phase === 'denied') && !joinRoute && (!admissionRoute || admissionSignIn) && (booting || authenticated || !(peekRoom || peekPending) || peekSignIn)" x-on:keydown.escape.window="if (peekSignIn && !authenticated) peekSignIn = false">
+    <section class="auth-card" role="dialog" aria-modal="true" aria-label="Sign in to Slirc">
+      <img class="login-logo login-wordmark brand-wordmark" src="/brand-org-dark.svg" width="233" height="73" alt="Slirc" x-show="phase !== 'denied'" />
+      <div class="auth-step auth-view" x-show="phase === 'signin'" :class="(signIn.linkSent || pairing.pairCode || scanner.open) && 'collapsed'">
+        <div>
+          <form x-on:submit.prevent="signIn.requestLink()">
+            <label>Email<input x-ref="signInEmail" x-code="trim" type="email" name="email" autocomplete="email" required x-model="signIn.email" :disabled="signIn.linkBusy" x-effect="phase === 'signin' && !booting && !signIn.linkSent && !pairing.pairCode && (!document.activeElement || document.activeElement === document.body) && $nextTick(() => $refs.signInEmail?.focus())" /></label>
+            <label x-show="signupOpen">What should we call you?<input type="text" name="name" maxlength="80" autocomplete="nickname" placeholder="Only needed if you're new" x-model="signIn.name" :disabled="signIn.linkBusy" /></label>
+            <button type="submit" class="btn-primary" :disabled="signIn.linkBusy || !validSignInEmail(signIn.email)" x-text="signIn.linkBusy ? 'Sending…' : 'Send sign-in link'"></button>
+          </form>
+          <div class="auth-divider" role="separator">or</div>
+          <button type="button" class="auth-secondary" x-show="!isDesktop" :disabled="scanner.starting" x-on:click="scanner.start($refs.scanVideo)"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('scan-line')"></span><span>Scan to sign in</span></button>
+          <button type="button" class="auth-secondary" :class="!isDesktop && 'auth-code'" :disabled="pairing.pairBusy" x-on:click="pairing.startPair()"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('smartphone')"></span><span x-text="pairing.pairBusy ? 'Creating code…' : (isDesktop ? 'Link with another device' : 'Use a code instead')"></span></button>
+          <button type="button" class="auth-secondary" x-show="canSwitchWorkspace" x-on:click="switchWorkspace()"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('layout-grid')"></span><span>Switch workspace</span></button>
+        </div>
+      </div>
+      <div class="auth-step auth-view" x-show="phase === 'signin'" :class="!pairing.pairCode && 'collapsed'">
+        <div>
+          <section class="pair-panel" aria-live="polite">
+            <h2>Link this device</h2>
+            <p class="pair-panel-copy">On a signed-in device, open<br /><strong>Devices</strong> and enter this code.</p>
+            <div class="pair-code-block">
+              <span class="invite-qr" x-show="isDesktop" x-effect="pairing.pairUrl && pairing.renderPairQr($el, pairing.pairUrl)"></span>
+              <strong class="pair-code-value" x-text="formatPairCode(pairing.pairCode)"></strong>
+            </div>
+            <p class="profile-error" role="alert" x-show="pairing.pairError"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('circle-alert')"></span><span x-text="pairing.pairError"></span></p>
+            <button type="button" class="btn-secondary" x-on:click="pairing.clearPairRequest()">Use email instead</button>
+          </section>
+        </div>
+      </div>
+      <div class="auth-step auth-view" x-show="phase === 'signin'" :class="!scanner.open && 'collapsed'">
+        <div>
+          <section class="pair-panel scan-panel" aria-live="polite">
+            <h2>Scan to sign in</h2>
+            <p class="pair-panel-copy" x-show="!scanner.error">On a signed-in computer, open <strong>Devices</strong> and choose <strong>Add your phone</strong>. Point this camera at the code.</p>
+            <video class="scan-video" x-ref="scanVideo" playsinline muted aria-label="Camera preview" x-show="scanner.starting || scanner.scanning"></video>
+            <p class="profile-note" role="status" x-show="scanner.redeeming">Signing in…</p>
+            <p class="profile-error" role="alert" x-show="scanner.error"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('circle-alert')"></span><span x-text="scanner.error"></span></p>
+            <button type="button" class="btn-primary" x-show="scanner.elsewhere" x-on:click="scanner.openElsewhere()">Open that workspace</button>
+            <button type="button" class="btn-primary" x-show="scanner.error && !scanner.elsewhere" x-on:click="scanner.close(); pairing.startPair()">Link with a code</button>
+            <button type="button" class="btn-secondary" x-on:click="scanner.close()">Use email instead</button>
+          </section>
+        </div>
+      </div>
+      <div class="auth-step auth-view" :class="!signIn.linkSent && 'collapsed'">
+        <div>
+          <div class="email-sent">
+            <h2 x-text="signIn.devLink ? 'Your sign-in link' : 'Check your email'"></h2>
+            <p x-show="signIn.devLink">Open the local link below to sign in as <strong x-text="signIn.email"></strong>. No email is sent.</p>
+            <p x-show="!signIn.devLink">We sent a code to <strong x-text="signIn.email"></strong>. Type it here<span class="email-link-hint">, or open the link in the email</span>.</p>
+            <form class="login-code" x-show="!signIn.devLink" x-on:submit.prevent="signIn.submitCode()">
+              <label>Code<input x-ref="signInCode" x-effect="signIn.linkSent && !signIn.devLink && !signIn.codeBusy && $nextTick(() => $refs.signInCode?.focus())" type="text" name="code" x-code="digits" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" placeholder="000000" x-model="signIn.code" :disabled="signIn.codeBusy" x-on:input="signIn.codeInput()" /></label>
+              <button type="submit" class="btn-primary" :disabled="signIn.codeBusy || signIn.code.length !== 6" x-text="signIn.codeBusy ? 'Checking…' : 'Sign in'"></button>
+            </form>
+            <p class="login-code-error" role="alert" x-show="signIn.codeError" x-text="signIn.codeError"></p>
+            <div class="dev-link" x-show="signIn.devLink">
+              <p>Local test link</p>
+              <a :href="signIn.devLink" x-text="signIn.devLink"></a>
+            </div>
+            <button type="button" class="btn-secondary change-email" x-on:click="signIn.reset()">Use a different email</button>
+          </div>
+        </div>
+      </div>
+      <p class="profile-error" role="alert" x-show="pairing.pairError && !pairing.pairCode && !signIn.linkSent"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('circle-alert')"></span><span x-text="pairing.pairError"></span></p>
+      <p class="profile-error" role="alert" x-show="error && !signIn.linkSent && !scanner.open"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('circle-alert')"></span><span x-text="error"></span></p>
+      <button type="button" class="link-button auth-keep-reading" x-show="peekSignIn && peekRoom && !authenticated && phase === 'signin'" x-on:click="peekSignIn = false">Keep reading</button>
+      <button type="button" class="btn-secondary auth-denied-signout" x-show="phase === 'denied'" x-on:click="logout()">Sign out</button>
+    </section>
+  </div>

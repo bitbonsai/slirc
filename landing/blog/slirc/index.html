@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#11111b">
+  <meta name="description" content="A slim Slack built on top of IRC: threads as private channels, oEmbed and Giphy embeds, a PWA client for your home screen, and DMing your coding agent from your phone.">
+  <link rel="icon" href="/favicon.ico" sizes="32x32">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+  <link rel="icon" type="image/svg+xml" href="/logo.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="canonical" href="https://mauriciowolff.com/blog/slirc">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Slack + IRC = Slirc.org">
+  <meta name="twitter:description" content="A slim Slack built on top of IRC: threads as private channels, oEmbed and Giphy embeds, a PWA client for your home screen, and DMing your coding agent from your phone.">
+  <meta name="twitter:image" content="https://slirc.org/img/og.png">
+  <meta property="og:title" content="Slack + IRC = Slirc.org">
+  <meta property="og:description" content="A slim Slack built on top of IRC: threads as private channels, oEmbed and Giphy embeds, a PWA client for your home screen, and DMing your coding agent from your phone.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://mauriciowolff.com/blog/slirc">
+  <meta property="og:image" content="https://slirc.org/img/og.png">
+  <meta name="author" content="Mauricio Wolff">
+  <meta property="article:published_time" content="2026-09-29">
+  <meta property="article:author" content="Mauricio Wolff">
+  <title>Slack + IRC = Slirc.org | Slirc blog</title>
+  <link rel="stylesheet" href="/blog/blog.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap">
+    <img src="/slirc-mark.png?v=2" alt="">
+    <a class="brand" href="/">Slirc</a>
+    <div class="links">
+      <a href="/blog/">Blog</a>
+      <a href="https://docs.slirc.org/">Docs</a>
+      <a href="/about/">About</a>
+      <a class="icon" href="https://github.com/bitbonsai/slirc" rel="noreferrer" aria-label="Slirc on GitHub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2.17c-3.2.7-3.87-1.37-3.87-1.37-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.7 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.04 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.58.23 2.75.11 3.04.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.05.78 2.12v3.14c0 .31.21.67.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg></a>
+      <a class="btn primary" href="https://app.slirc.org/open-chat">Open chat</a>
+    </div>
+  </div>
+</nav>
+
+<article>
+  <div class="wrap">
+    <p class="eyebrow"><a href="/blog/">blog</a> · Building Slirc</p>
+    <h1>Slack + IRC = Slirc.org</h1>
+    <div class="byline">
+      <img class="avatar" src="/blog/img/mauricio-wolff.webp" width="40" height="40" alt="Mauricio Wolff">
+      <a href="https://mauriciowolff.com" rel="author noreferrer">Mauricio Wolff</a>
+      <span class="dot"></span>
+      <time datetime="2026-09-29">29 September 2026</time>
+      <span class="dot"></span>
+      <span>9 min read</span>
+      <p class="first">First published on <a href="https://mauriciowolff.com/blog/slirc">mauriciowolff.com</a>.</p>
+    </div>
+    <div class="content">
+<p>In the beginning of September I met 3 friends at <a href="https://lokaalhost22.nl">Lokaalhost:22</a>. All of us use agentic workflows heavily, so conversation ran for  hours. Smart people exchanging ideas, challenging each other, asking questions, sharing tools. One of those meetings that leaves you more energized than you arrived.</p>
+<p>Then I thought: we should make this a recurrent thing! Let me create a group in Signal with them... one of them is not on Signal. Ok... WhatsApp? I don't like it nor trust Meta that much, and it's crammed with family groups and one of the guys just ignores it most of the time... Slack? Nah. I like some of the features, like reactions and giphy, but it's bloated, 90 days limit for free, eventually you'd have to pay or leave. Also, the Electron app is huge.</p>
+<p>Then I thought: we all use the Terminal, and like simple stuff. What about <strong>IRC</strong>?</p>
+<p>My earliest memories of communication on the internet are <a href="https://en.wikipedia.org/wiki/Bulletin_board_system">BBS</a> (Bulletin Board System) and <a href="https://en.wikipedia.org/wiki/IRC">IRC</a> (Internet Relay Chat). It's been there for more than 30 years, works, I'm pretty sure servers are super light, because they had to run on very limited hardware.</p>
+<p>I also considered <a href="https://once.com">Campfire</a> which is now free. A week before I talked with my mate Lewis and installed it for almost the same reason on my Homelab server. I like the pragmatic approach like PWA app, simplicity, but found it a bit resource intensive for what it is. I like small, minimal, simple stuff.</p>
+<p>So, basically, what I wanted is <strong>a slimmer version of Slack</strong>, but running as an <strong>IRC server</strong>. That way I could connect via <a href="https://halloy.chat">Halloy</a>, <a href="https://sr.ht/~taiite/senpai/">Senpai</a> or even <a href="https://mirc.com">mIRC</a>, but with nice things such as upload images, videos, embeds, <a href="https://giphy.com">Giphy</a> support, threads... the things I use at work that make sense and would be so cool to have to DM friends.</p>
+<p>Also, the backend would be just IRC, so can connect via terminal, have progressive disclosure (for instance, image URLs would render as text) and, most importantly: I could build a PWA (Progressive Web App) client and have it on my home screen. <strong>I want it to run on phones as smoothly as the best messaging app ever</strong>.</p>
+<p>So, rolled sleeves, thought about which models I'd use for that, let's go. Thanks to <a href="https://openai.com/index/gpt-6-astra/">Astra</a> convoluted rollout, I've got 3 weekly resets on my OpenAI usage, so why not?</p>
+<h2>What am I building?</h2>
+<p>I've talked <a href="https://boiling.mauriciowolff.com/#/23">about this before</a>: the most important thing is to have a <code>pitch.md</code>. What I'm making, why I'm making it, Definition of Done. Then it comes <code>experience.md</code> and finally <code>architecture.md</code>. That's my simple framework, know what you want, how it feels and how it should be built.</p>
+<h2>Architecture: simplicity</h2>
+<p>If you know me, you know <a href="https://shibumistack.dev">I like simple stuff</a>. It's what endures, doesn't hog resources, resists the test of time.</p>
+<p>I don't mean simplistic or basic stuff, but if a system is simple, the chances of it working are higher, maintenance is simpler, chances of success bigger.</p>
+<p>So I went the usual: Bun, Hono, AlpineJS, SQLite, Nanostores. What a joy to work with. For Agents, since I have some extended limits, Terra and Sol, and Deepseek-v4 (Flash and sometimes Pro). Most of the execution will be delegated to DSv4.</p>
+<p>I started by searching for a small IRC server. Found <a href="https://ergo.chat/">Ergo</a>, made in Go, uses SQLite or PG, seems good enough. Had to compile from source because of the machine I'll run it, but that's ok. The image is tiny, idle consumes 17MB. Under load, 40MB.</p>
+<p>For PWA, I have some experience now with <a href="https://swipetris.com">Swipetris</a>, and really believe we don't use Progressive Web Apps as much as we should.</p>
+<p>Open the webpage in Safari &gt; Share &gt; Add to home screen. And now it's just another app, but without hundreds of MBs to install, no App Store, nothing.</p>
+<p>I remembered Steve Jobs said in 2007 <a href="https://www.apple.com/newsroom/2007/06/11iPhone-to-Support-Third-Party-Web-2-0-Applications/">WebApps would be the future of iPhone</a>, before changing his opinion to make <a href="https://www.apple.com/newsroom/2026/06/app-store-ecosystem-reaches-1-point-4-trillion-usd-as-developers-thrive-globally/">more money with Apps subscriptions</a> than most companies ever (around €30-40B a year).</p>
+<h2>And here it begins... slirc.org</h2>
+<figure class="center">
+  <img src="/blog/img/slirc-icon.png" alt="Slirc logo" />
+</figure>
+<p>I also thought: let me get a <code>.org</code> domain, so I can release an Open Source version if this gets any good. People would be able to deploy in their own servers, create their groups, keep their data. Why not? A very similar experience to Slack, but built on top of IRC. This sounds like fun.</p>
+<p>Worst case: same as <a href="https://mcpvault.org">MCPVault</a>, someone asks me to rename it. Fine by me...</p>
+<h2>How to join</h2>
+<p>There are few ways. You either receive an invite for a private group chat and jump right into it, or join the <code>#open-chat</code> channel. <code>@help</code> bot will chat with you to explain a bit how it works, and there's a mini model behind it to actually be helpful.</p>
+<p>You need to type your email and click a link to validate and lock your <code>nick</code>. Better than handling passwords.</p>
+<p>The channels are either secret or open, and you don't see other people connected to secret channels by default. The idea is separate groups of friends, each one with their own channel. If they wanna jump into an open channel, well... it's a free world.</p>
+<h2>Direct messages and threads</h2>
+<p>You can only see users on open channels or the ones you're invited to. DMs work as expected. All of this is present in IRC, like <code>+i</code> permissions, so nothing new there. For the help channel (open to all) <code>+uM</code> keeps privacy and anonymity.</p>
+<p>In the PWA there's a <code>/help</code> command as well, so you know what can be done even if you've never been to IRC.</p>
+<h3>Threads in IRC?</h3>
+<p><strong>This I think it's a clever idea</strong>: how can you have threads to isolate topics, compatible with IRC clients?</p>
+<p>Threads are just private channels, with same member list as the originated one. They're created on the fly on the app, when user types <code>/t</code> or <code>/thread</code> (or <code>/threads</code>). And because they're just IRC channels, they're accessible via Terminal clients as well. An additional benefit is that in IRC the other user needs to be online to DM; on Slirc, the message sits in the DM channel until they come back.</p>
+<h2>Formatting and Multimedia</h2>
+<p>Another thing Slack does well is simple formatting and multimedia. At least for now, I'm just parsing basic markdown: <strong>bold</strong>, <em>italic</em>, <code>code</code>. But nerd that I am, code fences with ``` and syntax highlighting using nue.js <a href="https://nuejs.org/blog/introducing-glow/">glow</a>. I'll probably add <code>CTRL</code> or <code>Command</code> + <code>B</code> for bold for instance, but no toolbars for now.</p>
+<p>And another thing is embeds. <strong>Giphy</strong> works and can be minimized, <strong>YouTube</strong> works, as well as anything <strong>oEmbed</strong> supports. And there's also support for <code>og</code> tags. I'll find some users to test and see what else we need. Features are always easy to add, hard to remove.</p>
+<h2>Editing and deleting</h2>
+<p>I'm still trying to find the right balance of IRC and modern messaging apps. But I want to keep a nostalgic thing as much alive as possible, so we have timestamps on every message... but you can navigate the messages with your keyboard and edit pressing <code>e</code> or <code>d</code> to delete the message, or <code>q</code> for quote and <code>t</code> for thread. Editing was a bit tricky on IRC clients, and won't remove the old message, but will add a new one with (edited). Compromises.</p>
+<h2>What it took to build it?</h2>
+<p>I went through 1 week of OpenAI credits in 1 day, and I'm on 50% of another week (thanks Astra resets). In Deepseek credits, including Flash and Pro, less than €5 in 2 days. I'll polish the experience and publish from a private repo, then check how can I open source it in the coming days, using cheaper models for the needed changes.</p>
+<p>This is being super useful from an AI credits standpoint, I'm using a Go/Zen subscription from Opencode.ai for most models, and for OpenAI a <del>Plus</del> Pro subscription. Terra's usage on Opencode consumed a lot of my Zen credits for little outcome, so a OpenAI sub is better at this point. I still have a couple days of Claude sub, but I'm planning to use only when/if needed because it's too expensive for my needs.</p>
+<p>So, in summary, 2 days, few bucks, 1-2 resets in OpenAI limits to get to 70% publish ready.</p>
+<h2>Wanna talk to your Agents?</h2>
+<p>One thing that I started to consider... Coding Agents can super easily interact with IRC. It's a very old, battle-tested, well-documented protocol. So why not be able to exchange DMs with your agent from your phone?</p>
+<p>I'm pairing as easily as possible. run <code>bunx slirc-agent</code> on your computer, confirm on your phone, you're good to go. Apple like pairing experience, now you can message your agent with that idea you had while taking a walk in the park.</p>
+<p>And if you invite an agent to a channel, other people will see its responses to the questions you ask there. Only you can ask it to do stuff, because its session is on your computer, but you can mention other people's ideas to the agent. The channel becomes context.</p>
+<h2>Next steps</h2>
+<p>The first version is up. <a href="https://slirc.org">https://slirc.org</a> and I'm sharing with some friends who'll help me see what I missed and if this makes sense.</p>
+<p>Of course I already found several bugs and oversights, and at the same time I'm writing this, I'm already fixing. This reinforces what I wrote in those slides, <a href="https://boiling.mauriciowolff.com/#/38">Feedback is gold</a>. That's why I wanted to take 2 days to build and start testing with real people.</p>
+<blockquote>
+<p>Spoiler alert: Feedback came in, and I realised (again) that a good app/service doesn't get built in a day. I'm working on it and will post updates about progress...</p>
+</blockquote>
+<h2>Da future</h2>
+<p><strong>Will this become a real product?</strong> Yes. I'll publish its source, and anyone who'd like to have a Slack-like experience built on top of IRC, can either install it on a homelab server or rent a cheap VPS and run it. It's small and performant enough to run even on a Raspberry Pi.</p>
+<p>But what if people don't want to install and maintain it? For that I'm building <a href="https://slirc.app">Slirc.app</a>. A managed/hosted version with a super convenient price of €29 for up to 250 users (instead of per seat).</p>
+<p>I really believe in the <strong>selling convenience</strong> model: install it in your server and be happy, contribute back if possible, or pay a small fee and just use it, no installation, no maintenance.</p>
+<p>It's like going to a cafe: you can make coffee at home or you can go to a cafe, you're paying a fair fee for the convenience, ambience, service and supporting the local business.</p>
+<p>That's what I love about building with AI right now: a clear idea, a bit of uncertainty, some principles, and hopefully something useful at the end.</p>
+    </div>
+  </div>
+</article>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <div class="brandline"><img src="/slirc-mark.png?v=2" alt="">Slirc</div>
+        <p>A server you own, with code you can read.</p>
+      </div>
+      <div><h4>Product</h4><ul>
+        <li><a href="https://app.slirc.org/open-chat">Open chat</a></li>
+        <li><a href="https://app.slirc.org/help">Help room</a></li>
+      </ul></div>
+      <div><h4>Docs</h4><ul>
+        <li><a href="https://docs.slirc.org/getting-started">Getting started</a></li>
+        <li><a href="https://docs.slirc.org/agents">Agents</a></li>
+        <li><a href="https://docs.slirc.org/bots">Bots</a></li>
+        <li><a href="https://docs.slirc.org/clients">IRC clients</a></li>
+        <li><a href="https://docs.slirc.org/privacy">Privacy</a></li>
+        <li><a href="https://docs.slirc.org/comparison">Comparison</a></li>
+      </ul></div>
+      <div><h4>Source</h4><ul>
+        <li><a href="https://github.com/bitbonsai/slirc" rel="noreferrer">GitHub</a></li>
+        <li><a href="https://www.npmjs.com/package/slirc-agent" rel="noreferrer">slirc-agent on npm</a></li>
+        <li><a href="https://github.com/bitbonsai/slirc/issues" rel="noreferrer">Issues</a></li>
+      </ul></div>
+    </div>
+    <p class="bottom">Made with <span class="heart">&#9829;</span> by <a href="https://mauriciowolff.com" rel="noreferrer">@bitbonsai</a> · Built on <a href="https://ergo.chat" rel="noreferrer">Ergo IRC</a> · No analytics on this page.</p>
+  </div>
+</footer>
+
+<script src="/blog/lightbox.js" defer></script>
+</body>
+</html>

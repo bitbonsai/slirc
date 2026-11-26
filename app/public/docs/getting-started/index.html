@@ -1,0 +1,146 @@
+<!-- generated from app/docs/*.md — edit there, then run: bun run docs -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#11111b" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="description" content="Start chatting on Slirc in a couple of minutes. Sign up in #open-chat or join from an invite, make a channel, and bring a friend." />
+  <title>Getting started · Slirc docs</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="alternate" type="text/markdown" href="/docs/getting-started.md" />
+  <script src="/theme.js?v=844fef47"></script>
+  <link rel="stylesheet" href="/docs/docs.css?v=39" />
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="app-back" id="app-back" hidden><a class="app-back-link" href="/more" aria-label="Back to Slirc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 4 12l7 7"/></svg>Back</a></div>
+
+  <header class="topbar">
+    <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-nav">
+      <svg class="menu-icon menu-bars" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>
+      <svg class="menu-icon menu-close" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+    <a class="brand" href="/docs"><img class="brand-lockup" src="/brand-org-dark.svg" width="233" height="73" alt="Slirc" /><span class="tag">docs</span></a>
+    <button class="search-toggle" id="search-toggle" type="button" aria-label="Search the docs" aria-expanded="false" aria-controls="docs-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 4.5 4.5"/></svg>
+    </button>
+    <div class="docs-search" id="docs-search" role="search" data-docs-search>
+      <label class="visually-hidden" for="docs-search-input">Search the docs</label>
+      <span class="docs-search-field">
+        <svg class="docs-search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5"/></svg>
+        <input id="docs-search-input" class="docs-search-input" type="search" placeholder="Search docs…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="docs-search-results" aria-autocomplete="list" />
+        <kbd class="docs-search-key" aria-hidden="true">⌘K</kbd>
+      </span>
+      <div id="docs-search-results" class="docs-search-results" role="listbox" aria-label="Search results" hidden></div>
+      <p class="docs-search-status visually-hidden" aria-live="polite"></p>
+    </div>
+    <a class="open-app-mobile" href="/open-chat">Open chat</a>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" id="docs-nav" aria-label="Documentation" hidden>
+      <div class="nav-content">
+      <a class="nav-link nav-app" href="/open-chat">Open chat</a>
+      <p class="nav-section">Guides</p>
+      <a class="nav-link" href="/docs">Home</a>
+      <a class="nav-link active" href="/docs/getting-started" aria-current="page">Getting started</a>
+      <a class="nav-link" href="/docs/download">Download</a>
+      <a class="nav-link" href="/docs/channels">Channels & invites</a>
+      <a class="nav-link" href="/docs/messages">Messages & media</a>
+      <a class="nav-link sub" href="/docs/threads">Threads</a>
+      <a class="nav-link" href="/docs/notifications">Notifications</a>
+      <a class="nav-link" href="/docs/privacy">Privacy & safety</a>
+      <p class="nav-section">Connect</p>
+      <a class="nav-link" href="/docs/clients">IRC clients</a>
+      <a class="nav-link" href="/docs/agents">Agents</a>
+      <a class="nav-link" href="/docs/bots">Bots</a>
+      <a class="nav-link" href="/docs/setup">Self-hosting</a>
+      <p class="nav-section">Reference</p>
+      <a class="nav-link" href="/docs/design">Design system</a>
+      <p class="nav-section">About</p>
+      <a class="nav-link" href="/docs/about">About Slirc</a>
+      <a class="nav-link" href="/docs/comparison">Footprint</a>
+      <a class="nav-link" href="/docs/faq">FAQ</a>
+      </div>
+    </nav>
+
+    <main id="main">
+      <div class="callout info prelaunch-note"><p>Slirc is in early access. Come say hi in <a href="/open-chat">#open-chat</a>.</p></div>
+      <p class="crumb">Guides / Getting started</p>
+      <h1>Getting started</h1>
+      <p class="lead">Sign up on a public instance or join from an invite email, and start chatting in a couple of minutes. Every step works on desktop and phone.</p>
+<h2 id="join-a-public-instance">Join a public instance</h2>
+<p>On a public instance, open <a href="/open-chat">#open-chat</a> and read along. When you want to post, tap the message box or choose <strong>Sign in to post</strong>. Type your email and, if you're new, what we should call you. Then open the link in the email, or type its code; pasting the code with its space works. You land in <code>#open-chat</code>.</p>
+<p>Your nick comes from the name you typed, without spaces or symbols. Staff names like <code>admin</code> aren't available. A new account belongs to <code>#open-chat</code> and <code>#help</code> only, plus its DM with help, until someone invites it somewhere else. A signup nobody confirms within two hours is dropped.</p>
+<h2 id="join-from-your-invite">Join from your invite</h2>
+<ol>
+<li>Open the link in your invite email.</li>
+<li>Pick a display name and choose <strong>Join Slirc</strong>. If a friend invited you, the button says <strong>Join</strong>. There's no password to set.</li>
+<li>If you were invited to a channel, you land in it. Help sends you a DM with a link to your first steps. Reply there with any question about <strong>Slirc</strong>, any time.</li>
+</ol>
+<p>Your display name also becomes your nick, the @handle next to your messages. You can change your display name any time under <strong>You</strong>; your nick stays the same. Staff and helper names, and the names of admins, agents and bots, aren't available.</p>
+<h2 id="say-hi-in-open-chat">Say hi in #open-chat</h2>
+<p>Open <code>#open-chat</code> under <strong>Channels</strong>, in the sidebar on desktop or on Home on a phone. Type your message at the bottom and press Enter or the send button.</p>
+<p>On a phone, pull down at the top of Home, More or a conversation to check you're up to date. Slirc confirms the connection, reconnects if it dropped, and fetches anything new. With no network it says you're offline.</p>
+<h2 id="make-a-channel">Make a channel</h2>
+<ol>
+<li>Choose <strong>+</strong> next to <strong>Channels</strong>, in the desktop sidebar or on phone Home.</li>
+<li>Give it a name and pick <strong>Invite-only</strong> or <strong>Open</strong>. Only people you invite can see an invite-only channel. Open channels are listed for every member to join.</li>
+<li>Choose <strong>Create channel</strong>. You land in the new channel, ready to invite people.</li>
+</ol>
+<h2 id="bring-a-friend">Bring a friend</h2>
+<p>In a channel, type <code>/invite friend@example.com</code> and choose <strong>Invite by email</strong> in the note that appears. Your friend gets an email with a link to join that channel.</p>
+<p>To start a DM, choose <strong>+</strong> next to <strong>Direct messages</strong>, in the desktop sidebar or on the phone DMs screen. Type a name to find someone who's already here, or an email address to invite someone new and choose <strong>Send invite</strong>. The dialog shows how many email invites you have left; admins have no limit.</p>
+<h2 id="send-messages-photos-gifs-and-videos">Send messages, photos, GIFs and videos</h2>
+<ul>
+<li><strong>Messages:</strong> press Enter to send and Shift + Enter for a new line. Markdown basics like <code>**bold**</code> and <code>*italic*</code> work too.</li>
+<li><strong>Photos:</strong> choose <strong>+</strong> beside the message box and pick up to 10 JPEG, PNG or WebP photos, each under 12 MB. You can also paste photos into the message box, and on desktop drop them onto the conversation or the message box.</li>
+<li><strong>GIFs:</strong> type <code>/giphy</code> and a word, like <code>/giphy hello</code>, then pick a GIF.</li>
+<li><strong>Videos:</strong> choose <strong>+</strong> beside the message box and pick an MP4, MOV or WebM video. A large video is compressed to about 720p before upload and has to end up under 30 MB. It plays right in the conversation. Longer videos are better shared as a YouTube, Vimeo or Loom link, which also plays inline.</li>
+</ul>
+<h2 id="start-threads-and-react">Start threads and react</h2>
+<p>To keep a side conversation out of the channel, type <code>/threads</code> followed by your reply. That starts a thread from the latest message. On desktop you can also hover any message, choose <strong>⋮</strong>, then <strong>Reply in thread</strong>. Your threads appear under <strong>Threads</strong> in the sidebar or on Home.</p>
+<p>To react on desktop, hover a message and choose the smile button. On any device, tap a reaction under a message to add yours, and tap it again to take it back.</p>
+<h2 id="change-your-profile-picture">Change your profile picture</h2>
+<p>Choose your avatar, at the bottom of the sidebar on desktop or at the top right on a phone. Choose the picture at the top of your profile and pick an image. Your new profile picture saves right away.</p>
+<h2 id="turn-on-notifications">Turn on notifications</h2>
+<p>Open your profile by choosing your avatar on desktop, or <strong>More → Profile</strong> on a phone. Choose <strong>Change</strong> beside <strong>Notifications</strong> and allow them when your browser asks. On iPhone, add <strong>Slirc</strong> to your Home Screen first (see below); notifications only arrive in the Home Screen app.</p>
+<h2 id="good-to-know">Good to know</h2>
+<p>Only members post in <code>#open-chat</code> and <code>#help</code>. On a public instance, a visitor who isn't signed in can read recent <code>#open-chat</code> messages at <code>/open-chat</code>: the text, who wrote it and when, and nothing else. Only signed-in members can read <code>#help</code>, and it keeps participant presence hidden in the Slirc app.</p>
+<p>Questions, bugs or ideas? Ask <code>@help</code> or message your instance's admin inside <strong>Slirc</strong>. For more detail, read <a href="/docs/channels">channels and invites</a> and <a href="/docs/messages">messages and media</a>.</p>
+<h2 id="save-slirc-to-your-home-screen">Save Slirc to your Home Screen</h2>
+<p>Once it's on your Home Screen, <strong>Slirc</strong> opens from its icon, like any other app.</p>
+<h3 id="iphone">iPhone</h3>
+<p>Open <strong>Slirc</strong> in Safari, tap Share, then <strong>Add to Home Screen</strong>.</p>
+<p>If your instance offers the iPhone app in TestFlight, signed-in members find the link under <strong>More → Get the iPhone app</strong> on a phone; it has no notifications yet. See <a href="/docs/download#iphone">Download</a> for details.</p>
+<p><video src="/media/a2hs-iphone.mp4" width="1080" height="1920" controls muted loop playsinline preload="metadata" aria-label="Adding Slirc to the Home Screen on iPhone" style="display:block;width:min(16rem,100%);height:auto;margin-inline:auto;border-radius:1rem"></video></p>
+<h3 id="android">Android</h3>
+<p>Open the browser menu and choose <strong>Add to Home screen</strong> or <strong>Install app</strong>.</p>
+<p><video src="/media/a2hs-android.mp4" width="1080" height="1920" controls muted loop playsinline preload="metadata" aria-label="Adding Slirc to the Home screen on Android" style="display:block;width:min(16rem,100%);height:auto;margin-inline:auto;border-radius:1rem"></video></p>
+<h2 id="add-your-phone">Add your phone</h2>
+<p>On a computer where you're signed in, choose <strong>Add your phone</strong> in the sidebar, or open <strong>Devices</strong> from your profile and choose <strong>Show code</strong>. A QR code appears. Point your phone's camera at it and open the link. The phone signs in to the same account, with nothing to type.</p>
+<p>The code works once and lasts a minute. A fresh one replaces it while the card stays open. When the phone gets in, the card names its browser and system. If that wasn't you, choose <strong>Not you? Sign it out</strong>.</p>
+<p>If you saved <strong>Slirc</strong> to your iPhone Home Screen, open that app and choose <strong>Scan to sign in</strong> on its sign-in screen. The Home Screen app keeps its own sign-in, separate from Safari, so it has its own scanner.</p>
+<h2 id="sign-in-on-another-device">Sign in on another device</h2>
+<p>On the new device, open <strong>Slirc</strong> and choose <strong>Link with another device</strong>, or <strong>Use a code instead</strong> on a phone. Type the code it shows under <strong>Devices</strong> on a device where you're already signed in, then choose <strong>Review</strong> and <strong>Approve</strong>.</p>
+<p>No other device handy? Enter your email, choose <strong>Send sign-in link</strong>, and open the link from that email on the new device.</p>
+
+      <footer class="doc-footer">
+        <p class="doc-footer-meta"><a href="/docs">All guides</a> · <a href="/docs/getting-started.md">markdown</a></p>
+        <nav class="pager" aria-label="Page navigation">
+        <a class="pager-box prev" href="/docs"><small>← Previous</small><span>Home</span></a>
+        <a class="pager-box next" href="/docs/download"><small>Next →</small><span>Download</span></a>
+        </nav>
+      </footer>
+    </main>
+    <nav class="toc" id="page-nav" aria-label="On this page"></nav>
+  </div>
+
+  <script type="module" src="/docs/glow.js"></script>
+  <script src="/docs/docs.js?v=16" defer></script>
+  <script src="/docs/app-back.js?v=26d58c4a" defer></script>
+  <script type="module" src="/docs/search.js?v=1f3b3dfc&amp;index=9725c03e"></script>
+</body>
+</html>

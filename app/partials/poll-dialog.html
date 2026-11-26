@@ -1,0 +1,69 @@
+  <dialog id="poll-dialog" class="custom-modal poll-modal" :class="!isDesktop && 'sheet-modal'" aria-labelledby="poll-dialog-title" x-cloak x-effect="const show = authenticated && polls.dialogOpen; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="polls.closeDialog()" x-on:click="if ($event.target === $el) polls.closeDialog()">
+    <section class="poll-dialog-card" :class="isDesktop ? 'notice-card' : 'action-sheet'">
+      <form class="poll-form" novalidate x-on:submit.prevent="polls.submit()">
+        <div class="poll-dialog-head">
+          <h2 id="poll-dialog-title">New poll</h2>
+          <button type="button" class="dialog-close" aria-label="Close" x-on:click="polls.closeDialog()" x-html="lucideIcon('x')"></button>
+        </div>
+        <label class="poll-field"><span>Question</span>
+          <input id="poll-question" type="text" autocomplete="off" placeholder="Ask a question" :maxlength="polls.maxQuestion" x-model="polls.question" :disabled="polls.sending" x-on:input="polls.error = ''" x-on:keydown.enter.prevent="document.querySelector('.poll-option-input')?.focus()" />
+        </label>
+        <fieldset class="poll-field poll-options-field">
+          <legend>Options</legend>
+          <ol class="poll-option-list" x-on:pointermove="polls.dragMove($event)" x-on:pointerup="polls.dragEnd()" x-on:pointercancel="polls.dragEnd()">
+            <template x-for="(option, index) in polls.options" :key="option.key">
+              <li class="poll-draft-row" :class="polls.dragging === index && 'is-dragging'">
+                <button type="button" class="poll-option-handle" :aria-label="'Move option ' + (index + 1) + '. Use the up and down arrow keys.'" :disabled="polls.sending || polls.options.length < 2" x-on:pointerdown="polls.dragStart($event, index)" x-on:keydown="polls.handleKeydown($event, index)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg></button>
+                <input class="poll-option-input" type="text" autocomplete="off" :placeholder="'Option ' + (index + 1)" :aria-label="'Option ' + (index + 1)" :maxlength="polls.maxOption" x-model="option.text" :disabled="polls.sending" x-on:input="polls.error = ''" x-on:keydown="polls.optionKeydown($event, index)" />
+                <button type="button" class="poll-option-remove" :aria-label="'Delete option ' + (index + 1)" x-tooltip :disabled="polls.sending" x-on:click="polls.removeOption(index)" x-html="lucideIcon('x')"></button>
+              </li>
+            </template>
+          </ol>
+          <button type="button" class="poll-option-add" x-show="polls.options.length < polls.maxOptions" :disabled="polls.sending" x-on:click="polls.addOption()"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('plus')"></span>Add</button>
+        </fieldset>
+        <div class="poll-settings">
+          <button class="settings-toggle" type="button" role="switch" aria-label="Allow multiple answers" :aria-checked="polls.multi ? 'true' : 'false'" :disabled="polls.sending" x-on:click="polls.multi = !polls.multi"><span><strong>Allow multiple answers</strong></span><span></span></button>
+          <button class="settings-toggle" type="button" role="switch" aria-label="Anonymous" :aria-checked="polls.anonymous ? 'true' : 'false'" :disabled="polls.sending" x-on:click="polls.anonymous = !polls.anonymous"><span><strong>Anonymous</strong><small>Hide who voted for what</small></span><span></span></button>
+        </div>
+        <fieldset class="poll-field poll-closes">
+          <legend>Closes in</legend>
+          <div class="poll-segments">
+            <template x-for="choice in polls.closesInChoices" :key="choice.label">
+              <label class="poll-segment"><input type="radio" name="poll-closes" :value="choice.label" :checked="polls.closesIn === choice.value" :disabled="polls.sending" x-on:change="polls.closesIn = choice.value" /><span x-text="choice.label"></span></label>
+            </template>
+          </div>
+        </fieldset>
+        <p class="profile-error" role="alert" x-show="polls.error" x-text="polls.error"></p>
+        <div class="pair-actions poll-actions">
+          <button type="button" class="btn-secondary" :disabled="polls.sending" x-on:click="polls.closeDialog()">Cancel</button>
+          <button type="submit" class="btn-primary" :disabled="!polls.ready()" x-text="polls.sending ? 'Sending…' : 'Send'"></button>
+        </div>
+      </form>
+    </section>
+  </dialog>
+  <dialog id="poll-votes" class="custom-modal poll-modal" :class="!isDesktop && 'sheet-modal'" aria-labelledby="poll-votes-title" x-cloak x-effect="const show = authenticated && !!polls.votesFor; if (show && !$el.open) { $el.showModal(); $nextTick(() => $el.querySelector('.dialog-close')?.focus()); } else if (!show && $el.open) $el.close()" x-on:cancel.prevent="polls.closeVotes()" x-on:click="if ($event.target === $el) polls.closeVotes()">
+    <section class="poll-dialog-card poll-votes-card" :class="isDesktop ? 'notice-card' : 'action-sheet'">
+      <div class="poll-dialog-head">
+        <h2 id="poll-votes-title">Votes</h2>
+        <button type="button" class="dialog-close" aria-label="Close" x-on:click="polls.closeVotes()" x-html="lucideIcon('x')"></button>
+      </div>
+      <template x-if="polls.votesView()">
+        <div class="poll-votes-body">
+          <p class="poll-votes-question" x-text="polls.votesView().question"></p>
+          <p class="poll-hint" x-show="polls.votesView().anonymous">Anonymous poll: only the counts are shown.</p>
+          <template x-for="(option, index) in polls.votesView().options" :key="index">
+            <section class="poll-votes-option" :aria-label="polls.optionLabel(polls.votesView(), index)">
+              <h3><span class="poll-votes-label" x-text="option.label"></span><span class="poll-winner" x-show="polls.isWinner(polls.votesView(), index)" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span><span class="poll-votes-count" x-text="option.count === 1 ? '1 vote' : option.count + ' votes'"></span></h3>
+              <ul x-show="option.voters && option.voters.length">
+                <template x-for="voter in option.voters || []" :key="voter.nick">
+                  <li><img width="24" height="24" :src="avatarUrl(voter.nick)" alt="" x-on:error="$el.style.visibility = 'hidden'" /><span class="poll-votes-name" x-text="polls.voterName(voter.nick)"></span><time :datetime="new Date(voter.at).toISOString()" x-text="polls.voteTime(voter.at)"></time></li>
+                </template>
+              </ul>
+            </section>
+          </template>
+        </div>
+      </template>
+      <p class="poll-loading" x-show="!polls.votesView()">Loading votes…</p>
+    </section>
+  </dialog>
+  <p class="sr-only" role="status" aria-live="polite" x-text="polls.status"></p>

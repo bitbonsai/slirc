@@ -1,0 +1,63 @@
+  <dialog x-data="bulkInvite" id="bulk-invite-dialog" class="custom-modal bulk-invite-dialog" aria-labelledby="bulk-invite-title" x-cloak x-on:cancel.prevent="bulkInvite.close()" x-on:click="if ($event.target === $el) bulkInvite.close()">
+    <section class="notice-card bulk-invite-card">
+      <div class="new-conversation-head">
+        <h2 id="bulk-invite-title" x-text="bulkInvite.step === 'done' ? 'Invites sent' : bulkInvite.step === 'sending' ? 'Sending invites' : 'Invite many'"></h2>
+        <button type="button" class="dialog-close" aria-label="Close" :disabled="bulkInvite.busy && bulkInvite.step === 'sending'" x-on:click="bulkInvite.close()" x-html="lucideIcon('x')"></button>
+      </div>
+
+      <div class="bulk-invite-body" x-show="bulkInvite.step === 'list'">
+        <label class="bulk-invite-field" x-show="bulkInvite.choosesDestination()"><span>Invite to</span>
+          <select x-model="bulkInvite.destination" :disabled="bulkInvite.busy">
+            <template x-if="defaultChannel"><option value="" x-text="'Workspace only (' + roomLabelFor(defaultChannel) + ')'"></option></template>
+            <template x-for="item in bulkInvite.destinations()" :key="item.conversationId"><option :value="item.wireTarget" x-text="roomLabelFor(item.wireTarget)"></option></template>
+          </select>
+        </label>
+        <div class="bulk-invite-field"><label for="bulk-invite-text">Emails</label>
+          <div class="bulk-invite-drop" :class="bulkInvite.dragging && 'dragging'" x-on:dragover.prevent="bulkInvite.dragging = true" x-on:dragleave="bulkInvite.dragging = false" x-on:drop.prevent="bulkInvite.drop($event)">
+            <textarea id="bulk-invite-text" rows="7" spellcheck="false" autocomplete="off" x-model="bulkInvite.text" :disabled="bulkInvite.busy" placeholder="ada@example.com&#10;Ben Ortiz, ben@example.com&#10;Eve Lind &lt;eve@example.com&gt;"></textarea>
+            <div class="bulk-invite-drop-foot">
+              <span class="bulk-invite-count" x-text="bulkInvite.entryCount() ? bulkInvite.entryCount() + (bulkInvite.entryCount() === 1 ? ' address' : ' addresses') : 'Paste a list, or drop a CSV here'"></span>
+              <label class="link-button bulk-invite-file"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('file-text')"></span><span x-text="bulkInvite.fileName || 'Choose CSV'"></span><input type="file" accept=".csv,.txt,text/csv,text/plain" :disabled="bulkInvite.busy" x-on:change="bulkInvite.readFile($event.target.files[0]); $event.target.value = ''" /></label>
+            </div>
+          </div>
+        </div>
+        <p class="field-hint bulk-invite-hint"><span x-show="!bulkInvite.choosesDestination() && bulkInvite.destination" x-text="'Invites go to ' + roomLabelFor(bulkInvite.destination) + '. '"></span>People already on Slirc join right away. Everyone else gets an email from you.</p>
+        <p class="profile-error" role="alert" x-show="bulkInvite.error" x-text="bulkInvite.error"></p>
+        <div class="pair-actions">
+          <button type="button" class="btn-secondary" :disabled="bulkInvite.busy" x-on:click="bulkInvite.close()">Cancel</button>
+          <button type="button" class="btn-primary" :disabled="bulkInvite.busy || !bulkInvite.entryCount()" x-on:click="bulkInvite.check()" x-text="bulkInvite.busy ? 'Checking…' : 'Check list'"></button>
+        </div>
+      </div>
+
+      <div class="bulk-invite-body" x-show="bulkInvite.step !== 'list'">
+        <div class="bulk-invite-bar" role="img" :aria-label="bulkInvite.counts().map((item) => item.count + ' ' + bulkInvite.label(item.status)).join(', ')">
+          <template x-for="item in bulkInvite.counts()" :key="item.status"><span :class="'tone-' + bulkInvite.tone(item.status)" :style="'flex-grow:' + item.count"></span></template>
+        </div>
+        <ul class="bulk-invite-legend">
+          <template x-for="item in bulkInvite.counts()" :key="item.status"><li :class="'tone-' + bulkInvite.tone(item.status)"><strong x-text="item.count"></strong> <span x-text="bulkInvite.label(item.status)"></span></li></template>
+        </ul>
+        <div class="bulk-invite-progress" x-show="bulkInvite.step === 'sending'" role="status">
+          <span class="join-link-meter" aria-hidden="true"><span :style="'width:' + bulkInvite.progress() + '%'"></span></span>
+          <small x-text="bulkInvite.sent + ' of ' + bulkInvite.total + ' done. Keep this open.'"></small>
+        </div>
+        <p class="bulk-invite-note" x-show="bulkInvite.step === 'preview' && bulkInvite.heldAhead()" x-text="'Today\'s mail allowance covers ' + bulkInvite.mailRoom + ' more invites. The other ' + bulkInvite.heldAhead() + ' wait; check the list again tomorrow to send them.'"></p>
+        <div class="bulk-invite-table" role="table" aria-label="Invite list">
+          <template x-for="(row, index) in bulkInvite.rows" :key="index">
+            <div class="bulk-invite-row" role="row" :class="'tone-' + bulkInvite.tone(row.status)">
+              <span class="bulk-invite-who" role="cell"><strong x-text="row.name || (row.nick ? '@' + row.nick : row.email)"></strong><small x-show="row.name || row.nick" x-text="row.email"></small></span>
+              <span class="bulk-invite-status" role="cell"><span x-text="bulkInvite.label(row.status)"></span><small x-show="row.error" x-text="row.error"></small></span>
+            </div>
+          </template>
+        </div>
+        <p class="profile-error" role="alert" x-show="bulkInvite.error" x-text="bulkInvite.error"></p>
+        <div class="pair-actions" x-show="bulkInvite.step === 'preview'">
+          <button type="button" class="btn-secondary" :disabled="bulkInvite.busy" x-on:click="bulkInvite.back()">Edit list</button>
+          <button type="button" class="btn-primary" :disabled="bulkInvite.busy || !bulkInvite.toSend().length || (!bulkInvite.addCount() && !bulkInvite.mailRoom)" x-on:click="bulkInvite.send()" x-text="bulkInvite.sendLabel()"></button>
+        </div>
+        <div class="pair-actions" x-show="bulkInvite.step === 'done'">
+          <button type="button" class="btn-secondary" x-show="bulkInvite.leftover().length" x-on:click="bulkInvite.copyLeftover()" x-text="bulkInvite.copied ? 'Copied' : 'Copy ' + bulkInvite.leftover().length + ' not sent'"></button>
+          <button type="button" class="btn-primary" x-on:click="bulkInvite.close()">Done</button>
+        </div>
+      </div>
+    </section>
+  </dialog>

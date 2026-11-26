@@ -1,0 +1,273 @@
+<!-- generated from app/docs/*.md — edit there, then run: bun run docs -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#11111b" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="description" content="Install Slirc on your own Linux server with one command, automatic HTTPS, nightly updates, and the slirc CLI, or set up rootless Podman manually." />
+  <title>Run your own Slirc · Slirc docs</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="alternate" type="text/markdown" href="/docs/setup.md" />
+  <script src="/theme.js?v=844fef47"></script>
+  <link rel="stylesheet" href="/docs/docs.css?v=39" />
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="app-back" id="app-back" hidden><a class="app-back-link" href="/more" aria-label="Back to Slirc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 4 12l7 7"/></svg>Back</a></div>
+
+  <header class="topbar">
+    <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-nav">
+      <svg class="menu-icon menu-bars" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>
+      <svg class="menu-icon menu-close" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+    <a class="brand" href="/docs"><img class="brand-lockup" src="/brand-org-dark.svg" width="233" height="73" alt="Slirc" /><span class="tag">docs</span></a>
+    <button class="search-toggle" id="search-toggle" type="button" aria-label="Search the docs" aria-expanded="false" aria-controls="docs-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 4.5 4.5"/></svg>
+    </button>
+    <div class="docs-search" id="docs-search" role="search" data-docs-search>
+      <label class="visually-hidden" for="docs-search-input">Search the docs</label>
+      <span class="docs-search-field">
+        <svg class="docs-search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5"/></svg>
+        <input id="docs-search-input" class="docs-search-input" type="search" placeholder="Search docs…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="docs-search-results" aria-autocomplete="list" />
+        <kbd class="docs-search-key" aria-hidden="true">⌘K</kbd>
+      </span>
+      <div id="docs-search-results" class="docs-search-results" role="listbox" aria-label="Search results" hidden></div>
+      <p class="docs-search-status visually-hidden" aria-live="polite"></p>
+    </div>
+    <a class="open-app-mobile" href="/open-chat">Open chat</a>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" id="docs-nav" aria-label="Documentation" hidden>
+      <div class="nav-content">
+      <a class="nav-link nav-app" href="/open-chat">Open chat</a>
+      <p class="nav-section">Guides</p>
+      <a class="nav-link" href="/docs">Home</a>
+      <a class="nav-link" href="/docs/getting-started">Getting started</a>
+      <a class="nav-link" href="/docs/download">Download</a>
+      <a class="nav-link" href="/docs/channels">Channels & invites</a>
+      <a class="nav-link" href="/docs/messages">Messages & media</a>
+      <a class="nav-link sub" href="/docs/threads">Threads</a>
+      <a class="nav-link" href="/docs/notifications">Notifications</a>
+      <a class="nav-link" href="/docs/privacy">Privacy & safety</a>
+      <p class="nav-section">Connect</p>
+      <a class="nav-link" href="/docs/clients">IRC clients</a>
+      <a class="nav-link" href="/docs/agents">Agents</a>
+      <a class="nav-link" href="/docs/bots">Bots</a>
+      <a class="nav-link active" href="/docs/setup" aria-current="page">Self-hosting</a>
+      <p class="nav-section">Reference</p>
+      <a class="nav-link" href="/docs/design">Design system</a>
+      <p class="nav-section">About</p>
+      <a class="nav-link" href="/docs/about">About Slirc</a>
+      <a class="nav-link" href="/docs/comparison">Footprint</a>
+      <a class="nav-link" href="/docs/faq">FAQ</a>
+      </div>
+    </nav>
+
+    <main id="main">
+      <div class="callout info prelaunch-note"><p>Slirc is in early access. Come say hi in <a href="/open-chat">#open-chat</a>.</p></div>
+      <p class="crumb">Connect / Self-hosting</p>
+      <h1>Run your own Slirc</h1>
+      <p class="lead">Self-host Slirc on a fresh Linux server with one command. Three containers run on a private Docker network: Caddy handles HTTPS, Bun serves the app, and Ergo runs IRC underneath.</p>
+<p><video class="doc-video" src="/media/self-host-install.mp4" poster="/media/self-host-install-poster.png" width="1236" height="870" controls muted playsinline preload="metadata" aria-label="Installing Slirc on a fresh Debian 12 server with curl -fsSL https://install.slirc.org | sudo bash"></video></p>
+<p>The <a href="https://www.elastic.co/licensing/elastic-license">Elastic License 2.0</a> lets you run Slirc for your own group. Hosting it for others requires permission from the author.</p>
+<h2 id="quick-install">Quick install</h2>
+<h3 id="what-you-need">What you need</h3>
+<ul>
+<li>A Linux server (<code>x86_64</code> or <code>arm64</code>). A 2 vCPU, 4 GB box runs Slirc with room to spare.</li>
+<li>A domain with an <code>A</code> or <code>AAAA</code> DNS record pointed at the server, and ports <code>80</code> and <code>443</code> reachable from the internet.</li>
+<li>Optional API keys (all skippable during setup and easy to add later via <code>slirc env</code>): <a href="https://resend.com/">Resend</a> for sign-in emails and invites, <a href="https://developers.giphy.com/">GIPHY</a> for <code>/giphy</code> search, and <a href="https://openrouter.ai/">OpenRouter</a> for AI answers in <code>@help</code> and natural-language <code>@remind</code>.</li>
+</ul>
+<h3 id="run-the-installer">Run the installer</h3>
+<p>SSH into your server and run:</p>
+<pre><code class="language-bash">curl -fsSL https://install.slirc.org | sudo bash
+</code></pre>
+<p>You can also fetch the script straight from GitHub (<code>https://raw.githubusercontent.com/bitbonsai/slirc/main/install.sh</code>).</p>
+<p>The installer installs Docker Engine and the Compose plugin if they are missing, asks four short questions, generates every secret and config file, pulls the multi-arch images (<code>ghcr.io/bitbonsai/slirc:latest</code>, <code>ghcr.io/bitbonsai/slirc-ergo:v2.19.1</code>, and <code>caddy:2-alpine</code>), starts the stack, and enables nightly updates:</p>
+<ol>
+<li><strong>Domain:</strong> checks that DNS resolves to the server (warns if not, and lets you continue anyway).</li>
+<li><strong>Owner email and nickname:</strong> creates the initial admin account.</li>
+<li><strong>Workspace mode and default channel:</strong> private workspace (invite-only <code>#general</code>, default) or public peek (visitors can read your default public channel such as <code>#general</code> or <code>#feedback</code> and sign up).</li>
+<li><strong>Optional integrations, direct IRC, and updates:</strong> press Enter to skip any of Resend (<code>RESEND_API_KEY</code> + <code>RESEND_FROM</code>), GIPHY (<code>GIPHY_API_KEY</code>), and OpenRouter (<code>OPENROUTER_API_KEY</code> + <code>@help</code> model, default <code>anthropic/claude-haiku-5.5</code>). Then pick whether to expose direct IRC TLS on port <code>6697</code> (default loopback only) and whether to keep nightly automatic updates on (default yes).</li>
+</ol>
+<h3 id="what-gets-installed">What gets installed</h3>
+<ul>
+<li><code>/opt/slirc/</code>: <code>compose.yaml</code>, <code>.env</code>, <code>app.env</code> (mode <code>0600</code>), <code>Caddyfile</code>, <code>ergo.yaml</code> (mode <code>0600</code>), and <code>ergo.motd</code>.</li>
+<li><code>/var/lib/slirc/</code>: persistent app SQLite database and uploads (<code>app/</code>), Ergo account and history databases (<code>ergo/</code>), Caddy certificates (<code>caddy/</code>), and backup archives (<code>backups/</code>).</li>
+<li><code>/var/lib/slirc-keys/irc-key</code>: 32 random bytes (mode <code>0600</code>) that derive every IRC password via HMAC. It stays outside <code>/var/lib/slirc</code> so backups never hold anything that logs in to IRC. Copy it into your password manager once, separately from backups, and never replace it while people use the server.</li>
+<li><code>/usr/local/bin/slirc</code>: management CLI for status, logs, restarts, updates, backups, and env edits.</li>
+<li><code>slirc-update.timer</code> (systemd, or <code>/etc/cron.daily/slirc-auto-update</code>): checks nightly around <code>03:30</code> for new container images.</li>
+</ul>
+<p>Re-running the installer is safe: existing keys, databases, <code>app.env</code>, and <code>ergo.yaml</code> are preserved.</p>
+<h3 id="first-sign-in">First sign-in</h3>
+<ul>
+<li><strong>If you entered a Resend key:</strong> open <code>https://yourdomain</code>, enter your owner email, and sign in with the 6-digit code or link Resend delivers.</li>
+<li><strong>If you skipped Resend:</strong> run <code>slirc login-link</code> on the server to print a one-time 15-minute sign-in link for the owner account. When you are ready for email sign-ins and team invitations, run <code>slirc env</code>, uncomment <code>RESEND_API_KEY</code> and <code>RESEND_FROM</code>, and save.</li>
+</ul>
+<p>Your owner account is an admin and can create channels and invite people. In <code>private_workspace</code> mode, other people join by invitation. In <code>public_playground</code> mode, visitors can read your default public channel (such as <code>#general</code> or <code>#feedback</code>) and sign up from the sign-in form while the day's mail count stays under <code>MAIL_DAILY_LIMIT</code> (<code>SIGNUP_DOMAIN_LIMIT</code>, default 30, caps new signups per receiving domain per hour). See <a href="/docs/getting-started">Getting started</a>.</p>
+<h3 id="automatic-updates-and-safe-restarts">Automatic updates and safe restarts</h3>
+<p>Like ONCE, a self-hosted Slirc instance checks for new images once every 24 hours via <code>slirc-update.timer</code> (<code>slirc update --auto</code>):</p>
+<ul>
+<li>When no image digest has changed, nothing restarts.</li>
+<li>When only the <code>slirc</code> app image has changed, <code>slirc update</code> recreates only the <code>slirc</code> container (<code>--no-deps</code>), leaving Ergo running so IRC sessions stay connected. Caddy retries in-flight HTTP requests for up to 20 seconds while the new container comes up.</li>
+<li>After swapping in the new app container, <code>slirc update</code> polls <code>/healthz</code>. If the new image fails health checks within 60 seconds, it rolls back automatically to the previous healthy image ID.</li>
+<li>Superseded untagged layers are pruned after a clean update so disk usage stays flat.</li>
+</ul>
+<p>Turn nightly updates off or check the next scheduled run at any time:</p>
+<pre><code class="language-bash">slirc auto-update status
+slirc auto-update off
+slirc auto-update on
+</code></pre>
+<h3 id="day-to-day-management">Day-to-day management</h3>
+<p><code>slirc</code> elevates automatically with <code>sudo</code> when run as a non-root user so secrets under <code>/opt/slirc</code> stay mode <code>0600</code>.</p>
+<pre><code class="language-bash">slirc status                # containers, /healthz, version, updates, and paths
+slirc logs [service]        # follow logs (slirc, ergo, caddy, or all)
+slirc restart [service]     # restart app without dropping Ergo (or --all)
+slirc update                # pull images, recreate changed services, rollback on failure
+slirc auto-update status    # inspect or toggle nightly automatic updates
+slirc backup [dest]         # create a consistent tar.gz backup (excludes irc-key)
+slirc env [--compose]       # edit app.env (or .env with --compose) and recreate
+slirc login-link [nick]     # mint a one-time 15-minute sign-in link on the server
+slirc sync-certs            # sync Caddy's TLS cert to Ergo (for public :6697)
+slirc uninstall             # stop and remove Slirc (asks before deleting data)
+</code></pre>
+<p><code>slirc backup</code> takes transactionally consistent SQLite snapshots (<code>chat.sqlite</code> and <code>ergo_history.db</code>), verifies them with <code>PRAGMA integrity_check</code>, includes <code>ircd.db</code>, avatars, and config, and leaves <code>/var/lib/slirc-keys/irc-key</code> out of the archive. Copy archives off the server on a schedule.</p>
+<p>To restore a backup on a new server, place your saved <code>irc-key</code> at <code>/var/lib/slirc-keys/irc-key</code> (mode <code>0600</code>), stop the stack, extract <code>config/*</code> to <code>/opt/slirc/</code>, <code>app/*</code> to <code>/var/lib/slirc/app/</code>, and <code>ergo/*</code> to <code>/var/lib/slirc/ergo/</code>, remove any leftover <code>-wal</code>/<code>-shm</code> files, and start the stack again with <code>docker compose --project-directory /opt/slirc -f /opt/slirc/compose.yaml up -d</code>.</p>
+<p>If you enabled direct IRC TLS on port <code>6697</code>, the installer sets <code>SLIRC_IRC_HOST</code> in <code>app.env</code> so the in-app <strong>IRC clients</strong> tab fills in your server address, and adds <code>/etc/cron.daily/slirc-sync-certs</code> so renewed Let's Encrypt certificates reload into Ergo via <code>SIGHUP</code> without dropping connections. To turn <code>:6697</code> on later, set <code>ERGO_TLS_BIND=0.0.0.0</code> via <code>slirc env --compose</code>, uncomment <code>SLIRC_IRC_HOST</code> via <code>slirc env</code>, and run <code>slirc sync-certs</code>.</p>
+<h3 id="non-interactive-and-automated-installs">Non-interactive and automated installs</h3>
+<p>Pass flags (or matching <code>SLIRC_*</code> environment variables) for scripted or CI installs:</p>
+<pre><code class="language-bash">curl -fsSL https://install.slirc.org | sudo bash -s -- \
+  --non-interactive \
+  --domain chat.example.com \
+  --owner-email you@example.com \
+  --owner-nick you \
+  --mode public \
+  --channel feedback \
+  --resend-api-key re_... \
+  --resend-from 'Slirc &lt;slirc@chat.example.com&gt;' \
+  --giphy-api-key ... \
+  --openrouter-api-key ... \
+  --help-model anthropic/claude-haiku-5.5
+</code></pre>
+<p>Add <code>--expose-irc</code> to publish port <code>6697</code> on <code>0.0.0.0</code>, <code>--no-auto-update</code> to disable nightly updates, <code>--skip-dns-check</code> to skip the DNS lookup, or <code>--dry-run</code> to render configuration into temporary directories without installing Docker or starting containers.</p>
+<h2 id="optional-environment-variables">Optional environment variables</h2>
+<p>Add or change any of these in <code>/opt/slirc/app.env</code> using <code>slirc env</code> (or <code>~/.config/slirc/env</code> in manual setups). Because Docker and Podman read env files only when a container is created, recreate the app container after any edit (<code>slirc env</code> does this automatically).</p>
+<ul>
+<li><code>GIPHY_API_KEY</code>: enables <a href="https://developers.giphy.com/docs/api/">GIPHY search</a> and the <code>welcome</code> helper's daily greeting gif in your public channel.</li>
+<li><code>OPENROUTER_API_KEY</code>: enables the <a href="/docs/bots">help bot and natural-language reminders</a> through <a href="https://openrouter.ai">OpenRouter</a>. Model names are OpenRouter ids; older bare names such as <code>mimo-v2.5</code> still work.</li>
+<li><code>HELP_ANSWER_MODEL</code>: model that writes help answers (default <code>anthropic/claude-haiku-5.5</code>).</li>
+<li><code>HELP_CLASSIFIER_MODEL</code>: cheaper model that first sorts each message into a Slirc question, small talk, or off topic (default <code>xiaomi/mimo-v2.6-flash</code>).</li>
+<li><code>TYPESAFE_API_KEY</code>: sorts messages with <a href="https://typesafe.ai">TypeSafe</a>'s Jev instead (classifier defaults to <code>jev-latest</code>; <code>TYPESAFE_BASE_URL</code> and <code>TYPESAFE_INPUT_PRICE_PER_BILLION</code> are optional).</li>
+<li><code>HELP_MODEL</code>: model for reminders and other helpers (default <code>xiaomi/mimo-v2.5</code>).</li>
+<li><code>SLIRC_HELPER_DAILY_LIMIT</code>: caps model calls that the help bot and natural-language reminders make for one account in 24 hours, combined (default <code>100</code>). Past the limit, help asks you to try again tomorrow and reminders still accept short forms such as <code>in 20m stretch</code>, <code>tomorrow 9:00 pick up cake</code>, <code>list</code>, and <code>cancel 3</code>.</li>
+<li><code>SLIRC_HELPERS</code>: comma list of helpers to run, such as <code>help,remind</code>. Unset runs <code>help</code>, <code>remind</code>, <code>poll</code>, and <code>welcome</code>; <code>links</code> runs only when listed; an unknown name stops the app at start. Set <code>SLIRC_HELPERS_ENABLED=false</code> to run none.</li>
+<li><code>SLIRC_AGENTS_ENABLED=false</code>: turns off coding-agent pairing on the instance.</li>
+<li><code>OPEN_CHAT_ROOM</code>: sets which public channel signed-out visitors can peek at in <code>public_playground</code> mode (default <code>#open-chat</code>, for example <code>#feedback</code>).</li>
+<li><code>SLIRC_BRAND</code>: optional brand override (<code>slirc.app</code> for the blue hosted lockup); unset uses the neutral Slirc mark.</li>
+<li><code>SLIRC_EMOJI_BUDGET_BYTES</code>: caps total custom emoji storage in bytes (default <code>104857600</code>, 100 MB); each member can add 50 custom emoji per 24 hours.</li>
+<li><code>TESTFLIGHT_URL</code>: public iPhone TestFlight link in the form <code>https://testflight.apple.com/join/&lt;code&gt;</code>. Signed-in, verified members see <strong>Get the iPhone app</strong> in More on a phone and in <strong>Devices -&gt; Add your phone</strong> on desktop. Unset, or any other URL, hides it.</li>
+<li><code>MAIL_DAILY_WARN</code> (default <code>80</code>) and <code>MAIL_DAILY_LIMIT</code> (default <code>100</code>): logs a warning and caps daily Resend volume for the instance. Bulk email invites stop at 75% of <code>MAIL_DAILY_LIMIT</code> so sign-in emails keep going through. When several instances share one Resend key, split the account's daily limit between them. Run <code>bun scripts/mail-count.ts</code> in the app container to print today, the last 7 days, and the month so far.</li>
+</ul>
+<h2 id="history-retention">History retention</h2>
+<p>The supplied Ergo config uses <code>history.restrictions.expire-time: 0s</code>: persistent messages stay stored until someone explicitly deletes them. Existing installations must update their mounted <code>ergo.yaml</code> separately; changing the example file does not alter a running server. Ergo applies this setting on <code>SIGHUP</code> without restarting. Disabling expiry does not restore messages purged under an earlier policy. Monitor disk usage and keep backups.</p>
+<h2 id="advanced-manual-setup-rootless-podman-host-caddy-and-just">Advanced / manual setup (rootless Podman, host Caddy, and just)</h2>
+<p>If you prefer rootless Podman, host-level Caddy, and source builds pushed from your own machine with <code>just</code>, the repo keeps its original two-container Compose files untouched under <code>deploy/</code>.</p>
+<h3 id="prerequisites">Prerequisites</h3>
+<ul>
+<li>A Linux server with <a href="https://podman.io/docs/installation">rootless Podman</a>, <a href="https://github.com/containers/podman-compose"><code>podman-compose</code></a>, <a href="https://git-scm.com/">Git</a>, and <a href="https://just.systems/">just</a>. The <a href="https://ergo.chat/">Ergo</a> image <code>ghcr.io/bitbonsai/slirc-ergo:v2.19.1</code> ships for ARM64 and x86_64 under one tag.</li>
+<li>A domain pointed at the server and <a href="https://caddyserver.com/docs/install">Caddy</a> on the host for TLS.</li>
+<li>Your own machine with Git and just for deploys. Deploys push a committed tree and reset the server checkout to that exact commit.</li>
+</ul>
+<h3 id="1-clone-and-set-your-host">1. Clone and set your host</h3>
+<p>On your machine:</p>
+<pre><code class="language-bash">git clone https://github.com/bitbonsai/slirc
+cd slirc
+</code></pre>
+<p>Open <code>justfile</code> and set the SSH host, checkout path, and config directory at the top to your own values.</p>
+<h3 id="2-config-on-the-server">2. Config on the server</h3>
+<p>Keep secrets outside git in <code>~/.config/slirc</code> (mode <code>0700</code>), with <code>env</code> and <code>ergo.yaml</code> at mode <code>0600</code>:</p>
+<pre><code class="language-bash">ssh yourserver
+mkdir -p ~/.config/slirc &amp;&amp; chmod 700 ~/.config/slirc
+</code></pre>
+<p>Create <code>~/.config/slirc/env</code>:</p>
+<pre><code class="language-bash">APP_HOST=app.yourdomain
+APP_ORIGIN=https://app.yourdomain
+OWNER_NICK=yournick
+USERS_JSON={&quot;yournick&quot;:&quot;you@example.com&quot;}
+ERGO_OPER_USER=slirc-org
+ERGO_OPER_PASS=another-long-random-password
+SLIRC_MODE=private_workspace
+IRC_CHANNEL=#general
+OPEN_CHANNELS=
+SLIRC_TRUSTED_PROXIES=10.89.0.14
+RESEND_API_KEY=re_...
+RESEND_FROM=Slirc &lt;slirc@yourdomain&gt;
+VAPID_CONTACT=mailto:you@example.com
+</code></pre>
+<p>Create the 32-byte IRC password key outside <code>~/.config/slirc</code> and copy it to your password manager:</p>
+<pre><code class="language-bash">mkdir -p ~/.config/slirc-keys/org &amp;&amp; chmod 700 ~/.config/slirc-keys
+openssl rand -out ~/.config/slirc-keys/org/irc-key 32 &amp;&amp; chmod 600 ~/.config/slirc-keys/org/irc-key
+</code></pre>
+<p>Copy <code>ergo/ergo.example.yaml</code> to <code>~/.config/slirc/ergo.yaml</code>:</p>
+<pre><code class="language-bash">scp ergo/ergo.example.yaml yourserver:~/.config/slirc/ergo.yaml
+</code></pre>
+<p>Edit <code>network.name</code> and <code>server.name</code> to your domain, ensure <code>channels.operator-only-creation: true</code> and <code>ip-limits.exempted</code> covers <code>10.0.0.0/8</code>, and replace the <code>slirc-org</code> oper password hash using:</p>
+<pre><code class="language-bash">podman run --rm -it ghcr.io/bitbonsai/slirc-ergo:v2.19.1 ergo genpasswd
+</code></pre>
+<h3 id="3-host-caddy">3. Host Caddy</h3>
+<p>Copy <code>caddy/example.caddy</code> to your Caddy sites directory and replace the domain and paths with yours. The app block forwards each visitor's IP cleanly:</p>
+<pre><code class="language-caddyfile">app.yourdomain {
+    handle {
+        reverse_proxy 127.0.0.1:9010 {
+            lb_try_duration 20s
+            header_up X-Forwarded-For {client_ip}
+        }
+    }
+}
+</code></pre>
+<p>Port <code>9010</code> binds to localhost only. Browsers reach IRC through the app's <code>/irc</code> relay, so Ergo needs no WebSocket listener. Reload Caddy.</p>
+<h3 id="4-bootstrap-and-deploy">4. Bootstrap and deploy</h3>
+<p>Back on your machine, with a clean tree:</p>
+<pre><code class="language-bash">just bootstrap
+just status
+just logs app
+</code></pre>
+<p>Day to day:</p>
+<pre><code class="language-bash">just deploy          # tests, then rebuild and recreate the app; Ergo keeps running
+just deploy-ergo     # recreate Ergo; the app keeps running
+just deploy-docs     # publish the docs site, if you serve one
+just logs ergo
+</code></pre>
+<p>Before upgrading manually, rehearse app schema migrations on a consistent snapshot:</p>
+<pre><code class="language-bash">cd app
+bun scripts/rehearse-migration.ts /private/backups/app.sqlite
+</code></pre>
+<h2 id="when-something-is-off">When something is off</h2>
+<ul>
+<li><strong>&quot;Reconnecting...&quot; in the browser after a burst of joins.</strong> The container network subnet is missing from <code>ip-limits.exempted</code> in <code>ergo.yaml</code>. Add it and reload Ergo with <code>SIGHUP</code>.</li>
+<li><strong><code>owner credentials are missing</code> on start.</strong> <code>OWNER_NICK</code> is missing as a key in <code>USERS_JSON</code>.</li>
+<li><strong><code>IRC key file /run/slirc-irc-key is missing</code> on start.</strong> Restore or create the 32-byte key file at <code>/var/lib/slirc-keys/irc-key</code> (or <code>SLIRC_IRC_KEY_PATH</code> in manual setups).</li>
+<li><strong>Sign-in links never arrive.</strong> Check <code>RESEND_FROM</code> is a verified sender on your Resend account, then run <code>slirc logs slirc</code> (or <code>just logs app</code>) for the send error. You can always sign in as the owner with <code>slirc login-link</code>.</li>
+<li><strong>Caddy fails to issue a certificate.</strong> Confirm your domain's <code>A</code>/<code>AAAA</code> record resolves to the server and ports <code>80</code> and <code>443</code> are open in your firewall (<code>ufw</code> or cloud security group), then check <code>slirc logs caddy</code>.</li>
+<li><strong>Ergo logs <code>read ircd.yaml: is a directory</code>.</strong> <code>ergo.yaml</code> was missing when the container started and the bind mount created a directory in its place. Remove that directory, restore <code>ergo.yaml</code>, and recreate Ergo.</li>
+</ul>
+
+      <footer class="doc-footer">
+        <p class="doc-footer-meta"><a href="/docs">All guides</a> · <a href="/docs/setup.md">markdown</a></p>
+        <nav class="pager" aria-label="Page navigation">
+        <a class="pager-box prev" href="/docs/bots"><small>← Previous</small><span>Bots</span></a>
+        <a class="pager-box next" href="/docs/design"><small>Next →</small><span>Design system</span></a>
+        </nav>
+      </footer>
+    </main>
+    <nav class="toc" id="page-nav" aria-label="On this page"></nav>
+  </div>
+
+  <script type="module" src="/docs/glow.js"></script>
+  <script src="/docs/docs.js?v=16" defer></script>
+  <script src="/docs/app-back.js?v=26d58c4a" defer></script>
+  <script type="module" src="/docs/search.js?v=1f3b3dfc&amp;index=9725c03e"></script>
+</body>
+</html>

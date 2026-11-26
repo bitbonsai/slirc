@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- The Mac app's workspace picker. See mac-picker.js, and picker.css for the look. -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https:" />
+<title>Slirc</title>
+<link rel="stylesheet" href="picker.css" />
+</head>
+<body>
+  <main class="notice-card" aria-labelledby="title">
+    <h1 id="title">Open your workspace</h1>
+    <p class="lead"></p>
+    <div class="workspace-list" role="list" aria-label="Workspaces on this Mac"></div>
+    <form novalidate>
+      <label for="address">Open another workspace</label>
+      <div class="workspace-form-row"><input id="address" type="text" inputmode="url" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="yourteam or chat.example.com" /><button type="submit" class="primary">Open</button></div>
+      <p class="error" role="alert"></p>
+    </form>
+    <div class="actions"><button type="button" class="secondary leave">Quit</button></div>
+  </main>
+  <script src="workspace-mark.js"></script>
+  <script src="mac-picker.js"></script>
+</body>
+</html>

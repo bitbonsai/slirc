@@ -1,0 +1,8 @@
+// Default signing and update settings for local builds.
+// Copy Signing.xcconfig.example to Signing.xcconfig to override locally.
+DEVELOPMENT_TEAM =
+PRODUCT_BUNDLE_IDENTIFIER = com.example.slirc.desktop
+SPARKLE_FEED_URL =
+SPARKLE_PUBLIC_ED_KEY =
+
+#include? "Signing.xcconfig"

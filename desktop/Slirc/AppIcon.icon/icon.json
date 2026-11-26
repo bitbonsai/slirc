@@ -1,0 +1,28 @@
+{
+  "groups": [
+    {
+      "name": "Mark",
+      "layers": [
+        {
+          "name": "Mark",
+          "image-name": "mark.png",
+          "glass": true
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
+      "macOS"
+    ]
+  }
+}

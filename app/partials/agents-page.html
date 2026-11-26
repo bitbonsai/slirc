@@ -1,0 +1,88 @@
+  <div x-data="agentsPage" class="profile-page agents-page" data-phone-screen="agents" :class="isDesktop ? 'profile-page-desktop' : 'mobile-screen profile-screen'" x-cloak x-show="authenticated && agentsRoute">
+    <div class="mobile-screen-head" x-show="!isDesktop"><div class="home-brand"><a class="home-brand profile-back" href="/more" aria-label="Back to More" x-on:click.prevent="openMore()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a><strong>Agents</strong></div></div>
+    <div class="profile-page-body" :class="{ 'mobile-screen-body': !isDesktop }">
+      <section class="profile-dialog-card profile-screen-card">
+        <div class="profile-heading" x-show="isDesktop"><div class="profile-modal-avatar"><img :src="avatarUrl(account)" alt="" /></div><div><h2><span x-text="me"></span><span class="admin-badge" x-show="isAdmin" role="img" aria-label="Administrator" x-html="lucideIcon('user-star')"></span></h2><p x-text="'@' + account"></p></div></div>
+<!-- include: account-navigation -->
+        <section class="irc-settings agents-settings">
+          <p class="profile-error" role="alert" x-show="agents.error || agents.capabilityError" x-text="agents.error || agents.capabilityError"></p>
+          <button type="button" class="link-button" x-show="(agents.error || agents.capabilityError) && !agents.loading" :disabled="agents.loading" x-on:click="agents.load()">Try again</button>
+          <div class="agents-off" role="region" aria-labelledby="agents-off-title" x-show="agents.loaded && agents.capability && !agents.capability.enabled">
+            <h3 id="agents-off-title" x-text="agents.offCopy(isAdmin).title"></h3>
+            <p x-text="agents.offCopy(isAdmin).about"></p>
+            <p class="agents-off-action" x-text="agents.offCopy(isAdmin).action"></p>
+            <code class="agents-off-line" x-show="agents.offCopy(isAdmin).line" x-text="agents.offCopy(isAdmin).line"></code>
+            <a class="agents-off-link" x-show="agents.offCopy(isAdmin).link" :href="agents.offCopy(isAdmin).link?.href" target="_blank" rel="noopener" x-text="agents.offCopy(isAdmin).link?.label"></a>
+          </div>
+
+          <div class="agent-connect-card agent-panel" role="region" aria-label="Session asking to connect" x-show="agents.card">
+            <p class="agent-step">Connect this coding session?</p>
+            <div class="agent-row">
+              <span class="agent-copy">
+                <strong x-text="agents.card && agents.cardTitle(agents.card)"></strong>
+                <small x-text="agents.card && agents.cardSubtitle(agents.card)"></small>
+              </span>
+            </div>
+            <p class="agent-connect-code">Code <code x-text="agents.card?.code"></code>. Allow it only if your session shows the same code.</p>
+            <div class="agent-connect-actions">
+              <button type="button" class="btn-secondary" :disabled="agents.deciding" x-on:click="agents.decide(false)">Deny</button>
+              <button type="button" class="btn-primary" :disabled="agents.deciding" x-on:click="agents.decide(true)" x-text="agents.deciding ? 'Connecting…' : 'Allow'"></button>
+            </div>
+          </div>
+          <p class="profile-note agent-connected" role="status" x-show="agents.connected" x-text="agents.connected ? agents.connected + ' is connected. Say hi in its DM.' : ''"></p>
+          <p class="profile-error" role="alert" x-show="agents.cardError" x-text="agents.cardError"></p>
+
+          <div class="agent-install" x-show="agents.loaded && agents.capability?.enabled && agents.firstLine() && !agents.card">
+            <p class="agent-lede">Agents are coding sessions that join your channels and DMs. <a href="/docs/agents">Learn more</a></p>
+            <section class="agent-panel" aria-labelledby="agent-paste-title">
+              <h3 id="agent-paste-title" class="agent-panel-title">Paste into <template x-for="(harness, index) in agents.pasteHarnesses()" :key="harness.id"><span><span x-text="agents.harnessJoin(index, agents.pasteHarnesses().length)"></span><span x-text="harness.name"></span></span></template></h3>
+              <div class="agent-pair">
+                <code x-text="agents.firstLine()"></code>
+                <button type="button" class="copy-button" :class="agents.copied === 'first' && 'copied'" :aria-label="agents.copied === 'first' ? 'Copied to clipboard' : 'Copy command'" x-tooltip x-on:click="agents.copy()">
+                  <span class="menu-icon copy-glyph" aria-hidden="true" x-html="lucideIcon('copy')"></span>
+                  <span class="menu-icon check-glyph" aria-hidden="true" x-html="lucideIcon('check')"></span>
+                </button>
+              </div>
+              <p class="agent-quiet" role="status" x-show="agents.waiting"><span class="spinner" aria-hidden="true"></span>Waiting for your agent…</p>
+              <p class="agent-quiet" x-show="!agents.waiting">
+                <button type="button" class="link-button" x-on:click="agents.toggleRunner()" x-text="agents.runner === 'npx' ? 'Use bunx' : 'Use npx'"></button><span aria-hidden="true">·</span>
+                <a href="/docs/agents" target="_blank" rel="noopener">Guide</a>
+              </p>
+              <template x-if="agents.terminalHarnesses().length"><p class="agent-terminal-note">For <template x-for="(harness, index) in agents.terminalHarnesses()" :key="harness.id"><span><span x-text="agents.harnessJoin(index, agents.terminalHarnesses().length)"></span><span x-text="harness.name"></span></span></template>, run it in a terminal instead. It starts <span x-text="agents.terminalHarnesses().length > 1 ? 'the agent' : agents.terminalHarnesses()[0].name"></span> ready to connect.</p></template>
+            </section>
+            <form id="agent-code-form" class="agent-code-form agent-panel" x-on:submit.prevent="agents.submitCode()">
+              <label for="agent-code-input" class="agent-panel-title">Code from your agent</label>
+              <div class="agent-code-row">
+                <input id="agent-code-input" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" x-code="agent" placeholder="XXXX-XXXX" x-model="agents.codeInput" />
+                <button type="submit" :class="agents.codeInput.replace(/[^0-9a-z]/gi, '').length === 8 ? 'btn-primary' : 'btn-secondary'" :disabled="agents.busy">Continue</button>
+              </div>
+            </form>
+          </div>
+          <p class="profile-note loading" x-show="agents.loading && !agents.loaded"><span class="spinner" aria-hidden="true"></span>Loading agents…</p>
+
+          <section class="agent-list" aria-labelledby="agent-list-title" x-show="agents.loaded">
+            <p class="profile-note agent-empty" x-show="!agents.rows.length && agents.capability?.enabled">No agents connected yet.</p>
+            <h3 id="agent-list-title" class="agent-list-title" x-show="agents.rows.length">Your agents</h3>
+            <ul class="agent-rows agent-panel" x-show="agents.rows.length">
+              <template x-for="row in agents.rows" :key="row.nick">
+                <li class="agent-row">
+                  <button type="button" class="agent-open" x-on:click="agents.openAgent(row)">
+                    <span class="agent-avatar" :data-state="agents.status(row).key" aria-hidden="true"><img :src="avatarUrl(row.nick, undefined, row.harness)" alt="" /></span>
+                    <span class="agent-copy">
+                      <strong x-text="agents.agentTitle(row)"></strong>
+                      <small><span class="agent-status" :data-state="agents.status(row).key" x-text="agents.status(row).label"></span><span class="agent-sub" x-show="agents.agentSubtitle(row)" x-text="agents.agentSubtitle(row)"></span></small>
+                    </span>
+                  </button>
+                  <button type="button" class="agent-icon-button agent-rename" x-show="row.harness" :aria-label="'Rename ' + agents.agentTitle(row)" x-tooltip x-on:click.stop="agents.askRename(row, $el)"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('pencil')"></span></button>
+                  <button type="button" class="agent-icon-button danger agent-remove" :aria-label="'Remove ' + row.nick" x-tooltip x-on:click.stop="agents.askRemove(row, $el)"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('trash')"></span></button>
+                </li>
+              </template>
+            </ul>
+          </section>
+        </section>
+      </section>
+    </div>
+    <dialog class="custom-modal" aria-labelledby="agent-rename-title" tabindex="-1" x-on:keydown="agents.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && agentsRoute && agents.renameTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!agents.busy) agents.closeRename()">
+      <form class="notice-card" x-on:submit.prevent="agents.confirmRename()"><h2 id="agent-rename-title">Rename agent</h2><p>Also renames the coding session when it is connected.</p><input type="text" class="agent-rename-input" maxlength="80" aria-label="Agent name" autofocus x-model="agents.renameValue" :disabled="agents.busy" /><p class="profile-error" role="alert" x-show="agents.error" x-text="agents.error"></p><div class="pair-actions"><button type="button" class="btn-secondary" :disabled="agents.busy" x-on:click="agents.closeRename()">Cancel</button><button type="submit" class="btn-primary" :disabled="agents.busy" x-text="agents.busy ? 'Saving…' : 'Save'"></button></div></form>
+    </dialog>
+  </div>

@@ -1,0 +1,27 @@
+services:
+  ergo:
+    image: ghcr.io/ergochat/ergo:v2.19.1
+    ports: !override
+      - "127.0.0.1:6667:6667"
+      # TLS listener with client certificates, for local IRC clients using SASL EXTERNAL.
+      - "127.0.0.1:6697:6697"
+      # Ergo HTTP API, for running the app with bun on the host.
+      - "127.0.0.1:8089:8089"
+  app:
+    env_file: .env
+    environment:
+      # Dev-only: magic/verify links use the request Host when MAGIC_LINK_LOG is on, so a phone
+      # opening the app via LAN/tailscale IP gets links back to that IP, not localhost.
+      # LAN_ORIGIN still overrides when set (e.g. for invite links shared outside the phone flow).
+      APP_ORIGIN: ${LAN_ORIGIN:-http://localhost:8080}
+      # Local containers often have no outbound network; print magic links to the log instead of emailing.
+      MAGIC_LINK_LOG: "true"
+      # Dev-only credential matching the public bcrypt hash in ergo.example.yaml.
+      ERGO_OPER_USER: slirc-org
+      ERGO_OPER_PASS: slirc-dev-oper
+    volumes:
+      # Live-edit src/public without rebuilding the image; bun --watch restarts the server on .ts changes.
+      - ./app:/app
+    command: ["sh", "-c", "until bun src/migrate-founder.ts; do sleep 1; done; (bun src/seed.ts || echo \"seed failed\" >&2) & exec bun --watch src/main.ts"]
+    ports: !override
+      - "8080:8080"

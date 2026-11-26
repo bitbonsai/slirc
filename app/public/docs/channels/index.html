@@ -1,0 +1,186 @@
+<!-- generated from app/docs/*.md — edit there, then run: bun run docs -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#11111b" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="description" content="Slirc channels and invites: open and invite-only channels, the channel menu, and how invitation links work." />
+  <title>Channels &amp; invites · Slirc docs</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="alternate" type="text/markdown" href="/docs/channels.md" />
+  <script src="/theme.js?v=844fef47"></script>
+  <link rel="stylesheet" href="/docs/docs.css?v=39" />
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="app-back" id="app-back" hidden><a class="app-back-link" href="/more" aria-label="Back to Slirc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 4 12l7 7"/></svg>Back</a></div>
+
+  <header class="topbar">
+    <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-nav">
+      <svg class="menu-icon menu-bars" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>
+      <svg class="menu-icon menu-close" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+    <a class="brand" href="/docs"><img class="brand-lockup" src="/brand-org-dark.svg" width="233" height="73" alt="Slirc" /><span class="tag">docs</span></a>
+    <button class="search-toggle" id="search-toggle" type="button" aria-label="Search the docs" aria-expanded="false" aria-controls="docs-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 4.5 4.5"/></svg>
+    </button>
+    <div class="docs-search" id="docs-search" role="search" data-docs-search>
+      <label class="visually-hidden" for="docs-search-input">Search the docs</label>
+      <span class="docs-search-field">
+        <svg class="docs-search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5"/></svg>
+        <input id="docs-search-input" class="docs-search-input" type="search" placeholder="Search docs…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="docs-search-results" aria-autocomplete="list" />
+        <kbd class="docs-search-key" aria-hidden="true">⌘K</kbd>
+      </span>
+      <div id="docs-search-results" class="docs-search-results" role="listbox" aria-label="Search results" hidden></div>
+      <p class="docs-search-status visually-hidden" aria-live="polite"></p>
+    </div>
+    <a class="open-app-mobile" href="/open-chat">Open chat</a>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" id="docs-nav" aria-label="Documentation" hidden>
+      <div class="nav-content">
+      <a class="nav-link nav-app" href="/open-chat">Open chat</a>
+      <p class="nav-section">Guides</p>
+      <a class="nav-link" href="/docs">Home</a>
+      <a class="nav-link" href="/docs/getting-started">Getting started</a>
+      <a class="nav-link" href="/docs/download">Download</a>
+      <a class="nav-link active" href="/docs/channels" aria-current="page">Channels & invites</a>
+      <a class="nav-link" href="/docs/messages">Messages & media</a>
+      <a class="nav-link sub" href="/docs/threads">Threads</a>
+      <a class="nav-link" href="/docs/notifications">Notifications</a>
+      <a class="nav-link" href="/docs/privacy">Privacy & safety</a>
+      <p class="nav-section">Connect</p>
+      <a class="nav-link" href="/docs/clients">IRC clients</a>
+      <a class="nav-link" href="/docs/agents">Agents</a>
+      <a class="nav-link" href="/docs/bots">Bots</a>
+      <a class="nav-link" href="/docs/setup">Self-hosting</a>
+      <p class="nav-section">Reference</p>
+      <a class="nav-link" href="/docs/design">Design system</a>
+      <p class="nav-section">About</p>
+      <a class="nav-link" href="/docs/about">About Slirc</a>
+      <a class="nav-link" href="/docs/comparison">Footprint</a>
+      <a class="nav-link" href="/docs/faq">FAQ</a>
+      </div>
+    </nav>
+
+    <main id="main">
+      <div class="callout info prelaunch-note"><p>Slirc is in early access. Come say hi in <a href="/open-chat">#open-chat</a>.</p></div>
+      <p class="crumb">Guides / Channels &amp; invites</p>
+      <h1>Channels &amp; invites</h1>
+      <p class="lead">Channels hold group conversations. Open channels are listed for every registered user; invite-only channels only appear once you're invited.</p>
+<h2 id="channels">Channels</h2>
+<p>Slirc uses IRC channels for group chat. Three kinds:</p>
+<ul>
+<li>The public help channel, open to every registered member.</li>
+<li>Open channels, listed for every registered user.</li>
+<li>Invite-only channels, invisible until you're invited.</li>
+</ul>
+<p>Verified members can create both kinds.</p>
+<p>The rooms panel shows rooms you belong to, open channels you can join, threads, direct messages, and a <strong>Starred</strong> section for channels and DMs you pin on this device.</p>
+<h3 id="public-help-channel">Public help channel</h3>
+<p>The public help channel is open to every registered member. Members can read it; writing requires an account. Slirc does not currently offer anonymous reading. In the Slirc app, its member list, joins, parts, and quits stay hidden. Slirc does not yet promise IRC invisibility, so ordinary IRC clients connected to the channel may still see who is present.</p>
+<h3 id="open-channels">Open channels</h3>
+<p>Verified members can create an open channel for the whole group. Every registered user can see it and join. Use it for a topic the group shares, like a project room or an event.</p>
+<h3 id="invite-only-channels">Invite-only channels</h3>
+<p>Verified members can create an invite-only channel, and an owner or admin can switch a channel between open and invite-only later. Making a channel open again exposes its whole history to every registered member; the hint under the choice says so before you save.</p>
+<p>An invite-only channel is invisible to everyone who hasn't been invited. The app only lists channels you belong to, and the server blocks anyone who isn't on the list.</p>
+<h2 id="direct-messages">Direct messages</h2>
+<p>Choose <strong>+</strong> beside <strong>Direct messages</strong> to start a conversation. Search verified people by nick or name. <code>help</code> and <code>remind</code> show up in Contacts and in search too, when your server runs them. Admins are visible contacts for every verified member, even without a shared room. Admins can search and message any verified person in the system. Other people appear through membership in a public or workspace channel, a post in a public channel (including <code>#open-chat</code> and <code>#help</code>), a shared non-direct room, or a DM you have had with them, even a closed one. <strong>Contacts</strong>, listed before you type, include anyone you have a DM with and leave out people you only share <code>#open-chat</code> or <code>#help</code> with; search still finds them. Select one person to open your existing DM or create one. Discovering a person does not grant access to their private channels or other DMs.</p>
+<p>Existing groups use secret IRC channels, not pair DMs, and cannot be made open. Group creation is not currently offered in the New DM picker. New members can read the group's existing history; adding people never exposes an earlier 1:1 conversation.</p>
+<p>You can also open a person's profile by clicking their name, or use <code>/msg</code>:</p>
+<pre><code class="language-text">/msg nick Hello there
+</code></pre>
+<p>Direct messages appear under <strong>Direct messages</strong> in the rooms panel. Use a row's menu to star or unstar, mute or unmute, or close a DM; starred conversations also appear at the top of the rooms panel. <strong>Mute</strong> dims the conversation mark on this device and does not change push-notification settings. <strong>Close DM</strong> hides the one-to-one conversation from your list on all your devices. It does not delete messages or change the shared IRC channel, membership, or the other person's view. A new message in a closed DM reopens it. You can also open it again from <strong>Contacts</strong>, with history intact. Slirc backs each direct message with a hidden private <code>#dm-*</code> IRC channel shared by both people, so messages arrive even if the other person is offline. The PWA shows the person's name and avatar; terminal clients see the private channel and its readable topic.</p>
+<h3 id="notes">Notes</h3>
+<p><strong>Notes</strong> sits at the top of <strong>Direct messages</strong>, on phone and desktop. It is a private scratchpad, like a DM with yourself. Write in the usual box, and links get previews. Use a note's menu to edit or delete it. Opening <code>/dm/&lt;your nick&gt;</code> opens Notes too.</p>
+<p>Notes are not messages. They stay in the Slirc app's database, never go over IRC, and nobody else can see them, admins included. IRC clients do not show them. They have no unread counts or notifications, and they show on all your signed-in devices. To add an image to a note, paste, pick or drop it. It shows above the box and uploads when you save the note. Only you can open it.</p>
+<h2 id="the-channel-menu">The channel menu</h2>
+<p>Every non-thread channel in the rooms panel has a kebab menu (<kbd>⋮</kbd>). Opening another menu or picker closes the previous one. It holds the actions you take on the spot:</p>
+<ul>
+<li><strong>Star</strong>: pins the channel to the <strong>Starred</strong> section at the top of your rooms on this device. The same action is available for direct messages. DM menus also offer <strong>View profile</strong>, <strong>Mute</strong> and <strong>Close DM</strong>; <strong>View profile</strong> opens that person's card.</li>
+<li><strong>Mute</strong>: keeps the channel visible but dims its mark on this device. It does not change push notifications; see <a href="/docs/notifications">notifications</a>.</li>
+<li><strong>Copy</strong>: opens a submenu with <strong>Name</strong> and <strong>Link</strong>. Name and Link copy the channel name or a link to the channel. The link opens the channel in Slirc for people who already have access.</li>
+<li><strong>Leave channel</strong>: non-owners. Drops you out of the channel. Owners keep the channel; transferring ownership isn't available yet, so an owner either keeps it or deletes it.</li>
+<li><strong>Members</strong>: the desktop panel starts closed. Open it from the people icon in the header. Everyone in the channel, grouped online, away, and offline, with the owner, admins, agents, and bots marked; select a member to open their profile. Collapse it with the header icon or the panel's hide button. Open channels do not list members, and <code>#help</code> keeps participant presence private. Invite-only channels also show your <strong>Pending invitations</strong>, without counting invitees as members. Other members cannot see the email addresses you invited.</li>
+<li><strong>Channel settings…</strong>: opens the channel settings dialog.</li>
+</ul>
+<h3 id="channel-settings">Channel settings</h3>
+<p>The dialog's title names the channel. Any member can change the <strong>Topic</strong>. Owners and admins also pick the <strong>Visibility</strong>: <strong>Open</strong> lists the channel for every registered member and makes its history readable; <strong>Invite-only</strong> hides the channel and requires an invite from then on. The hint under the choice describes only the one you picked. <strong>Save</strong> stays off until something changes, then saves the topic and visibility together.</p>
+<p>The channel's owner and admins also see <strong>Archive channel</strong>. After you confirm, the channel turns read-only. Members still read its history and it stays in their list, but the composer is replaced by an <strong>Archived channel</strong> bar and nobody can post, from Slirc or from an IRC client. The heading says <strong>Archived · read only</strong>. Choose <strong>Unarchive</strong> in the same place to let people post again. DMs and threads can't be archived, and neither can the default channel or an open playground channel.</p>
+<p>Admins also see <strong>Delete channel</strong> below. You type the channel name to confirm. Deleting removes the channel for everyone, with its messages, threads, memberships, invites and files; anyone who had it open moves to the default channel with a short notice. The default channel and DMs can't be deleted.</p>
+<h2 id="browsing-and-joining-open-channels">Browsing and joining open channels</h2>
+<p>Open channels you haven't joined show up under <strong>Browse channels</strong> in the rooms panel. Pick one and join, no invite needed. Archived channels don't appear there.</p>
+<h2 id="creating-a-channel">Creating a channel</h2>
+<p>Verified members create either kind from the same form, with <strong>+</strong> beside <strong>Channels</strong> in the desktop sidebar or on phone Home. It defaults to invite-only.</p>
+<h2 id="inviting-people">Inviting people</h2>
+<p>In a channel, type <code>/invite @eve</code> to add someone who is already on Slirc. A note at the bottom of the channel says <code>Add @eve to #design?</code> with <strong>Add</strong> and <strong>Dismiss</strong>; <strong>Add</strong> adds them right away, and the note changes to <code>Added @eve.</code> If they're already a member, the note says so. Only you see these notes, and they go away when you reload. Channel permissions still apply: if you can't add people to the channel, the note says <code>@eve isn't in #design. You can't add people here.</code> and has no <strong>Add</strong>.</p>
+<p>Mentioning someone works the same way. If you @mention a person who isn't in an invite-only channel, a note under your message says <code>@eve isn't in #design.</code> with <strong>Add</strong> and <strong>Dismiss</strong>. Mentions in DMs, of bots, and of people who are already in the channel don't show a note.</p>
+<p>To add your agent, type <code>/invite @claude-8fe7</code> (its nick) in an open or invite-only channel, then mention it there. Only you can invite your own agents. An open-channel attachment is owner-only: it acts only on your messages, so someone else mentioning it does nothing, it reads the channel's history, and it leaves when you do. See <a href="/docs/agents">Agents</a>.</p>
+<p><code>/invite name@example.com</code> shows a note that says <code>Send name@example.com an invitation to #design?</code>. Nothing is sent until you choose <strong>Invite by email</strong>; the note then says <code>Invitation sent to name@example.com.</code> If the address already belongs to someone on Slirc, they're added to the channel instead. When you have no email invites left, or haven't verified your own email yet, the note says so and has no button.</p>
+<p>For a DM, open <strong>+</strong> beside <strong>Direct messages</strong> and enter a name or email in the same field. Choosing a person opens the DM immediately; an email requires <strong>Send invite</strong>. Email invitations are personal, not reusable channel links. Group creation is not offered in this picker.</p>
+<p>If an address matches an existing verified member, Slirc opens the DM or adds them to the selected group/channel, subject to your permissions. It sends no email and spends no invitation credit, even when your allowance is empty. Selecting a person and entering their email does not add them twice.</p>
+<p>The default allowance is nine invitation emails per verified account, shared across DMs, groups and channels. Your server may set a different limit; the dialog shows it. Admins have no allowance, so the dialog and <strong>People</strong> show <strong>Unlimited email invites</strong> for them. Inviting the same email again to the same destination reuses its active invitation without sending another email or spending another credit. Explicit resends count, and cancelling a delivered invitation does not refund its credit. Confirmed delivery failures do not consume credit. An uncertain delivery keeps its credit and cannot be resent blindly.</p>
+<p>Open <strong>People</strong> from your profile navigation or <strong>More → Invitations</strong> on a phone to see your sent invitations, remaining allowance, and delivery status. You can resend eligible invitations or cancel a pending invitation. Cancellation revokes the link, not existing conversation membership. A desktop <strong>Invite someone</strong> shortcut opens the new-conversation dialog for people or email recipients; its dismiss (×) hides only that shortcut.</p>
+<p>Email invitations expire after seven days and require the invited email account. Resending replaces the link and starts a new seven-day window. Invitations are personal to the invited address, so forward the email only to the person it names.</p>
+<p>An invited person is an ordinary IRC participant. <a href="/docs/clients">IRC clients</a> see the same private channels, access grants and conversation history.</p>
+<div class="callout danger"><h4 id="invitations-are-personal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Invitations are personal</h4><p>Only the invited email address can accept an invitation, and it expires after seven days. Send invitations to people you trust, and cancel one if you sent it to the wrong address.</p></div>
+<h3 id="inviting-many-people">Inviting many people</h3>
+<p>Admins can invite a whole list in one go. Open <strong>People</strong> and choose <strong>Invite many</strong>, or choose <strong>Invite many</strong> in the new-conversation dialog. Under <strong>Invite to</strong>, pick a channel you belong to, or <strong>Workspace only</strong>, which uses the default channel everyone joins. With no channel to pick, the dialog skips this choice. Then paste addresses, one per line, or drop a CSV file. Any column that holds email addresses works, names are optional, and a header row is skipped.</p>
+<p><strong>Check list</strong> shows what happens to each address before anything is sent. A new address gets an email invite. Someone already on Slirc is added to the channel, or marked as already there. An address you invited to the same place is marked <strong>Already invited</strong> and gets no second email. Repeats, typos and your own address are marked and left out. Someone on Slirc you can't find in <strong>People</strong> is added too, but the list shows only their address.</p>
+<p><strong>Send</strong> sends the invites in batches and shows progress, so keep the dialog open until it finishes. The summary lists each address with its result, and the <strong>Copy</strong> button copies the addresses that were not sent. Bulk invites use up to 75% of the server's daily email limit, which leaves room for sign-in emails. When a list is bigger than what's left today, the extra addresses wait; check the list again the next day to send them. Each invitation then works like any other: it expires after seven days, and <strong>People</strong> shows it under <strong>Sent invitations</strong>.</p>
+<h3 id="join-links">Join links</h3>
+<p>An admin can make one link that anyone can use to join a channel, for example to post in a group chat. Open <strong>People</strong> and use <strong>Join link</strong>: pick the channel, choose <strong>Make link</strong> and copy it. To send it again later, use <strong>Copy link</strong> next to the open link. Links made before 19 Nov 2026 can't be copied again; make a new one instead.</p>
+<p>Opening the link asks for an email address and sends one email. Someone new picks a name and lands in the channel; an address that already has an account signs in instead. If you are signed in and already in the channel, the link opens the channel. A link takes 99 people and lasts seven days. <strong>People</strong> shows how many joined, and <strong>Revoke</strong> closes the link at once.</p>
+<h3 id="kicking-someone-from-a-channel">Kicking someone from a channel</h3>
+<p>An admin can type <code>/kick @eve</code> in a channel to take that person out of it. A reason can follow the nick, as in <code>/kick @eve posting spam</code>. They leave the channel right away, and the channel shows a line from you, like <code>removed eve from #design: posting spam</code>. IRC clients also see the kick. To come back to an invite-only channel they need a new invite; an open channel they can join again from <strong>Browse channels</strong>. Admins can't kick themselves or another admin, and <code>/kick</code> doesn't work in a channel everyone belongs to, like <code>#open-chat</code>. Only admins see <code>/kick</code> in the command list.</p>
+<h3 id="removing-a-member">Removing a member</h3>
+<p>An admin can remove a person from the workspace: open their profile, choose <strong>Remove member</strong>, and confirm. They leave every channel, thread and DM, every device they signed in on is signed out, and IRC clients lose their password and certificates. They can't sign in again or come back through a join link or invitation with the same email. Their past messages stay under their name. Any admin can do this. Admins can't remove themselves or another admin, and agents and bots are managed from their own pages.</p>
+<h3 id="workspace-icon">Workspace icon</h3>
+<p>An admin can give the workspace its own icon. Open <strong>Admin</strong>, choose <strong>Upload icon</strong> under <strong>Branding</strong> and pick a PNG, JPEG or WebP image. Drag it inside the square and zoom with the slider, then choose <strong>Save icon</strong>. The icon takes the place of the letter tile in the sidebar and in the Workspaces list, also in other workspaces that list this one. Other people see it within a minute. <strong>Remove</strong> brings the letter tile back.</p>
+<h2 id="joining-through-an-invite">Joining through an invite</h2>
+<p>For an email invitation:</p>
+<ol>
+<li>Open the link and choose a display name.</li>
+<li>Choose <strong>Join</strong>. Slirc signs you in and opens the inviter's DM or the invited group/channel. The link was sent to the invited address, so opening it counts as verifying that email; you cannot substitute another one.</li>
+</ol>
+<p>If the invited address already has a Slirc account, Slirc emails it a sign-in code and link instead, so a forwarded invitation cannot open that account. Type the code on the invitation page, or open the link. If you are already signed in with the invited account, choose <strong>Join</strong> directly. If a different account is signed in, switch accounts first.</p>
+<h2 id="how-it-maps-to-irc">How it maps to IRC</h2>
+<p>Slirc channels are ordinary IRC channels, so the mechanics are standard IRC under the surface:</p>
+<table>
+<thead>
+<tr><th>Concept</th><th>IRC</th></tr>
+</thead>
+<tbody>
+<tr><td>Open channel</td><td>registered-only (<code>+R</code>), so guests and unregistered nicks can't join</td></tr>
+<tr><td>Invite-only channel</td><td>secret and invite-only (<code>+si</code>), hidden from lists and blocked without an invite</td></tr>
+<tr><td>Archive</td><td>moderated (<code>+m</code>), so nobody can post. Members still read it, and it stays in the list</td></tr>
+<tr><td>Delete</td><td>unregisters the channel; its name becomes reusable after the channel empties</td></tr>
+</tbody>
+</table>
+<h2 id="switching-and-ordering-channels">Switching and ordering channels</h2>
+<p>Open or close the rooms panel with the panel button beside the Slirc mark in the top-left. The heading in the middle shows the current channel or person. On desktop it opens channel settings, or the person's card for a direct message. On a phone it returns to Home. Unread messages show a count on each room.</p>
+<p>On desktop, drag any channel in <strong>Channels</strong> up or down to set your own order, or focus a channel and press <kbd>Alt</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd> (<kbd>Option</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd> on a Mac). The order saves per account in this browser.</p>
+<h3 id="github-project-channels">GitHub project channels</h3>
+<p>Verified members can bind a GitHub repository (<code>owner/repo</code>) to a channel through <code>POST /api/projects</code>, which creates or adopts <code>#repo</code> (or <code>#owner-repo</code>) and returns a webhook URL and secret. Signed GitHub webhooks (<code>X-Hub-Signature-256</code>) then post issue and pull request updates straight into the channel.</p>
+<p>Read next: <a href="/docs/messages">messages and media</a>, or <a href="/docs/threads">threads</a> for focused conversations.</p>
+
+      <footer class="doc-footer">
+        <p class="doc-footer-meta"><a href="/docs">All guides</a> · <a href="/docs/channels.md">markdown</a></p>
+        <nav class="pager" aria-label="Page navigation">
+        <a class="pager-box prev" href="/docs/download"><small>← Previous</small><span>Download</span></a>
+        <a class="pager-box next" href="/docs/messages"><small>Next →</small><span>Messages & media</span></a>
+        </nav>
+      </footer>
+    </main>
+    <nav class="toc" id="page-nav" aria-label="On this page"></nav>
+  </div>
+
+  <script type="module" src="/docs/glow.js"></script>
+  <script src="/docs/docs.js?v=16" defer></script>
+  <script src="/docs/app-back.js?v=26d58c4a" defer></script>
+  <script type="module" src="/docs/search.js?v=1f3b3dfc&amp;index=9725c03e"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+  <dialog id="delete-dialog" class="custom-modal" x-cloak x-on:cancel.prevent="actions.cancelDelete()" x-on:click="if ($event.target === $el) actions.cancelDelete()">
+    <section class="notice-card delete-confirmation" role="alertdialog" aria-labelledby="delete-title">
+      <h2 id="delete-title" x-text="notesOpen ? 'Delete this note?' : 'Delete this message?'">Delete this message?</h2>
+      <p x-text="notesOpen ? 'It goes from all your devices.' : 'This removes it from server history. IRC clients may keep copies they already received.'">This removes it from server history. IRC clients may keep copies they already received.</p>
+      <div class="pair-actions">
+        <button type="button" class="btn-secondary" autofocus x-on:click="actions.cancelDelete()">Cancel</button>
+        <button type="button" class="btn-danger" x-on:click="actions.confirmDelete()">Delete</button>
+      </div>
+    </section>
+  </dialog>

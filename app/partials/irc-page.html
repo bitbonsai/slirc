@@ -1,0 +1,52 @@
+  <div x-data="ircPage" class="profile-page irc-page" data-phone-screen="irc" :class="isDesktop ? 'profile-page-desktop' : 'mobile-screen profile-screen'" x-cloak x-show="authenticated && ircRoute">
+    <div class="mobile-screen-head" x-show="!isDesktop"><div class="home-brand"><a class="home-brand profile-back" href="/profile" aria-label="Back to Profile" x-on:click.prevent="openProfile()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a><strong>IRC clients</strong></div></div>
+    <div class="profile-page-body" :class="{ 'mobile-screen-body': !isDesktop }">
+      <section class="profile-dialog-card profile-screen-card">
+        <div class="profile-heading" x-show="isDesktop"><div class="profile-modal-avatar"><img :src="avatarUrl(account)" alt="" /></div><div><h2><span x-text="me"></span><span class="admin-badge" x-show="isAdmin" role="img" aria-label="Administrator" x-html="lucideIcon('user-star')"></span></h2><p x-text="'@' + account"></p></div></div>
+<!-- include: account-navigation -->
+        <section class="irc-settings">
+          <h3>IRC clients</h3>
+          <p>Connect any IRC client with a password or a certificate. <a href="/docs/clients" target="_blank" rel="noopener">Client guide</a></p>
+          <p class="profile-error" role="alert" x-show="irc.error" x-text="irc.error"></p>
+          <button type="button" class="link-button" x-show="irc.error && !irc.loaded" :disabled="irc.loading" x-on:click="irc.load()">Try again</button>
+          <p class="profile-note loading" x-show="irc.loading && !irc.loaded"><span class="spinner" aria-hidden="true"></span>Loading IRC clients…</p>
+          <div x-show="irc.loaded && !irc.password">
+            <p class="profile-note" x-show="ircReset.clients && irc.devices.length">Your IRC password changed in an update. Press New password, then paste it into each password client.</p>
+            <div class="irc-device-list">
+              <p class="profile-note" x-show="!irc.devices.length && !irc.certificates.length">No IRC clients connected.</p>
+              <template x-for="device in irc.devices" :key="device.id"><div class="irc-device-row"><span><strong x-text="device.label"></strong><small x-text="'Password · Added ' + irc.date(device.createdAt)"></small></span><button type="button" class="link-button danger" :aria-label="'Remove ' + device.label" x-on:click="irc.askRemove({ ids: [{ kind: 'device', id: device.id }], label: device.label }, $el)">Remove</button></div></template>
+              <template x-for="certificate in irc.certificates" :key="certificate.id"><div class="irc-device-row"><span><strong x-text="certificate.label"></strong><small x-text="'Certificate · ' + certificate.fingerprint.slice(0, 12) + '… · Added ' + irc.date(certificate.createdAt)"></small></span><button type="button" class="link-button danger" :aria-label="'Remove ' + certificate.label" x-on:click="irc.askRemove({ ids: [{ kind: 'certificate', id: certificate.id }], label: certificate.label }, $el)">Remove</button></div></template>
+              <button type="button" class="link-button danger irc-device-remove-all" x-show="irc.devices.length + irc.certificates.length > 1" x-on:click="irc.askRemove(irc.allTarget(), $el)">Remove all</button>
+            </div>
+            <div class="irc-device-buttons" x-show="!irc.passwordOpen && !irc.certificateOpen">
+              <button type="button" class="btn-secondary" x-on:click="irc.certificateOpen = false; irc.passwordOpen = true; $nextTick(() => $refs.ircPasswordName?.focus())">Use a password</button>
+              <button type="button" class="btn-secondary" x-on:click="irc.passwordOpen = false; irc.certificateOpen = true; $nextTick(() => $refs.ircCertificateName?.focus())">Use a certificate</button>
+              <button type="button" class="btn-secondary" x-show="irc.devices.length" :disabled="irc.busy" x-on:click="irc.newPassword()" x-text="irc.busy ? 'Making…' : 'New password'"></button>
+            </div>
+            <form class="irc-device-form" x-show="irc.passwordOpen" x-on:submit.prevent="irc.addPassword()">
+              <p>Adding or removing a password client rotates the shared IRC password.</p>
+              <label>Client name<input x-ref="ircPasswordName" type="text" maxlength="80" placeholder="Halloy on MacBook" x-model="irc.passwordName" required /></label>
+              <div class="profile-actions"><button type="button" class="btn-secondary" x-on:click="irc.passwordOpen = false; irc.passwordName = ''">Cancel</button><button type="submit" class="btn-primary" :disabled="irc.busy" x-text="irc.busy ? 'Connecting…' : 'Create password'"></button></div>
+            </form>
+            <form class="irc-device-form" x-show="irc.certificateOpen" x-on:submit.prevent="irc.addCertificate()">
+              <p>Create a certificate with OpenSSL, then paste its SHA-256 fingerprint. Each certificate can be removed on its own without touching other clients. <a href="/docs/clients" target="_blank" rel="noopener">Setup guide</a></p>
+              <label>Certificate name<input x-ref="ircCertificateName" type="text" maxlength="80" placeholder="WeeChat on MacBook" x-model="irc.certificateName" required /></label>
+              <label>SHA-256 fingerprint<input type="text" autocomplete="off" spellcheck="false" placeholder="AA:BB:CC:…" x-model="irc.certificateFingerprint" required /></label>
+              <div class="profile-actions"><button type="button" class="btn-secondary" x-on:click="irc.certificateOpen = false; irc.certificateName = ''; irc.certificateFingerprint = ''">Cancel</button><button type="submit" class="btn-primary" :disabled="irc.busy" x-text="irc.busy ? 'Adding…' : 'Add certificate'"></button></div>
+            </form>
+          </div>
+          <div class="irc-credential" x-show="irc.password">
+            <h4>Save this password now</h4>
+            <p>It appears once. Existing password clients also need this new password.</p>
+            <p class="profile-note" x-show="irc.localOnly()" x-text="irc.connectionNote()"></p>
+            <div class="irc-password"><code x-text="irc.password"></code><button type="button" class="btn-secondary" x-on:click="irc.copy(irc.password)">Copy</button></div>
+            <template x-for="config in irc.configs()" :key="config.name"><section class="irc-config"><div><strong x-text="config.name"></strong><button type="button" class="link-button" :class="irc.copied === config.text && 'copied'" x-on:click="irc.copy(config.text)" x-text="irc.copied === config.text ? 'Copied' : 'Copy config'"></button></div><pre><code x-text="config.text"></code></pre></section></template>
+            <button type="button" class="btn-primary irc-done" x-on:click="irc.password = ''">Done</button>
+          </div>
+        </section>
+      </section>
+    </div>
+    <dialog class="custom-modal" aria-labelledby="irc-remove-title" tabindex="-1" x-on:keydown="irc.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && ircRoute && irc.removeTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!irc.busy) irc.closeRemove()">
+      <section class="notice-card"><h2 id="irc-remove-title">Remove <span x-text="irc.removeTarget?.label"></span>?</h2><p x-text="irc.removeMessage()"></p><p class="profile-error" role="alert" x-show="irc.error" x-text="irc.error"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="irc.busy" x-on:click="irc.closeRemove()">Cancel</button><button type="button" class="btn-danger" :disabled="irc.busy" x-on:click="irc.confirmRemove()" x-text="irc.busy ? 'Removing…' : 'Remove'"></button></div></section>
+    </dialog>
+  </div>

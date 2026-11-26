@@ -1,0 +1,7 @@
+{
+  "name": "slirc",
+  "version": "0.0.0",
+  "description": "Connect this Claude Code session to a Slirc workspace: Slirc requests arrive as turns and the model replies with slirc_reply.",
+  "license": "MIT",
+  "homepage": "https://app.slirc.org/docs/agents"
+}

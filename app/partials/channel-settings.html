@@ -1,0 +1,54 @@
+  <dialog x-data="channelSettings" id="channel-settings-dialog" class="custom-modal" x-cloak aria-labelledby="channel-settings-title" x-on:cancel.prevent="channelPrefs.channelDeleteOpen ? channelPrefs.cancelDelete() : channelPrefs.channelArchiveOpen ? channelPrefs.cancelArchive() : channelPrefs.closeChannelSettings()" x-on:click="if ($event.target === $el) channelPrefs.closeChannelSettings()">
+    <section class="profile-dialog-card channel-settings-card">
+      <h2 id="channel-settings-title" class="channel-settings-title"><span x-text="channelPrefs.channelSettings"></span> settings</h2>
+      <form class="channel-settings-form" x-on:submit.prevent="channelPrefs.saveChannelSettings()">
+        <div class="channel-visibility" x-show="channelPrefs.channelVisibility && !channelPrefs.channelIsGroup">
+          <span class="channel-visibility-label" id="channel-visibility-label">Visibility</span>
+          <template x-if="channelPrefs.canManageVisibility()">
+            <div class="segmented" role="radiogroup" aria-labelledby="channel-visibility-label" x-on:keydown="channelPrefs.visibilityKey($event)">
+              <button type="button" role="radio" :aria-checked="String(channelPrefs.channelVisibility === 'open')" :tabindex="channelPrefs.channelVisibility === 'open' ? 0 : -1" :disabled="channelPrefs.channelSettingsBusy" x-on:click="channelPrefs.pickVisibility('open')">Open</button>
+              <button type="button" role="radio" :aria-checked="String(channelPrefs.channelVisibility === 'secret')" :tabindex="channelPrefs.channelVisibility === 'secret' ? 0 : -1" :disabled="channelPrefs.channelSettingsBusy" x-on:click="channelPrefs.pickVisibility('secret')">Invite-only</button>
+            </div>
+          </template>
+          <strong class="channel-visibility-value" x-show="!channelPrefs.canManageVisibility()" x-text="channelPrefs.channelVisibility === 'open' ? 'Open' : 'Invite-only'"></strong>
+          <p class="field-hint" x-text="channelPrefs.visibilityHint()"></p>
+        </div>
+        <label>Topic<input type="text" maxlength="200" autofocus placeholder="What this channel is for" x-model="channelPrefs.channelTopicDraft" /></label>
+        <p class="profile-error" role="alert" x-show="channelPrefs.channelSettingsError" x-text="channelPrefs.channelSettingsError"></p>
+        <div class="profile-actions"><button type="button" class="btn-secondary" x-on:click="channelPrefs.closeChannelSettings()">Cancel</button><button type="submit" class="btn-primary" :class="channelPrefs.channelSettingsBusy && 'busy'" :disabled="channelPrefs.channelSettingsBusy || !channelPrefs.channelSettingsDirty()">Save</button></div>
+      </form>
+      <template x-if="channelPrefs.canArchiveChannel()">
+        <div class="channel-danger channel-archive">
+          <div class="channel-danger-row" x-show="!channelPrefs.channelArchiveOpen">
+            <p class="prefs-text"><strong x-text="channelPrefs.channelArchived() ? 'Archived' : 'Archive channel'"></strong><small x-text="channelPrefs.channelArchived() ? 'Read-only. Members can read it but nobody can post.' : 'Makes it read-only. It stays in the list and keeps its history.'"></small></p>
+            <button type="button" id="channel-archive-open" class="btn-secondary channel-danger-button" :disabled="channelPrefs.channelArchiveBusy" x-on:click="channelPrefs.askArchive()" x-text="channelPrefs.channelArchived() ? (channelPrefs.channelArchiveBusy ? 'Unarchiving…' : 'Unarchive') : 'Archive…'"></button>
+          </div>
+          <div class="prefs-confirm" x-show="channelPrefs.channelArchiveOpen">
+            <p>Archive <strong x-text="channelPrefs.channelSettings"></strong>? Members can still read it, but nobody can post until you unarchive it.</p>
+            <div class="prefs-confirm-actions">
+              <button type="button" class="btn-secondary" :disabled="channelPrefs.channelArchiveBusy" x-on:click="channelPrefs.cancelArchive()">Cancel</button>
+              <button type="button" id="channel-archive-confirm" class="btn-primary" :disabled="channelPrefs.channelArchiveBusy" x-on:click="channelPrefs.setArchived(true)" x-text="channelPrefs.channelArchiveBusy ? 'Archiving…' : 'Archive'"></button>
+            </div>
+          </div>
+          <p class="profile-error" role="alert" x-show="channelPrefs.channelArchiveError" x-text="channelPrefs.channelArchiveError"></p>
+        </div>
+      </template>
+      <template x-if="channelPrefs.canDeleteChannel()">
+        <div class="channel-danger">
+          <div class="channel-danger-row" x-show="!channelPrefs.channelDeleteOpen">
+            <p class="prefs-text"><strong>Delete channel</strong><small>Removes it for everyone, with its messages, threads and files.</small></p>
+            <button type="button" id="channel-delete-open" class="btn-secondary channel-danger-button" x-on:click="channelPrefs.askDelete()">Delete…</button>
+          </div>
+          <form class="prefs-confirm" x-show="channelPrefs.channelDeleteOpen" x-on:submit.prevent="channelPrefs.deleteChannel()">
+            <p>Delete <strong x-text="channelPrefs.channelSettings"></strong> for everyone? Its messages, threads, invites and files go with it, and members move to the default channel. You can't undo this.</p>
+            <label>Type <b x-text="channelPrefs.channelSettings"></b> to confirm<input id="channel-delete-name" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" x-model="channelPrefs.channelDeleteName" :disabled="channelPrefs.channelDeleteBusy" /></label>
+            <p class="profile-error" role="alert" x-show="channelPrefs.channelDeleteError" x-text="channelPrefs.channelDeleteError"></p>
+            <div class="prefs-confirm-actions">
+              <button type="button" class="btn-secondary" :disabled="channelPrefs.channelDeleteBusy" x-on:click="channelPrefs.cancelDelete()">Cancel</button>
+              <button type="submit" class="btn-danger" :disabled="channelPrefs.channelDeleteBusy || !channelPrefs.deleteNameMatches()" x-text="channelPrefs.channelDeleteBusy ? 'Deleting…' : 'Delete channel'"></button>
+            </div>
+          </form>
+        </div>
+      </template>
+    </section>
+  </dialog>

@@ -1,0 +1,9 @@
+{
+  "name": "slirc",
+  "version": "3.3.5",
+  "description": "Connect this Codex session to a Slirc workspace: Slirc requests arrive as turns and the model replies with slirc_reply.",
+  "license": "MIT",
+  "homepage": "https://app.slirc.org/docs/agents",
+  "hooks": "./hooks.json",
+  "mcpServers": "./.mcp.json"
+}

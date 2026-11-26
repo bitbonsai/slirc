@@ -1,0 +1,78 @@
+  <div x-data="admission" class="profile-page admission-page" data-phone-screen="admission" :class="isDesktop ? 'profile-page-desktop' : 'mobile-screen profile-screen'" x-cloak x-show="admissionRoute">
+    <div class="mobile-screen-head" x-show="!isDesktop">
+      <div class="home-brand">
+        <button class="home-brand profile-back" type="button" aria-label="Back" x-on:click="admission.goHome()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+        <strong>Join Slirc</strong>
+      </div>
+    </div>
+    <div class="profile-page-body" :class="{ 'mobile-screen-body': !isDesktop }">
+      <div class="mobile-spacer" x-show="!isDesktop"></div>
+      <section class="profile-dialog-card profile-screen-card admission-card" aria-labelledby="admission-title">
+        <div class="invite-heading">
+          <p class="join-eyebrow">Invitation</p>
+          <h1 id="admission-title" class="join-heading">Join Slirc</h1>
+          <p class="join-note" x-show="admission.token && !admission.redeemed">Pick a display name and you're in. No password.</p>
+        </div>
+
+        <template x-if="admission.started && !admission.token">
+          <div class="invitation-body">
+            <p class="profile-error" role="alert">This link is missing its invitation code. Open the link from your email again, or ask the founder for a new invitation.</p>
+            <button type="button" class="btn-secondary admission-dismiss" x-on:click="admission.goHome()">Go to Slirc</button>
+          </div>
+        </template>
+
+        <template x-if="admission.token && admission.redeemed">
+          <div class="invitation-body">
+            <h2>You are in</h2>
+            <p class="join-note">Signed in as <strong x-text="'@' + admission.redeemedNick"></strong>.</p>
+            <p class="join-note" x-show="admission.destination === 'founder'">This link asked to message the founder.</p>
+            <p class="join-note" x-show="admission.destination === 'help'">This link asked to get started with Help.</p>
+            <div class="admission-actions">
+              <button type="button" class="btn-primary" :disabled="!!admission.destinationBusy" x-on:click="admission.openDestination('help')" x-text="admission.destinationBusy === 'help' ? 'Opening Help…' : 'Open Help'"></button>
+              <button type="button" class="btn-secondary" :disabled="!!admission.destinationBusy" x-on:click="admission.openDestination('founder')" x-text="admission.destinationBusy === 'founder' ? 'Opening…' : 'Message founder'"></button>
+            </div>
+            <p class="profile-error" role="alert" x-show="admission.destinationError" x-text="admission.destinationError"></p>
+            <button type="button" class="link-button admission-dismiss" x-on:click="admission.goHome()">Not now</button>
+          </div>
+        </template>
+
+        <template x-if="admission.token && !admission.redeemed">
+          <div class="invitation-body">
+            <p class="profile-error" role="alert" x-show="admission.storageError" x-text="admission.storageError"></p>
+            <p class="profile-error" role="alert" x-show="admission.unavailable" x-text="admission.error"></p>
+
+            <div x-show="!authenticated && !admission.wrongAccount">
+              <div x-show="!admission.unavailable">
+                <p class="join-note" x-show="admission.attempted">Your first try may not have finished. Retry with the same name, in this browser.</p>
+                <form x-on:submit.prevent="admission.submit()">
+                  <label>Display name
+                    <input x-ref="admissionName" type="text" maxlength="80" autocomplete="nickname" required x-model="admission.name" :disabled="admission.attempted || admission.busy" x-effect="admissionRoute && !admission.attempted && !admission.redeemed && !booting && (!document.activeElement || document.activeElement === document.body) && $nextTick(() => $refs.admissionName?.focus())" />
+                  </label>
+                  <button type="submit" class="btn-primary" :disabled="admission.busy || (!admission.attempted && !admission.name.trim())" x-text="admission.busy ? 'Joining…' : (admission.attempted ? 'Retry joining' : 'Join Slirc')"></button>
+                </form>
+                <p class="profile-error" role="alert" x-show="admission.error && !admission.storageError && !admission.claimMismatch" x-text="admission.error"></p>
+                <p class="profile-error" role="alert" x-show="admission.claimMismatch" x-text="admission.error"></p>
+              </div>
+              <button type="button" class="link-button admission-dismiss" x-on:click="admission.requestSignIn()">Already have an account? Sign in</button>
+            </div>
+
+            <div x-show="authenticated && !admission.unavailable">
+              <p class="join-note">Signed in as <strong x-text="'@' + account"></strong>. If you already joined with this link, open Help or message the founder. To join as a new person, sign out first.</p>
+              <div class="admission-actions">
+                <button type="button" class="btn-primary" :disabled="!!admission.destinationBusy" x-on:click="admission.openDestination('help')" x-text="admission.destinationBusy === 'help' ? 'Opening Help…' : 'Open Help'"></button>
+                <button type="button" class="btn-secondary" :disabled="!!admission.destinationBusy" x-on:click="admission.openDestination('founder')" x-text="admission.destinationBusy === 'founder' ? 'Opening…' : 'Message founder'"></button>
+              </div>
+              <p class="profile-error" role="alert" x-show="admission.destinationError && !admission.wrongAccount" x-text="admission.destinationError"></p>
+            </div>
+
+            <div x-show="admission.wrongAccount">
+              <p class="profile-error" role="alert" x-text="admission.destinationError || admission.error || 'This invitation belongs to a different account. Sign out, then open the link from your email again.'"></p>
+              <button type="button" class="btn-secondary" x-on:click="admission.switchAccount()">Sign out and switch account</button>
+            </div>
+
+            <button type="button" class="link-button admission-dismiss" x-show="!authenticated || admission.wrongAccount" x-on:click="admission.goHome()">Not now</button>
+          </div>
+        </template>
+      </section>
+    </div>
+  </div>

@@ -1,0 +1,50 @@
+{
+  "name": "slirc-agent",
+  "version": "3.3.5",
+  "description": "Connect coding agents to Slirc rooms",
+  "keywords": [
+    "slirc",
+    "chat",
+    "agent",
+    "pi-package",
+    "coding-agent",
+    "cli"
+  ],
+  "homepage": "https://app.slirc.org/docs/agents",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bitbonsai/slirc.git",
+    "directory": "app/agent"
+  },
+  "bugs": {
+    "url": "https://github.com/bitbonsai/slirc/issues"
+  },
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "slirc-agent": "dist/slirc-agent.js"
+  },
+  "pi": {
+    "extensions": [
+      "./dist/pi-extension.js"
+    ]
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "HARNESSES.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "bun build src/bin.ts --target=node --outfile=dist/slirc-agent.js && bun build src/harnesses/pi/extension.ts --target=node --external typebox --outfile=dist/pi-extension.js && bun scripts/build-claude.ts && bun src/harnesses/codex/build.ts && bun src/harnesses/opencode/build.ts",
+    "test": "bun test",
+    "prepack": "bun run build"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18"
+  },
+  "peerDependencies": {
+    "typebox": "*"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "slirc",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "test": "cd app && for f in test/*.test.ts; do bun test \"$f\" || exit 1; done && cd agent && for f in test/*.test.ts src/harnesses/*/*.test.ts; do bun test \"$f\" || exit 1; done && cd ../../native && bun test",
+    "agent": "bun app/agent/src/cli.ts",
+    "agent:test": "cd app/agent && bun test",
+    "test:agent-e2e": "cd app && SLIRC_REQUIRE_PI=true bun test test/agent-session-pi-proof.test.ts",
+    "test:agent-browser-e2e": "cd app && SLIRC_PI_BROWSER_E2E=true bun test test/e2e-agent-pi-browser.test.ts",
+    "dev": "just dev",
+    "dev:down": "just dev-down",
+    "ship": "just deploy",
+    "ship:ergo": "just deploy-ergo",
+    "ship:landing": "just deploy-landing",
+    "ship:docs": "just deploy-docs",
+    "ship:logs": "just logs app",
+    "ship:status": "just status",
+    "native:sync": "cd native && bun run sync",
+    "native:ios": "cd native && bun run ios"
+  },
+  "devDependencies": {}
+}

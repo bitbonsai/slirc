@@ -1,0 +1,22 @@
+  <div x-data="openPeek" class="peek-shell" x-cloak x-show="peekRoom && !booting && !authenticated">
+    <aside class="rooms peek-rooms" aria-label="Channels" x-show="isDesktop && roomsOpen">
+      <div class="rooms-sheet">
+        <div class="section-head"><span class="section-title peek-section-title"><span>Channels</span></span></div>
+        <div class="channel-row"><button class="room active" type="button" data-peek-ok aria-current="page"><span class="room-mark channel open" aria-hidden="true"><span class="channel-hash">#</span></span><span class="room-name" x-text="peekRoom.replace(/^#/, '')"></span></button></div>
+        <p class="peek-more">Sign in to see other channels, DMs and threads.</p>
+      </div>
+      <div class="panel-footer">
+        <div class="profile-card">
+          <button type="button" class="profile-main peek-guest" aria-label="Guest. Sign in" x-on:click="signIn()">
+            <span class="profile-avatar peek-guest-avatar" aria-hidden="true" x-html="lucideIcon('user-round')"></span>
+            <span class="profile-copy"><strong>Guest</strong></span>
+            <span class="menu-icon" aria-hidden="true" style="width:1rem;height:1rem;color:var(--muted)"><svg viewBox="0 0 24 24" style="width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="m9 6 6 6-6 6"/></svg></span>
+          </button>
+        </div>
+      </div>
+    </aside>
+    <div class="archived-channel peek-bar" x-show="isDesktop || mobileNav === null" x-on:click="signIn()">
+      <input class="peek-input" type="text" readonly :placeholder="'Message ' + peekRoom" :aria-label="'Message ' + peekRoom + '. Sign in to post.'" x-on:focus="signIn()" x-on:keydown="if ($event.key.length === 1 || $event.key === 'Enter') { $event.preventDefault(); signIn() }" />
+      <button type="button" class="btn-primary" x-on:click.stop="signIn()">Sign in to post</button>
+    </div>
+  </div>

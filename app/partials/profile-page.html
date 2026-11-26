@@ -1,0 +1,83 @@
+  <div x-data="profilePage" class="profile-page" data-phone-screen="profile" :class="isDesktop ? 'profile-page-desktop' : 'mobile-screen profile-screen'" x-cloak x-show="authenticated && profileRoute">
+    <div class="mobile-screen-head profile-screen-head" x-show="!isDesktop">
+      <div class="home-brand profile-heading-nav">
+        <a class="home-brand profile-back" href="/more" aria-label="Back to More" x-on:click.prevent="openMore()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
+        <strong>Profile</strong>
+      </div>
+    </div>
+    <div class="profile-page-body" :class="{ 'mobile-screen-body': !isDesktop }">
+      <section class="profile-dialog-card profile-screen-card">
+        <div class="profile-heading">
+          <button type="button" class="profile-modal-avatar profile-photo-target" :class="profile.avatarBusy && 'uploading'" aria-label="Change profile picture" :disabled="profile.avatarBusy" x-on:click="$refs.profilePhoto.click()">
+            <img :src="avatarUrl(account)" alt="" x-on:error="$el.hidden = true" x-on:load="$el.hidden = false" />
+            <span class="avatar-change-overlay" aria-hidden="true" x-text="profile.avatarBusy ? 'Uploading…' : 'Change'"></span>
+          </button>
+          <div><h2><span x-text="me"></span><span class="admin-badge" x-show="isAdmin" role="img" aria-label="Administrator" x-html="lucideIcon('user-star')"></span></h2><p x-text="'@' + account"></p></div>
+          <input hidden name="avatar" type="file" accept="image/*" aria-label="Profile photo" x-ref="profilePhoto" x-on:change="profile.uploadAvatar($event)" />
+        </div>
+<!-- include: account-navigation -->
+        <p class="profile-error" role="alert" x-show="profile.avatarError" x-text="profile.avatarError"></p>
+        <p class="profile-note" role="status" x-show="profile.avatarNote" x-text="profile.avatarNote"></p>
+        <form class="profile-form" x-on:submit.prevent="profile.saveProfile()">
+          <div class="form-field">
+            <label>Display name<input type="text" name="fullName" maxlength="80" autocomplete="name" aria-describedby="profile-name-hint" x-model="profile.profileForm.fullName" /></label>
+            <p class="field-hint" id="profile-name-hint">Shown on your profile and in people search. Your handle stays <span x-text="'@' + account"></span>.</p>
+          </div>
+          <div class="profile-status-group">
+            <label for="profile-status-input">Status</label>
+            <div class="profile-status-row">
+              <button id="profile-badge-trigger" type="button" class="profile-badge-trigger" popovertarget="profile-badge-picker" :disabled="profile.profileSaving" :aria-label="'Status badge: ' + profile.badgeOption().label" :data-tooltip="'Status badge: ' + profile.badgeOption().label">
+                <span class="profile-badge-symbol" :data-badge="profile.profileForm.badge" x-text="profile.badgeOption().emoji" aria-hidden="true"></span>
+              </button>
+              <input id="profile-status-input" type="text" name="availability" maxlength="80" placeholder="What's your status?" x-model="profile.profileForm.availability" />
+            </div>
+          </div>
+          <div id="profile-badge-picker" class="profile-badge-picker" popover="auto" role="group" aria-label="Choose status badge" x-on:toggle="profile.badgePickerToggled($event)" x-effect="if (!profileRoute) profile.closeBadgePicker()">
+            <template x-for="option in profile.badgeOptions" :key="option.value">
+              <button type="button" :disabled="profile.profileSaving" :aria-pressed="profile.profileForm.badge === option.value" x-on:click="profile.chooseBadge(option.value)">
+                <span class="profile-badge-symbol" :data-badge="option.value" x-text="option.emoji" aria-hidden="true"></span><span x-text="option.label"></span><span class="profile-badge-check" x-show="profile.profileForm.badge === option.value" aria-hidden="true">✓</span>
+              </button>
+            </template>
+          </div>
+          <p class="profile-error" role="alert" x-show="profile.badgeError" x-text="profile.badgeError"></p>
+          <label>About<textarea name="about" rows="3" maxlength="280" placeholder="Add something about yourself" x-model="profile.profileForm.about"></textarea></label>
+          <div class="profile-meta" x-show="profile.profileEmail || profile.memberSince">
+            <p class="profile-member" x-show="profile.profileEmail"><a href="/docs/privacy#email-is-only-for-sign-in" target="_blank" rel="noopener">Verified</a> with <span x-text="profile.profileEmail"></span></p>
+            <p class="profile-member" x-show="profile.memberSince">Member since <span x-text="profile.memberSinceLabel()"></span></p>
+          </div>
+          <p class="profile-error" role="alert" x-show="profile.profileError" x-text="profile.profileError"></p>
+          <div class="profile-actions"><button type="button" class="link-button danger profile-signout" x-show="isDesktop" x-on:click="logout()">Sign out</button><button type="button" class="link-button profile-switch" x-show="isDesktop && canSwitchWorkspace" x-on:click="openWorkspaces()">Switch workspace</button><button type="submit" class="btn-primary profile-save" :disabled="profile.profileSaving || profile.badgeSaving || !profile.profileDirty()" x-text="profile.profileSaving ? 'Saving…' : 'Save profile'"></button></div>
+        </form>
+        <section class="profile-welcome profile-prefs">
+        <label class="theme-setting">Appearance<select data-theme-picker x-init="$el.value = document.documentElement.dataset.themePreference || 'system'"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+        <p class="field-hint">Syncs with your account. System follows this device's appearance.</p>
+        <button class="settings-toggle" type="button" role="switch" aria-label="Notifications" :aria-checked="settings.notificationsOn()" :disabled="!settings.notificationReady || settings.notificationBusy || settings.notificationLoading || settings.permission === 'denied' || settings.permission === 'unsupported'" x-on:click="settings.toggleNotifications()"><span><span class="menu-icon" aria-hidden="true" x-html="lucideIcon(settings.notificationsOn() ? 'bell' : 'bell-off')"></span><strong>Notifications</strong><small x-text="settings.notificationStatus()"></small></span><span x-text="settings.notificationBusy ? 'Updating…' : 'Change'"></span></button>
+        <p class="field-hint" x-show="settings.permission === 'denied'">Allow notifications in your browser's site settings, then reopen your profile.</p>
+        <p class="field-hint" x-show="settings.permission === 'unsupported'">Web push isn't available here. On iPhone, open Slirc from your Home Screen.</p>
+        <p class="profile-error" role="alert" x-show="settings.notificationError" x-text="settings.notificationError"></p>
+        <button type="button" class="link-button" x-show="settings.notificationError" :disabled="settings.notificationBusy || settings.notificationLoading" x-on:click="settings.loadNotifications()">Try again</button>
+        <button class="settings-toggle" type="button" role="switch" aria-label="G'day greeting in #open-chat" :aria-checked="greeting" :disabled="settings.greetingBusy" x-on:click="settings.toggleGreeting()"><span><span class="menu-icon" aria-hidden="true" x-html="lucideIcon(greeting ? 'bot' : 'eye-off')"></span><strong>G'day greeting in #open-chat</strong><small x-text="greeting ? 'On' : 'Off'"></small></span><span x-text="settings.greetingBusy ? 'Updating…' : 'Change'"></span></button>
+        <p class="field-hint">Show the daily greeting and notify me about it.</p>
+        <p class="profile-error" role="alert" x-show="settings.greetingError" x-text="settings.greetingError"></p>
+        </section>
+        <section class="profile-welcome" x-show="profile.welcome.state.available" x-cloak>
+          <button class="settings-toggle" type="button" role="switch" aria-label="Send my welcome to new members" :aria-checked="profile.welcome.state.enabled" :disabled="profile.welcome.state.busy" x-on:click="profile.welcome.setEnabled(!profile.welcome.state.enabled)">
+            <span>
+              <span class="menu-icon" aria-hidden="true" x-html="lucideIcon('mail')"></span>
+              <strong>Send my welcome to new members</strong>
+              <small x-text="profile.welcome.state.enabled ? (profile.welcome.state.pending ? profile.welcome.state.pending + ' waiting' : 'On') : 'Off'"></small>
+            </span>
+            <span x-text="profile.welcome.state.busy ? 'Saving…' : (profile.welcome.state.enabled ? 'On' : 'Off')"></span>
+          </button>
+          <p class="field-hint">Each new member who verifies while this is on gets a private message from you. If you're offline, it waits until you next sign in.</p>
+          <p class="profile-note" role="status" x-show="profile.welcome.state.note" x-text="profile.welcome.state.note"></p>
+        </section>
+        <p class="profile-note" role="status" x-show="profile.profileNote" x-text="profile.profileNote"></p>
+        <div class="more-card profile-account-rows" x-show="!isDesktop">
+          <a class="mobile-row" href="/settings" x-on:click.prevent="openSettings()"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('smartphone')"></span><span class="mobile-row-main"><strong>Devices</strong></span><span class="workspace-row-end" aria-hidden="true" x-html="lucideIcon('chevron-right')"></span></a>
+          <a class="mobile-row" href="/clients" x-on:click.prevent="openIrc()"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('terminal')"></span><span class="mobile-row-main"><strong>IRC clients</strong></span><span class="workspace-row-end" aria-hidden="true" x-html="lucideIcon('chevron-right')"></span></a>
+          <button type="button" class="mobile-row danger" x-on:click="logout()"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('log-out')"></span><span class="mobile-row-main"><strong>Sign out</strong></span></button>
+        </div>
+      </section>
+    </div>
+  </div>

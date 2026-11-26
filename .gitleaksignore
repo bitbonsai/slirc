@@ -1,0 +1,7 @@
+# Test fixture token in auth-code.test.ts, not a secret
+4dee1a506940549d36267cac077ddafdac4e34f4:app/test/auth-code.test.ts:generic-api-key:47
+app/test/auth-code.test.ts:generic-api-key:57
+# Dev Ergo API volume names, not secrets
+app/scripts/dev-reset.ts:generic-api-key:26
+app/test/dev-profile.test.ts:generic-api-key:38
+scripts/just/dev.just:generic-api-key:12

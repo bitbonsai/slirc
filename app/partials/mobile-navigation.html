@@ -1,0 +1,628 @@
+  <nav class="mobile-nav" x-data="tabBar" x-cloak x-show="!isDesktop && authenticated && !joinRoute && phoneTabBar()">
+    <button type="button" :class="{ active: isActive('home') }" aria-label="Home" x-on:click="select('home')">
+      <img class="menu-icon" src="/icons/ui/nav-home.svg?v=69682edb" alt="" />
+      <span class="nav-label">Home</span>
+      <span class="nav-dot" aria-hidden="true" x-show="homeDot()"></span>
+    </button>
+    <button
+      type="button"
+      :class="{ active: isActive('dms') }"
+      aria-label="Direct messages"
+      x-on:click="select('dms')"
+    >
+      <img class="menu-icon" src="/icons/ui/nav-dms.svg?v=d7e66ce2" alt="" />
+      <span class="nav-label">DMs</span>
+      <span class="nav-dot" aria-hidden="true" x-show="dmsDot()"></span>
+    </button>
+    <button type="button" :class="{ active: isActive('more') }" aria-label="More" x-on:click="select('more')">
+      <img class="menu-icon" src="/icons/ui/nav-more.svg?v=3e9d4ae9" alt="" />
+      <span class="nav-label">More</span>
+    </button>
+  </nav>
+
+  <button
+    type="button"
+    class="mobile-profile mobile-profile-fixed"
+    aria-label="Your profile"
+    x-cloak
+    x-show="!isDesktop && authenticated && mobileNav !== null && mobileNav !== 'more'"
+    x-on:click="openProfile()"
+  >
+    <img :src="avatarUrl(account)" alt="" />
+  </button>
+
+  <div
+    class="mobile-screen"
+    data-phone-screen="home"
+    x-cloak
+    x-show="authenticated && !isDesktop && mobileNav === 'home'"
+  >
+    <div class="mobile-screen-head tab-screen-head">
+      <a class="home-brand" href="/" x-on:click.prevent="openHome()">
+        <img src="/logo.webp" alt="" />
+        <strong>Home</strong>
+      </a>
+    </div>
+    <div class="pull-indicator" x-data="pullRefresh('list')" :class="['is-' + pullState, pullArmed() && 'armed']" :style="pullStyle()"><img class="pull-logo" src="/logo.webp" alt="" /><span class="pull-label" role="status" x-text="pullLabel()"></span></div>
+    <div class="mobile-screen-body">
+      <div class="mobile-spacer"></div>
+      <p class="notify-banner install-banner" x-cloak x-show="installBanner">
+        <span>Put Slirc on your Home Screen.</span>
+        <a href="/welcome">See how</a>
+        <button
+          type="button"
+          class="notify-banner-close"
+          aria-label="Hide Home Screen tip"
+          x-on:click="dismissInstallBanner()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/lucide/sprite.svg#x"></use></svg>
+        </button>
+      </p>
+      <div
+        class="draft-section"
+        x-show="starredItems().length"
+        x-transition:enter="draft-enter"
+        x-transition:enter-start="draft-enter-start"
+        x-transition:enter-end="draft-enter-end"
+        x-transition:leave="draft-leave"
+        x-transition:leave-start="draft-leave-start"
+        x-transition:leave-end="draft-leave-end"
+      >
+        <div class="draft-section-inner">
+          <button
+            type="button"
+            class="mobile-section-label mobile-section-toggle"
+            :class="!starredOpen && 'collapsed'"
+            :aria-expanded="starredOpen"
+            x-on:click="starredOpen = !starredOpen"
+          >
+            <span>Starred</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+          </button>
+          <div x-show="starredOpen">
+            <template x-for="item in starredItems()" :key="'mobile-starred-' + item.conversationId">
+              <div
+                class="draft-section star-item"
+                x-transition:enter="draft-enter"
+                x-transition:enter-start="draft-enter-start"
+                x-transition:enter-end="draft-enter-end"
+                x-transition:leave="draft-leave"
+                x-transition:leave-start="draft-leave-start"
+                x-transition:leave-end="draft-leave-end"
+              >
+                <div class="draft-section-inner">
+                  <div class="draft-mobile-row">
+                    <button
+                      type="button"
+                      class="mobile-row"
+                      :class="item.kind === 'dm' && isMuted('dm:' + item.conversationId) && 'muted-room'"
+                      x-on:click="item.kind === 'dm' ? openDirect(item.nick) : openRoom(item.wireTarget)"
+                    >
+                      <template x-if="item.kind === 'dm'">
+                        <span
+                          class="room-mark peer-avatar avatar-status-host"
+                          aria-hidden="true"
+                          :data-status="avatarStatus(item.nick)"
+                        >
+                          <span>@</span>
+                          <img
+                            :src="avatarUrl(item.nick)"
+                            alt=""
+                            x-on:error="$el.hidden = true"
+                            x-on:load="$el.hidden = false"
+                          />
+                        </span>
+                      </template>
+                      <template x-if="item.kind !== 'dm'">
+                        <span
+                          class="room-mark channel"
+                          aria-hidden="true"
+                          :class="isOpenRoom(item.wireTarget) && 'open'"
+                        >
+                          <span class="lock-icon" x-show="!isOpenRoom(item.wireTarget)"></span>
+                          <span class="channel-hash" x-show="isOpenRoom(item.wireTarget)">#</span>
+                        </span>
+                      </template>
+                      <span class="sr-only" x-show="item.kind === 'dm'" x-text="avatarStatusLabel(item.nick)"></span>
+                      <span class="mobile-row-main">
+                        <strong x-text="item.label"></strong>
+                      </span>
+                      <span
+                        class="unread-badge"
+                        x-show="unreadCount(item.conversationId)"
+                        x-text="badgeText(item.conversationId)"
+                      ></span>
+                    </button>
+                    <button
+                      type="button"
+                      class="draft-delete"
+                      aria-label="Unstar conversation"
+                      x-tooltip
+                      x-on:click.stop="toggleStar(item.conversationId)"
+                      x-html="lucideIcon('star')"
+                    ></button>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+      <div
+        class="draft-section"
+        x-show="draftsList().length"
+        x-transition:enter="draft-enter"
+        x-transition:enter-start="draft-enter-start"
+        x-transition:enter-end="draft-enter-end"
+        x-transition:leave="draft-leave"
+        x-transition:leave-start="draft-leave-start"
+        x-transition:leave-end="draft-leave-end"
+      >
+        <div class="draft-section-inner">
+          <button
+            type="button"
+            class="mobile-section-label mobile-section-toggle"
+            :class="!draftsOpen && 'collapsed'"
+            :aria-expanded="draftsOpen"
+            x-on:click="draftsOpen = !draftsOpen"
+          >
+            <span>Drafts</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+          </button>
+          <div x-show="draftsOpen">
+            <template x-for="draft in draftsList()" :key="'mobile-draft-' + draft.conversationId">
+              <div class="draft-mobile-row">
+                <button type="button" class="mobile-row" x-on:click="openDraft(draft.conversationId)">
+                  <span class="room-mark" aria-hidden="true">
+                    <span class="menu-icon" x-html="lucideIcon('pencil')"></span>
+                  </span>
+                  <span class="mobile-row-main">
+                    <strong x-text="draft.label"></strong>
+                    <small x-text="draft.text"></small>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  class="draft-delete"
+                  :aria-label="'Delete draft for ' + draft.label"
+                  x-tooltip
+                  x-on:click.stop="deleteDraft(draft.conversationId)"
+                  x-html="lucideIcon('trash')"
+                ></button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+      <div class="mobile-section-head">
+        <p class="mobile-section-label">Channels</p>
+        <button class="plus-button" type="button" aria-label="Create a channel" x-on:click="openChannels()">
+          <img src="/icons/ui/plus.svg?v=555549fc" alt="" />
+        </button>
+      </div>
+      <div class="mobile-group">
+        <template x-for="item in channelList()" :key="item.conversationId">
+          <div>
+            <div class="draft-mobile-row">
+              <button type="button" class="mobile-row" x-on:click="openRoom(item.wireTarget)">
+                <span
+                  class="room-mark channel"
+                  aria-hidden="true"
+                  :class="isOpenRoom(item.wireTarget) && 'open'"
+                >
+                  <span class="lock-icon" x-show="!isOpenRoom(item.wireTarget)"></span>
+                  <span class="channel-hash" x-show="isOpenRoom(item.wireTarget)">#</span>
+                </span>
+                <span class="mobile-row-main">
+                  <strong x-text="roomLabelFor(item.wireTarget)"></strong>
+                </span>
+                <span
+                  class="unread-badge"
+                  x-show="unreadCount(item.conversationId)"
+                  x-text="badgeText(item.conversationId)"
+                ></span>
+              </button>
+              <button
+                type="button"
+                class="draft-delete"
+                x-tooltip
+                :aria-label="isStarred(item.conversationId) ? 'Unstar channel' : 'Star channel'"
+                x-on:click.stop="toggleStar(item.conversationId)"
+                x-html="lucideIcon('star')"
+              ></button>
+            </div>
+            
+          </div>
+        </template>
+      </div>
+      <button
+        type="button"
+        class="mobile-section-label mobile-section-toggle"
+        x-show="replyThreads.items.length"
+        :class="!replyThreads.listOpen && 'collapsed'"
+        :aria-expanded="replyThreads.listOpen"
+        x-on:click="replyThreads.toggle()"
+      >
+        <span>Threads</span>
+        <span
+          class="unread-badge"
+          x-show="!replyThreads.listOpen && replyThreads.unreadTotal()"
+          x-text="replyThreads.badge(replyThreads.unreadTotal())"
+          :aria-label="replyThreads.unreadTotal() + ' unread'"
+        ></span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+      </button>
+      <div x-show="replyThreads.items.length && replyThreads.listOpen">
+        <template x-for="thread in replyThreads.visible().shown" :key="'mobile-reply-thread-' + thread.rootId">
+          <button type="button" class="mobile-row" x-on:click="replyThreads.open(thread)">
+            <span class="room-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" style="width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="m15 10 5 5-5 5"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/></svg>
+            </span>
+            <span class="mobile-row-main">
+              <strong x-text="thread.title"></strong>
+              <small x-text="thread.label"></small>
+            </span>
+            <span class="unread-badge" x-show="thread.unread" x-text="replyThreads.badge(thread.unread)"></span>
+          </button>
+        </template>
+        <button
+          type="button"
+          class="mobile-row"
+          x-show="replyThreads.visible().more > 0 || replyThreads.collapsible()"
+          x-on:click="replyThreads.toggleExpanded()"
+        >
+          <span class="room-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" style="width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+          </span>
+          <span class="mobile-row-main">
+            <strong x-text="replyThreads.expanded ? 'Show fewer' : replyThreads.visible().more + ' more threads'"></strong>
+          </span>
+        </button>
+      </div>
+      
+      
+    </div>
+  </div>
+
+  <div
+    class="mobile-screen"
+    data-phone-screen="dms"
+    x-cloak
+    x-show="authenticated && !isDesktop && mobileNav === 'dms'"
+  >
+    <div class="mobile-screen-head tab-screen-head">
+      <span class="home-brand">
+        <img src="/icons/ui/nav-dms.svg" alt="" />
+        <strong>Direct messages</strong>
+      </span>
+      <button
+        class="plus-button"
+        type="button"
+        aria-label="New conversation"
+        x-on:click="newConversation.open($event)"
+      >
+        <img src="/icons/ui/plus.svg?v=555549fc" alt="" />
+      </button>
+    </div>
+    <div class="pull-indicator" x-data="pullRefresh('list')" :class="['is-' + pullState, pullArmed() && 'armed']" :style="pullStyle()"><img class="pull-logo" src="/logo.webp" alt="" /><span class="pull-label" role="status" x-text="pullLabel()"></span></div>
+    <div class="mobile-screen-body">
+      <div class="mobile-spacer"></div>
+      <div class="draft-mobile-row">
+        <button type="button" class="mobile-row notes-row" x-on:click="openNotes()">
+          <span class="room-mark" aria-hidden="true">
+            <span class="menu-icon" x-html="lucideIcon('notebook-pen')"></span>
+          </span>
+          <span class="mobile-row-main">
+            <strong>Notes</strong>
+          </span>
+        </button>
+      </div>
+      <button
+        type="button"
+        class="mobile-section-label mobile-section-toggle"
+        x-show="agentList().length"
+        :class="!agentsOpen && 'collapsed'"
+        :aria-expanded="agentsOpen"
+        x-on:click="agentsOpen = !agentsOpen"
+      >
+        <span>Agents</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+      </button>
+      <div x-show="agentsOpen">
+        <template x-for="item in agentList()" :key="'m-agent-' + item.nick">
+          <div>
+            <div class="draft-mobile-row">
+              <button
+                type="button"
+                class="mobile-row"
+                :class="isMuted('dm:' + conversationIdForDm(item.channel)) && 'muted-room'"
+                :disabled="directBusy === item.nick"
+                x-on:click="openDirect(item.nick)"
+              >
+                <span
+                  class="room-mark peer-avatar avatar-status-host"
+                  aria-hidden="true"
+                  :data-status="avatarStatus(item.nick)"
+                >
+                  <span>@</span>
+                  <img
+                    loading="lazy"
+                    :src="avatarUrl(item.nick)"
+                    alt=""
+                    x-on:error="$el.hidden = true"
+                    x-on:load="$el.hidden = false"
+                  />
+                </span>
+                <span class="mobile-row-main">
+                  <strong x-text="item.label"></strong>
+                  <span class="sr-only" x-text="avatarStatusLabel(item.nick)"></span>
+                </span>
+                <span
+                  class="unread-badge"
+                  x-show="unreadCount(conversationIdForDm(item.channel))"
+                  x-text="badgeText(conversationIdForDm(item.channel))"
+                ></span>
+              </button>
+              <button
+                type="button"
+                class="draft-delete"
+                x-show="item.channel"
+                x-tooltip
+                :aria-label="isStarred(conversationIdForDm(item.channel)) ? 'Unstar agent' : 'Star agent'"
+                x-on:click.stop="toggleStar(conversationIdForDm(item.channel))"
+                x-html="lucideIcon('star')"
+              ></button>
+            </div>
+            
+          </div>
+        </template>
+      </div>
+      <button
+        type="button"
+        class="mobile-section-label mobile-section-toggle"
+        x-show="directList().length || groupList().length"
+        :class="!peopleOpen && 'collapsed'"
+        :aria-expanded="peopleOpen"
+        x-on:click="peopleOpen = !peopleOpen"
+      >
+        <span>People</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+      </button>
+      <div x-show="peopleOpen">
+        <template x-for="item in directList()" :key="item.conversationId || item.channel">
+          <div>
+            <div class="draft-mobile-row">
+              <button
+                type="button"
+                class="mobile-row"
+                :class="isMuted('dm:' + conversationIdForDm(item.channel)) && 'muted-room'"
+                x-on:click="openDirect(item.nick)"
+                :data-tooltip="item.nick + ' · ' + avatarStatusLabel(item.nick)"
+                x-tooltip
+              >
+                <span
+                  class="room-mark peer-avatar avatar-status-host"
+                  aria-hidden="true"
+                  :data-status="avatarStatus(item.nick)"
+                >
+                  <span>@</span>
+                  <img
+                    loading="lazy"
+                    :src="avatarUrl(item.nick)"
+                    alt=""
+                    x-on:error="$el.hidden = true"
+                    x-on:load="$el.hidden = false"
+                  />
+                </span>
+                <span class="mobile-row-main">
+                  <strong x-text="item.nick"></strong>
+                  <span class="sr-only" x-text="avatarStatusLabel(item.nick)"></span>
+                </span>
+                <span
+                  class="unread-badge"
+                  x-show="unreadCount(conversationIdForDm(item.channel))"
+                  x-text="badgeText(conversationIdForDm(item.channel))"
+                ></span>
+              </button>
+              <button
+                type="button"
+                class="draft-delete"
+                x-show="!item.pending"
+                x-tooltip
+                :aria-label="isStarred(conversationIdForDm(item.channel)) ? 'Unstar direct message' : 'Star direct message'"
+                x-on:click.stop="toggleStar(conversationIdForDm(item.channel))"
+                x-html="lucideIcon('star')"
+              ></button>
+            </div>
+            
+          </div>
+        </template>
+        <template x-for="item in groupList()" :key="'m-group-' + item.conversationId">
+          <div class="draft-mobile-row">
+            <button type="button" class="mobile-row" x-on:click="openRoom(item.wireTarget)">
+              <span
+                class="room-mark channel"
+                aria-hidden="true"
+                :class="isOpenRoom(item.wireTarget) && 'open'"
+              >
+                <span class="lock-icon" x-show="!isOpenRoom(item.wireTarget)"></span>
+                <span class="channel-hash" x-show="isOpenRoom(item.wireTarget)">#</span>
+              </span>
+              <span class="mobile-row-main">
+                <strong x-text="roomLabelFor(item.wireTarget)"></strong>
+              </span>
+              <span
+                class="unread-badge"
+                x-show="unreadCount(item.conversationId)"
+                x-text="badgeText(item.conversationId)"
+              ></span>
+            </button>
+            <button
+              type="button"
+              class="draft-delete"
+              x-tooltip
+              :aria-label="isStarred(item.conversationId) ? 'Unstar group' : 'Star group'"
+              x-on:click.stop="toggleStar(item.conversationId)"
+              x-html="lucideIcon('star')"
+            ></button>
+          </div>
+        </template>
+      </div>
+      <p
+        class="mobile-empty"
+        x-show="!agentList().length && !directList().length && !groupList().length && !starredItems().some((item) => item.kind === 'dm') && !contactList().length"
+      >No direct messages yet.</p>
+      <button
+        type="button"
+        class="mobile-section-label mobile-section-toggle"
+        x-show="contactList().length"
+        :class="!contactsOpen && 'collapsed'"
+        :aria-expanded="contactsOpen"
+        x-on:click="contactsOpen = !contactsOpen"
+      >
+        <span>Contacts</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+      </button>
+      <div x-show="contactsOpen">
+        <template x-for="nick in contactList()" :key="'contact-' + nick">
+          <button
+            type="button"
+            class="mobile-row"
+            :disabled="directBusy === nick"
+            x-on:click="openDirect(nick)"
+            :data-tooltip="nick + ' · ' + avatarStatusLabel(nick)"
+            x-tooltip
+          >
+            <span
+              class="room-mark peer-avatar avatar-status-host"
+              aria-hidden="true"
+              :data-status="avatarStatus(nick)"
+            >
+              <span>@</span>
+              <img
+                loading="lazy"
+                :src="avatarUrl(nick)"
+                alt=""
+                x-on:error="$el.hidden = true"
+                x-on:load="$el.hidden = false"
+              />
+            </span>
+            <span class="mobile-row-main">
+              <strong x-text="nick"></strong>
+              <span class="sr-only" x-text="avatarStatusLabel(nick)"></span>
+            </span>
+          </button>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <div
+    class="mobile-screen"
+    data-phone-screen="more"
+    x-cloak
+    x-show="authenticated && !isDesktop && mobileNav === 'more'"
+  >
+    <div class="mobile-screen-head tab-screen-head">
+      <span class="home-brand">
+        <img src="/icons/ui/nav-more.svg" alt="" />
+        <strong>More</strong>
+      </span>
+    </div>
+    <div class="pull-indicator" x-data="pullRefresh('list')" :class="['is-' + pullState, pullArmed() && 'armed']" :style="pullStyle()"><img class="pull-logo" src="/logo.webp" alt="" /><span class="pull-label" role="status" x-text="pullLabel()"></span></div>
+    <div class="mobile-screen-body">
+      <div class="mobile-spacer"></div>
+      <div class="more-card">
+        <button type="button" class="mobile-row more-profile-row" x-on:click="openProfile()">
+          <span class="more-avatar" aria-hidden="true">
+            <img :src="avatarUrl(account)" alt="" />
+          </span>
+          <span class="mobile-row-main">
+            <strong>
+              <span x-text="account"></span>
+              <span
+                class="admin-badge"
+                x-show="isAdmin"
+                role="img"
+                aria-label="Administrator"
+                x-html="lucideIcon('user-star')"
+              ></span>
+            </strong>
+            <small>Profile, devices, sign out</small>
+          </span>
+          <span class="workspace-row-end" aria-hidden="true" x-html="lucideIcon('chevron-right')"></span>
+        </button>
+      </div>
+      <div class="more-card">
+        <button
+          type="button"
+          class="mobile-row workspace-row-more"
+          aria-haspopup="dialog"
+          :aria-label="'Switch workspace, current: ' + workspace.name + (workspaceCount() > 1 ? ', ' + workspaceCount() + ' saved' : '')"
+          x-on:click="openWorkspaces()"
+        >
+          <span
+            class="workspace-badge"
+            aria-hidden="true"
+            :class="workspace.logo ? 'logo' : workspace.iconReady ? 'logo icon' : ''"
+            :style="workspace.logo || workspace.iconReady ? '' : 'background:' + workspace.color"
+          >
+            <img
+              x-show="workspace.logo || workspace.iconReady"
+              :src="workspace.logo || workspace.icon || null"
+              alt=""
+              x-on:load="if (!workspace.logo) workspace.iconReady = true"
+              x-on:error="workspace.iconReady = false"
+            />
+            <span x-show="!workspace.logo && !workspace.iconReady" x-text="workspace.letter"></span>
+          </span>
+          <span class="mobile-row-main">
+            <strong x-text="workspace.name"></strong>
+          </span>
+          <span class="workspace-count" x-show="workspaceCount() > 1" x-text="workspaceCount()" aria-hidden="true"></span>
+          <span class="workspace-row-end" aria-hidden="true" x-html="lucideIcon('chevron-right')"></span>
+        </button>
+        <a class="mobile-row" href="/invitations" x-on:click.prevent="openInvitations()">
+          <span class="menu-icon" aria-hidden="true" x-html="lucideIcon('mail')"></span>
+          <span class="mobile-row-main">
+            <strong>Invitations</strong>
+          </span>
+        </a>
+        <a class="mobile-row" href="/agents" x-on:click.prevent="openAgents()">
+          <span class="menu-icon" aria-hidden="true" x-html="lucideIcon('bot')"></span>
+          <span class="mobile-row-main">
+            <strong>Agents</strong>
+          </span>
+        </a>
+        <a class="mobile-row" href="/admin" x-show="isAdmin" x-on:click.prevent="openAdmin()">
+          <span class="menu-icon" aria-hidden="true" x-html="lucideIcon('user-star')"></span>
+          <span class="mobile-row-main">
+            <strong>Admin</strong>
+          </span>
+        </a>
+        <a
+          class="mobile-row"
+          x-show="iphoneAppUrl"
+          x-effect="authenticated && !booting && mobileNav === 'more' && loadIphoneApp(account)"
+          :href="iphoneAppUrl || null"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span class="menu-icon" aria-hidden="true" x-html="lucideIcon('external-link')"></span>
+          <span class="mobile-row-main">
+            <strong>Get the iPhone app</strong>
+            <small>TestFlight beta</small>
+          </span>
+        </a>
+      </div>
+      <div class="more-card">
+        <a class="mobile-row" href="/docs">
+          <span class="menu-icon" aria-hidden="true" x-html="lucideIcon('info')"></span>
+          <span class="mobile-row-main">
+            <strong>Help &amp; docs</strong>
+            <small x-text="aboutLabel">Slirc 2</small>
+          </span>
+        </a>
+      </div>
+    </div>
+  </div>

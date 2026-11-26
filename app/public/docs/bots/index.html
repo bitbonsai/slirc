@@ -1,0 +1,150 @@
+<!-- generated from app/docs/*.md — edit there, then run: bun run docs -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#11111b" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="description" content="Slirc's helpers for reminders, help and polls, and IRC bot accounts your own scripts log in as." />
+  <title>Bots · Slirc docs</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="alternate" type="text/markdown" href="/docs/bots.md" />
+  <script src="/theme.js?v=844fef47"></script>
+  <link rel="stylesheet" href="/docs/docs.css?v=39" />
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="app-back" id="app-back" hidden><a class="app-back-link" href="/more" aria-label="Back to Slirc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 4 12l7 7"/></svg>Back</a></div>
+
+  <header class="topbar">
+    <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Open documentation menu" aria-expanded="false" aria-controls="docs-nav">
+      <svg class="menu-icon menu-bars" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>
+      <svg class="menu-icon menu-close" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+    <a class="brand" href="/docs"><img class="brand-lockup" src="/brand-org-dark.svg" width="233" height="73" alt="Slirc" /><span class="tag">docs</span></a>
+    <button class="search-toggle" id="search-toggle" type="button" aria-label="Search the docs" aria-expanded="false" aria-controls="docs-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 4.5 4.5"/></svg>
+    </button>
+    <div class="docs-search" id="docs-search" role="search" data-docs-search>
+      <label class="visually-hidden" for="docs-search-input">Search the docs</label>
+      <span class="docs-search-field">
+        <svg class="docs-search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5"/></svg>
+        <input id="docs-search-input" class="docs-search-input" type="search" placeholder="Search docs…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="docs-search-results" aria-autocomplete="list" />
+        <kbd class="docs-search-key" aria-hidden="true">⌘K</kbd>
+      </span>
+      <div id="docs-search-results" class="docs-search-results" role="listbox" aria-label="Search results" hidden></div>
+      <p class="docs-search-status visually-hidden" aria-live="polite"></p>
+    </div>
+    <a class="open-app-mobile" href="/open-chat">Open chat</a>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" id="docs-nav" aria-label="Documentation" hidden>
+      <div class="nav-content">
+      <a class="nav-link nav-app" href="/open-chat">Open chat</a>
+      <p class="nav-section">Guides</p>
+      <a class="nav-link" href="/docs">Home</a>
+      <a class="nav-link" href="/docs/getting-started">Getting started</a>
+      <a class="nav-link" href="/docs/download">Download</a>
+      <a class="nav-link" href="/docs/channels">Channels & invites</a>
+      <a class="nav-link" href="/docs/messages">Messages & media</a>
+      <a class="nav-link sub" href="/docs/threads">Threads</a>
+      <a class="nav-link" href="/docs/notifications">Notifications</a>
+      <a class="nav-link" href="/docs/privacy">Privacy & safety</a>
+      <p class="nav-section">Connect</p>
+      <a class="nav-link" href="/docs/clients">IRC clients</a>
+      <a class="nav-link" href="/docs/agents">Agents</a>
+      <a class="nav-link active" href="/docs/bots" aria-current="page">Bots</a>
+      <a class="nav-link" href="/docs/setup">Self-hosting</a>
+      <p class="nav-section">Reference</p>
+      <a class="nav-link" href="/docs/design">Design system</a>
+      <p class="nav-section">About</p>
+      <a class="nav-link" href="/docs/about">About Slirc</a>
+      <a class="nav-link" href="/docs/comparison">Footprint</a>
+      <a class="nav-link" href="/docs/faq">FAQ</a>
+      </div>
+    </nav>
+
+    <main id="main">
+      <div class="callout info prelaunch-note"><p>Slirc is in early access. Come say hi in <a href="/open-chat">#open-chat</a>.</p></div>
+      <p class="crumb">Connect / Bots</p>
+      <h1>Bots</h1>
+      <p class="lead">A bot is an IRC account your own script logs in as. Slirc also runs its own helpers for reminders, help and polls.</p>
+<h2 id="what-a-bot-is">What a bot is</h2>
+<p>Slirc does not run your code. A bot is a normal IRC account with a name you choose. Your script connects to the IRC server with that name and password, joins channels, and sends messages. What it says appears in Slirc and in every other IRC client.</p>
+<p>Use a bot when the thing speaking isn't you in a conversation, such as a build server, a status page or a script that answers one question. For work you drive yourself, connect a <a href="/docs/agents">personal agent</a>.</p>
+<h2 id="create-a-bot">Create a bot</h2>
+<p>Admins create bots on the <strong>Admin</strong> page, under <strong>Bots</strong>. Type a name and choose <strong>Create bot</strong>. Slirc shows the bot's password once, with a <strong>Copy</strong> button. Put it in your script, then choose <strong>Done</strong>; the password can't be shown again.</p>
+<p>Lost a password, or think it leaked? Choose <strong>New password</strong> on the bot's row. The old one stops working at once and the new one appears once, the same way. <strong>Remove</strong> deletes the bot's IRC account and takes it out of every channel.</p>
+<p>Bot names are shared with people and agents, so a name that is already taken becomes <code>name-yournick</code>.</p>
+<h2 id="connect-your-script">Connect your script</h2>
+<p>Clients connect to <code>chat.example.com</code> on port <code>6697</code> with TLS and SASL PLAIN:</p>
+<pre><code class="language-text">nick: the bot's name
+password: the password Slirc showed you
+</code></pre>
+<p>Any IRC client library works, in any language, because the bot is an ordinary IRC client.</p>
+<h2 id="invite-it-to-a-channel">Invite it to a channel</h2>
+<p>A bot joins a channel the same way a person does:</p>
+<pre><code class="language-text">/invite @deploy-yournick
+</code></pre>
+<p>A note appears at the bottom of the channel, <code>Add @deploy-yournick to #yourchannel?</code>, with <strong>Add</strong> and <strong>Dismiss</strong>. Choose <strong>Add</strong> and the bot joins. Only you see the note. Anyone in the channel can add it. After that the bot reads and posts there like any other member, and Slirc marks it with a <code>bot</code> badge.</p>
+<h2 id="reminders-help-and-polls-remind-help-poll">Reminders, help, and polls: <code>@remind</code>, <code>@help</code>, <code>@poll</code></h2>
+<p><code>@remind</code>, <code>@help</code> and <code>@poll</code> are helpers Slirc runs for you. A fourth, <code>@welcome</code>, lives in <code>#open-chat</code> and posts a daily G'day gif there, which you can hide for yourself on your profile (see <a href="/docs/notifications">notifications</a>). Each server picks which helpers it runs, so one you don't see in <code>/</code> may be off on yours.</p>
+<p>Just mention the helper. For <code>@help</code> and <code>@poll</code>, if the helper isn't in the channel yet, a note under your message says <code>@poll isn't in #design.</code> (or names the group) with <strong>Add</strong> and <strong>Dismiss</strong>. Choose it and the helper joins and answers the message you already sent, so you don't send it again. Only you see the note, and a helper never joins without that click. <code>/invite @poll</code> adds it ahead of time. Helpers can't join DMs with other people or threads.</p>
+<p>A message that starts with <code>@remind</code> is private: Slirc sets the reminder for you, shows the confirmation as a notice, and does not post the message in the channel. <code>@remind</code> never needs to join a channel.</p>
+<p><code>@remind</code> keeps a schedule of reminders. Exact times work without a model, and configured instances also understand natural phrasing:</p>
+<pre><code class="language-text">@remind in 20m stretch
+@remind tomorrow 9:00 pick up cake
+@remind next Friday morning call Mum
+@remind list
+@remind cancel 1
+</code></pre>
+<p><code>/remind in 20m stretch</code> does the same thing. <code>@remind list</code> or <code>/remind list</code> opens your DM with <code>@remind</code> and posts your next six reminders there, one per line, and says when more remain. Each line shows when it fires, such as <code>Tomorrow at 9:00</code> or <code>In 20 minutes, 14:32</code> on your clock, then what it's about, then a link back to the message when it came from <strong>Remind me</strong>. The numbers reflect the current list, starting at 1; cancel one with <code>@remind cancel 1</code>.</p>
+<p>To remember a message, open its <strong>⋮</strong> menu (on a phone, press and hold the message) and choose <strong>Remind me</strong>, then pick <strong>In 20 minutes</strong>, <strong>In 1 hour</strong> or <strong>Tomorrow at 9:00</strong>. Slirc sets the reminder with a short quote and a link back to the message, and the confirmation shows as a notice. When it fires, the quote shows as a quote block with a short link such as <strong>View in #general</strong> that opens the message. <strong>Custom…</strong> shows a date and time field instead, set to the next full hour; pick any time within the next year and choose <strong>Set reminder</strong>, or <strong>Back</strong> to return to the times.</p>
+<p>Reminders always arrive in your DM with <code>@remind</code>, never in a channel, even when you asked in one. Slirc opens that DM for you if it isn't there yet. The confirmation is a notice only you see, with the time on your clock, such as <code>Reminder at 14:32 (in 20 minutes): stretch</code> or <code>Reminder tomorrow at 9:00: pick up cake</code>. From an IRC client such as Halloy, an <code>@remind</code> line in a channel is posted like any message, but the answer comes as a private notice and the reminder links back to that line. If Slirc is open on another conversation when a reminder arrives, a toast like <code>Reminder: stretch</code> stays until you choose <strong>Open</strong> to go to the DM or <strong>Dismiss</strong>. A <strong>Remind me</strong> toast quotes the message, and its button is the short link instead, such as <strong>View in #general</strong>.</p>
+<p>Slirc confirms delivery from the server's own echo of the message, not from the send. If a restart leaves the outcome unknown, Slirc sends the reminder once more on its own only when it can prove the first one never arrived. Otherwise <code>@remind list</code> marks it <strong>may not have sent</strong>, and <code>@remind resend 1</code> sends it again; it may then arrive twice. Reminders created before this confirmation existed show the same way. Cancelling one stops any further attempt, but a message that already went out cannot be retracted.</p>
+<p><code>@help</code> answers questions about Slirc from these guides, and links the section it used:</p>
+<pre><code class="language-text">@help how do email invitations work?
+@help can guests read #help?
+</code></pre>
+<p>In <code>#help</code> it answers without a mention. If a question is not covered by the guides, it says so rather than guessing, and a question about something other than Slirc gets a short line saying it only knows Slirc. A greeting or a thanks gets a short reply when you mention <code>@help</code>, and only a reaction in <code>#help</code> when you don't. While it writes an answer, its avatar shows above the composer with three dots, like a person typing, and the dots go away when the answer lands. Helpers run on the Slirc server, so they work while your computer is off.</p>
+<aside class="tip">
+<h4 id="tip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1.3.5 2.6 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>Tip</h4>
+<p>Give each script its own bot. A password you can revoke on its own is easier to reason about than one account shared by four jobs.</p>
+</aside>
+<h2 id="polls-poll">Polls: <code>@poll</code></h2>
+<p><code>@poll</code> runs polls in a channel. The quickest way to start one is the <strong>+</strong> next to the composer: choose <strong>Poll</strong>. Typing <code>/poll</code> on its own opens the same dialog.</p>
+<p>In the dialog, write the question and at least two options. <strong>Add</strong> gives you another row, up to ten. Drag an option by its handle to move it, or focus the handle and use the up and down arrow keys. Two switches set how people answer. <strong>Allow multiple answers</strong> lets each person pick more than one option. <strong>Anonymous</strong> hides who voted for what. Everyone still sees the counts and their own vote. <strong>Closes in</strong> ends the poll on its own after an hour, a day or a week. With <strong>None</strong> it stays open until someone closes it. <strong>Send</strong> posts the poll, and if <code>@poll</code> isn't in the channel yet it joins first.</p>
+<p>The poll shows as a card with the question and every option, each with a count and a bar. Tap an option to vote. Tap it again to take your vote back, or tap another option to change it. With multiple answers, each tap turns one option on or off. Counts update for everyone in the channel as votes come in. In a poll that isn't anonymous, the faces of the latest voters show next to each count.</p>
+<p><strong>View votes</strong> opens the full list. It shows each option with its count and, unless the poll is anonymous, who voted and when. Your own vote shows as &quot;You&quot;. In an anonymous poll Slirc never sends anyone's name to the app, so only the counts show.</p>
+<p>The person who started the poll, the channel's owner or an admin can close it from the <strong>⋯</strong> menu on the card. A closed poll shows the result with the winner marked, and nobody can vote anymore.</p>
+<p>You can also start a poll by typing it, with a question and at least two options separated by commas or by &quot;or&quot;:</p>
+<pre><code>@poll Lunch? pizza, sushi, salad
+@poll pizza or sushi?
+@poll Lunch? pizza, sushi for 1h
+@poll Lunch? pizza, sushi named
+</code></pre>
+<p><code>/poll Lunch? pizza, sushi, salad</code> does the same. Add <code>for 30m</code>, <code>for 2h</code> or <code>for 1d</code> to pick when it closes, from one minute up to 30 days. Without it, a typed poll closes a week after it started. Typed polls list voters only with <code>named</code>. Otherwise they work like anonymous ones. If a typed poll can't start, say it has only one option, Slirc doesn't post it. The New poll dialog opens with what you typed, at the part to fix.</p>
+<p>To vote by typing, use the number: <code>@poll 2</code> or <code>/poll 2</code>. Your vote isn't posted in the channel. Slirc counts it and shows <code>Counted: sushi</code> as a notice only you see. Voting again moves your vote, or adds the option when the poll allows multiple answers. <code>@poll results</code> posts the running tally and <code>@poll close</code> closes the poll. Typed <code>@poll close</code> works for the person who started the poll or a channel op, and admins are ops in every channel.</p>
+<p>One poll is open per channel at a time. Starting a second one shows the open poll, which you close first. A poll has up to ten options, each under 80 characters, and a question under 200. Polls survive a restart, and one that came due while the server was down closes once the helper is back.</p>
+<p><code>@poll</code> works in channels and groups it was added to, private ones included. It can't join DMs or threads. In a channel, start the line with <code>@poll</code>; a plain word &quot;poll&quot; is ordinary text. In your DM with <code>poll</code>, no @ is needed.</p>
+<p>From an IRC client, everything the helper posts is plain text, one line per option, and votes from there count on the card. The helper also posts the tally when a poll closes, which IRC clients read and Slirc leaves out because the card already shows it. A <code>@poll 2</code> line you send in the channel is public there like any message, and the helper answers it with a private notice. To vote without anyone seeing, send it to the helper instead: <code>/msg poll #lunch 2</code>.</p>
+
+      <footer class="doc-footer">
+        <p class="doc-footer-meta"><a href="/docs">All guides</a> · <a href="/docs/bots.md">markdown</a></p>
+        <nav class="pager" aria-label="Page navigation">
+        <a class="pager-box prev" href="/docs/agents"><small>← Previous</small><span>Agents</span></a>
+        <a class="pager-box next" href="/docs/setup"><small>Next →</small><span>Self-hosting</span></a>
+        </nav>
+      </footer>
+    </main>
+    <nav class="toc" id="page-nav" aria-label="On this page"></nav>
+  </div>
+
+  <script type="module" src="/docs/glow.js"></script>
+  <script src="/docs/docs.js?v=16" defer></script>
+  <script src="/docs/app-back.js?v=26d58c4a" defer></script>
+  <script type="module" src="/docs/search.js?v=1f3b3dfc&amp;index=9725c03e"></script>
+</body>
+</html>

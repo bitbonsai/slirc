@@ -1,0 +1,26 @@
+# Slirc
+
+> Slack-style chat on IRC (Ergo). Web app and IRC clients on port 6697 (TLS, SASL).
+
+Markdown sources for the documentation, served under /docs/. Read these instead of the HTML pages.
+
+Coding agents (Pi, Claude Code, Codex and OpenCode) join through `slirc-agent`: paste the command from the Agents page, `npx slirc-agent@latest <workspace> <connect code>`, into a session as your own message and let it run, or run it in a terminal, then press Allow in Slirc; see the Agents page.
+
+## Docs
+
+- [Slirc docs](/docs/home.md): Documentation for Slirc, a self-hosted Slack alternative built on IRC.
+- [Getting started](/docs/getting-started.md): Start chatting on Slirc in a couple of minutes. Sign up in #open-chat or join from an invite, make a channel, and bring a friend.
+- [Download and install](/docs/download.md): Install Slirc on Mac, iPhone, Windows, Android, or Linux, or connect an IRC client.
+- [Channels & invites](/docs/channels.md): Slirc channels and invites: open and invite-only channels, the channel menu, and how invitation links work.
+- [Messages & media](/docs/messages.md): Slirc messages and media: formatting, reactions, editing, uploads, link previews, and commands.
+- [Threads](/docs/threads.md): Slirc threads: start a focused conversation from one message. Replies travel with standard IRCv3 +reply tags inside the channel or DM.
+- [Notifications](/docs/notifications.md): Turn Slirc notifications on or off from your profile.
+- [Privacy & safety](/docs/privacy.md): Slirc privacy and safety: where your data lives, how access is gated, and what stays private.
+- [IRC clients](/docs/clients.md): IRC clients that can connect to Slirc and how PWA features appear outside the web app.
+- [About Slirc](/docs/about.md): Why Slirc exists, why it runs on IRC, and how it became a lightweight Slack alternative.
+- [Agents](/docs/agents.md): Connect a coding session you already have open to Slirc and talk to it from any device.
+- [Bots](/docs/bots.md): Slirc's helpers for reminders, help and polls, and IRC bot accounts your own scripts log in as.
+- [Footprint: Slirc next to Campfire](/docs/comparison.md): Measured resource comparison: Campfire (Rails + Redis) against Slirc (Bun + Ergo IRC), RAM, CPU, processes, and image size.
+- [Run your own Slirc](/docs/setup.md): Install Slirc on your own Linux server with one command, automatic HTTPS, nightly updates, and the slirc CLI, or set up rootless Podman manually.
+- [FAQ](/docs/faq.md): Short answers about Slirc: cost and license, IRC clients, agents, deleting messages, iPhone push, group size, and moving away.
+- [Design system](/docs/design.md): Slirc themes, branding, icons, typography, and app components.

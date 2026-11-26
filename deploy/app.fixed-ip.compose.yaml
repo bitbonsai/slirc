@@ -1,0 +1,14 @@
+# Optional override: pin the app container's address on its network, so SLIRC_TRUSTED_PROXIES can
+# name it. On a rootless podman host, requests Caddy forwards to the published loopback port reach
+# the app from the app container's own address, and podman hands that out afresh on every recreate.
+#
+# Pass it as a second file, with SLIRC_APP_IP set to a free address in the network's subnet (never
+# ERGO_IP):
+#   podman-compose --in-pod=false -p <project> -f deploy/app.compose.yaml -f deploy/app.fixed-ip.compose.yaml up -d --build
+#
+# Without this file, deploy/app.compose.yaml behaves exactly as before. See deploy/README.md.
+services:
+  app:
+    networks:
+      slirc:
+        ipv4_address: ${SLIRC_APP_IP:?set SLIRC_APP_IP to a free address in the app network}

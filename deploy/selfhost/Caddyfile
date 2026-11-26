@@ -1,0 +1,29 @@
+# Caddy configuration for self-hosted Slirc.
+# Caddy terminates HTTPS automatically with Let's Encrypt and forwards each
+# visitor's real IP via X-Forwarded-For so Slirc's per-visitor rate limits work.
+#
+# If you put a CDN such as Cloudflare in front of this server later, add a
+# `servers { trusted_proxies static <cdn-cidrs>; client_ip_headers CF-Connecting-IP }`
+# block inside the global options below so {client_ip} stays the visitor's IP.
+{
+	email {$ACME_EMAIL}
+}
+
+{$APP_HOST} {
+	handle {
+		reverse_proxy slirc:8080 {
+			lb_try_duration 20s
+			header_up X-Forwarded-For {client_ip}
+		}
+	}
+
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+}

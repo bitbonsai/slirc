@@ -1,0 +1,10 @@
+            <div class="add-prompt" data-greeting-note>
+                <p class="add-prompt-text"><span x-text="greetingNote.text"></span><span class="add-prompt-private" tabindex="0" role="img" aria-label="Only visible to you" data-tooltip="Only visible to you" x-tooltip x-html="lucideIcon('eye-off')"></span></p>
+                <div class="add-prompt-actions" x-show="greetingNote.state !== 'done'">
+                  <button type="button" class="add-prompt-add" :disabled="greetingNote.state === 'busy'" x-on:click="greetingNote.turnOff()" x-text="greetingNote.state === 'busy' ? 'Turning off…' : 'Turn off'"></button>
+                  <button type="button" class="add-prompt-dismiss" :disabled="greetingNote.state === 'busy'" x-on:click="greetingNote.dismiss()">Keep</button>
+                </div>
+                <div class="add-prompt-actions" x-show="greetingNote.state === 'done'">
+                  <button type="button" class="add-prompt-dismiss" x-on:click="greetingNote.dismiss()">Dismiss</button>
+                </div>
+            </div>

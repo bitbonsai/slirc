@@ -1,0 +1,21 @@
+  <div x-data="channelsPage" class="profile-page channels-page" data-phone-screen="channels" :class="isDesktop ? 'profile-page-desktop' : 'mobile-screen profile-screen'" x-cloak x-show="authenticated && channelsRoute">
+    <div class="mobile-screen-head" x-show="!isDesktop"><div class="home-brand"><a class="home-brand profile-back" href="/more" aria-label="Back to More" x-on:click.prevent="openMore()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a><strong>Channels</strong></div></div>
+    <div class="profile-page-body" :class="{ 'mobile-screen-body': !isDesktop }">
+      <div class="mobile-spacer" x-show="!isDesktop"></div>
+      <section class="profile-dialog-card profile-screen-card">
+        <form x-on:submit.prevent="channelCreate.createChannel()">
+          <h3>Create channel</h3>
+          <p>You'll land in the new channel, ready to invite people.</p>
+          <label>Channel name<input type="text" maxlength="32" placeholder="watercooler" x-model="channelCreate.newChannel" required /></label>
+          <label>Visibility<select x-model="channelCreate.channelVisibility">
+            <option value="secret">Invite-only</option>
+            <option value="workspace">Open</option>
+          </select></label>
+          <p class="field-hint" x-text="channelCreate.channelVisibility === 'secret' ? 'IRC mode +si. Hidden from the channel list, people join by invite only. Owners can switch between open and invite-only later.' : 'IRC mode +R. Listed for every verified member, who can join without an invite.'"></p>
+          <p class="field-hint"><a href="/docs/channels" target="_blank" rel="noopener">Read about channel types</a></p>
+          <p class="profile-error" role="alert" x-show="channelCreate.channelError" x-text="channelCreate.channelError"></p>
+          <div class="profile-actions"><button type="submit" class="btn-primary" :disabled="channelCreate.channelBusy" x-text="channelCreate.channelBusy ? 'Creating…' : 'Create channel'"></button></div>
+        </form>
+      </section>
+    </div>
+  </div>
