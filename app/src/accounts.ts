@@ -351,12 +351,6 @@ export async function ensureOperIrcAccount(): Promise<void> {
   if (!updated.success) throw new Error(updated.error || `Could not set oper IRC password: ${updated.errorCode || "unknown error"}`);
 }
 
-export async function ircAccountChannels(nick: string): Promise<string[]> {
-  const result = await ergo("/v1/ns/info", { accountName: nick });
-  if (!result.success) return [];
-  return (result.channels || []).filter((item): item is string => typeof item === "string");
-}
-
 export async function ircChannelExists(channel: string): Promise<boolean> {
   const active = await ergo("/v1/list", {});
   const owned = ownerNick ? await ergo("/v1/ns/info", { accountName: ownerNick }) : { success: true, channels: [] };

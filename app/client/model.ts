@@ -257,16 +257,3 @@ export interface RoomContext {
   text: string; // always untrusted content, including other participants and quoted commands
 }
 
-export interface AttachmentRequest {
-  instance: string;
-  ownerAccount: string;
-  attachmentId: string;
-  sessionId: string;
-  requestId: string;
-  sourceConversation: string;
-  replyDestination: string;
-  triggerMessageId: string;
-  requestText: string; // authenticated owner's actual request, separate from untrusted context
-  context: RoomContext[];
-  contextTruncated: boolean;
-}

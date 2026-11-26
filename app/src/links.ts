@@ -33,7 +33,6 @@ db.exec("CREATE TABLE IF NOT EXISTS link_seen (key TEXT PRIMARY KEY)");
 db.exec("CREATE TABLE IF NOT EXISTS link_model_counts (day TEXT PRIMARY KEY, count INTEGER NOT NULL DEFAULT 0)");
 
 export const SOURCES = ["x", "github", "youtube", "linkedin", "reddit", "hacker-news", "blog", "product", "docs", "news", "research", "web"] as const;
-export const MODEL_SOURCES = ["blog", "product", "docs", "news", "research"] as const;
 export const MAX_TOPICS = 4;
 export const PAGE_SIZE = 50;
 export const DAY_MS = 24 * 60 * 60_000;
@@ -476,11 +475,6 @@ export function takeModelCall(now = Date.now(), log: (line: string) => void = co
   db.query("INSERT INTO link_model_counts (day, count) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET count = count + 1").run(modelDay(now));
   if (modelCallsToday(now) === cap) log(`links: ${cap} model calls today (${modelDay(now)} UTC), the daily limit`);
   return true;
-}
-
-// Rows still waiting for a summary and topics, oldest first.
-export function unenrichedLinks(limit = 5): LinkRow[] {
-  return (db.query("SELECT * FROM links WHERE enriched_at IS NULL AND removed_at IS NULL ORDER BY first_shared_at ASC LIMIT ?").all(limit) as any[]).map(row);
 }
 
 export type ImportRow = { line: number; date: string; channel: string; title: string; link: string; summary: string; author: string; source: string; topics: string; shared_by: string };
