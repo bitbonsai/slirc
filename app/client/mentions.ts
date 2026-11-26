@@ -4,9 +4,9 @@ import { foldIdentifier } from "./model.ts";
 
 const MENTION_TOKEN_RE = /(?:^|\s)@([^\s@]*)$/;
 
-/** The `@partial` token at the end of the draft, plus the index of its `@`. */
-export function mentionToken(text: string): { query: string; start: number } | null {
-  const match = MENTION_TOKEN_RE.exec(text);
+/** The `@partial` token ending at the caret (the end of the draft by default), plus the index of its `@`. */
+export function mentionToken(text: string, caret = text.length): { query: string; start: number } | null {
+  const match = MENTION_TOKEN_RE.exec(text.slice(0, Math.max(0, Math.min(caret, text.length))));
   if (!match) return null;
   return { query: match[1], start: match.index + match[0].lastIndexOf("@") };
 }

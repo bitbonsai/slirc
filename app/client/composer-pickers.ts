@@ -190,7 +190,7 @@ export function mentionPickerComponent(openPopup?: OpenPopup): Record<string, un
         return inviteCandidates([...agents, ...fits].filter((nick, i, all) => all.findIndex((other) => foldIdentifier(other) === foldIdentifier(nick)) === i),
           [String(this.account ?? ""), ...(Array.isArray(this.roomMembers) ? this.roomMembers : [])]);
       }
-      const token = mentionToken(String(this.composer ?? ""));
+      const token = mentionToken(String(this.composer ?? ""), this.emoji?.caret ?? undefined);
       if (!token) return [];
       const members: string[] = Array.isArray(this.roomMembers) ? [...this.roomMembers] : [];
       // Open channels hide their roster, so fall back to people who have spoken in the room. A room
@@ -265,7 +265,7 @@ export function mentionPickerComponent(openPopup?: OpenPopup): Record<string, un
       // Escape (or another popup opening) hides the list for the current token only; once that token
       // is gone, the next `@` or `/invite` opens it again.
       const text = String(this.composer ?? "");
-      if (this.dismissed && !inviteToken(text) && (!mentionToken(text) || inviteToken(text) === "")) this.reset();
+      if (this.dismissed && !inviteToken(text) && (!mentionToken(text, this.emoji?.caret ?? undefined) || inviteToken(text) === "")) this.reset();
       const invite = this.dismissed ? null : inviteToken(String(this.composer ?? ""));
       if (!invite) { this._inviteAsked = ""; this.stopInviteSearch(); }
       else if (invite !== this._inviteAsked) { this._inviteAsked = invite; if (invite !== this.inviteFor) this.searchInvite(invite); }
