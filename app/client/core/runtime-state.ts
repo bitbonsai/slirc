@@ -4,6 +4,7 @@ import { type Outbox } from "@client/outbox.ts";
 import { type RelayBridge } from "@client/protocol.ts";
 import { type AuthorizedConversation, type SyncEngine } from "@client/sync.ts";
 import { type ClientDatabase } from "@client/db.ts";
+import { type ConversationProjection, type UnreadProjection } from "@client/store.ts";
 
 // A first-contact DM the server has not authorized yet, keyed by the account-scoped conversation
 // id. Pending is local enqueue permission only and never enters `authorized`.
@@ -30,6 +31,11 @@ export interface RuntimeState {
   // BFCache freeze: socket closed, durable state kept for resume.
   suspended: boolean;
   signingOut: boolean;
+  // The open scope's conversation and unread projections over its database.
+  projection: ConversationProjection | null;
+  unreadProjection: UnreadProjection | null;
+  // The latest connect run, so a live event can wait for it instead of superseding it mid-flight.
+  connecting: Promise<void>;
   // Bumped by every connect run and every socket close, so a late /auth/me answer can tell it was superseded.
   connectEpoch: number;
   // Bumped by every deliberate navigation, so a slow open that finished late can tell it was superseded.
@@ -59,6 +65,9 @@ export function createRuntimeState(): RuntimeState {
     stopped: false,
     suspended: false,
     signingOut: false,
+    projection: null,
+    unreadProjection: null,
+    connecting: Promise.resolve(),
     connectEpoch: 0,
     navIntent: 0,
     capsOk: true,

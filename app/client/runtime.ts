@@ -133,14 +133,11 @@ export function createClient(Alpine: any) {
   const COARSE = matchMedia("(pointer: coarse)").matches || document.cookie.includes("slirc_phone=1");
   const isDesktop = !COARSE;
 
-  let projection: ConversationProjection | null = null;
-  let unread: UnreadProjection | null = null;
   // Immutable account id from the latest /auth/me, kept even when access is denied for zero
   // conversations. The join acceptance compares this instead of the mutable scope key.
   let painted = false;
   const paintWaiters: Array<() => void> = [];
   // The latest connect run, so a live event can wait for it instead of superseding it mid-flight.
-  let connecting: Promise<void> = Promise.resolve();
   let renderEpoch = 0;
 
   root.classList.add("booting");
@@ -409,7 +406,7 @@ export function createClient(Alpine: any) {
     // way, which may have read /auth/me before the change, then refresh only if the list disagrees.
     onChannels: (channel, member, deleted) => {
       if (deleted) { channelDeleted(channel); return; }
-      void connecting.catch(() => {}).then(() => {
+      void rs.connecting.catch(() => {}).then(() => {
         if (rs.authorized.some((item) => item.kind !== "dm" && foldIdentifier(item.wireTarget) === foldIdentifier(channel)) !== member) void connect();
       });
     },
@@ -708,8 +705,8 @@ export function createClient(Alpine: any) {
   let pendingInitialRoute = "";
   {
     // A pairing link (/agents#connect=…) opens the Allow card on Agents, after sign-in if need be.
-    const connecting = stashConnectToken();
-    const initialRoute = connecting ? "/agents" : routeFromMount(location.pathname, location.hash, location.search);
+    const connectToken = stashConnectToken();
+    const initialRoute = connectToken ? "/agents" : routeFromMount(location.pathname, location.hash, location.search);
     const parsed = parseRoute(initialRoute, instance);
     pendingInitialRoute = parsed ? "" : initialRoute;
     const initial: Screen = parsed ?? { kind: "tab", tab: "home" };
@@ -823,7 +820,7 @@ export function createClient(Alpine: any) {
     if (rs.roomId && rs.composer) rs.composerTextByConversation.set(rs.roomId, rs.composer.text);
     rs.roomId = id;
     reminderNotice.viewed(id);
-    projection?.select(id, focusMessageId);
+    rs.projection?.select(id, focusMessageId);
     const selectedDb = rs.db;
     rs.composer = id && selectedDb ? new Composer(id, draftWriter(selectedDb)) : null;
     const selectedComposer = rs.composer;
@@ -866,7 +863,7 @@ export function createClient(Alpine: any) {
   // default channel (or the first one left) with a short notice; everyone else just loses the row.
   function channelDeleted(channel: string): void {
     const wasOpen = rs.authorized.some((item) => item.conversationId === rs.roomId && item.kind !== "dm" && foldIdentifier(item.wireTarget) === foldIdentifier(channel));
-    void connecting.catch(() => {}).then(() => connect()).then(() => {
+    void rs.connecting.catch(() => {}).then(() => connect()).then(() => {
       if (rs.stopped || !wasOpen) return;
       const rooms = rs.authorized.filter((item) => item.kind === "room");
       const landing = rooms.find((item) => foldIdentifier(item.wireTarget) === foldIdentifier(ui.defaultChannel)) ?? rooms[0];
@@ -1217,13 +1214,13 @@ export function createClient(Alpine: any) {
     closeSocket();
     pairing.stop();
     rs.outbox?.stop();
-    projection?.dispose();
-    unread?.dispose(); unread = null; cancelMarkRead();
+    rs.projection?.dispose();
+    rs.unreadProjection?.dispose(); rs.unreadProjection = null; cancelMarkRead();
     const dead = rs.db;
     rs.db = null;
     rs.sync = null;
     rs.outbox = null;
-    projection = null;
+    rs.projection = null;
     rs.composer = null;
     rs.scope = null;
     rs.roomId = null;
@@ -1264,7 +1261,7 @@ export function createClient(Alpine: any) {
   }
 
   function connect(): Promise<void> {
-    return connecting = connectNow();
+    return rs.connecting = connectNow();
   }
   async function connectNow(): Promise<void> {
     if (rs.stopped || rs.suspended || rs.signingOut) return;
@@ -1301,10 +1298,10 @@ export function createClient(Alpine: any) {
       closeSocket();
       void rs.outbox?.onDisconnected();
       rs.outbox?.stop();
-      projection?.dispose();
-      unread?.dispose(); unread = null; cancelMarkRead();
+      rs.projection?.dispose();
+      rs.unreadProjection?.dispose(); rs.unreadProjection = null; cancelMarkRead();
       rs.db?.close();
-      rs.db = null; rs.sync = null; rs.outbox = null; projection = null; rs.composer = null; rs.scope = null; rs.roomId = null; rs.currentScope = "";
+      rs.db = null; rs.sync = null; rs.outbox = null; rs.projection = null; rs.composer = null; rs.scope = null; rs.roomId = null; rs.currentScope = "";
       rs.authorized = []; rs.directories.clear(); dmPeerIds.clear();
       rs.composerTextByConversation.clear(); transcript.reset();
       resetAccountUi();
@@ -1447,8 +1444,8 @@ export function createClient(Alpine: any) {
   // database. Account-switch UI is deferred, but the scope guard is not.
   async function openScope(access: AccessGrant): Promise<void> {
     transcript.cancelConversationTransition();
-    projection?.dispose();
-    unread?.dispose(); unread = null; cancelMarkRead();
+    rs.projection?.dispose();
+    rs.unreadProjection?.dispose(); rs.unreadProjection = null; cancelMarkRead();
     renderEpoch += 1;
     transcript.reset();
     rs.composerTextByConversation.clear(); transcript.reset();
@@ -1484,8 +1481,8 @@ export function createClient(Alpine: any) {
     } catch { ui.starred = []; ui.channelOrder = []; ui.mutedRooms = ["#open-chat", "#help"]; }
     void refreshDrafts(accountDb);
     rs.sync = createSyncEngine({ db: accountDb, send: wireSend, nick: access.scope.account, hooks: hooks() });
-    projection = createConversationProjection(accountDb);
-    projection.view.subscribe((view) => {
+    rs.projection = createConversationProjection(accountDb);
+    rs.projection.view.subscribe((view) => {
       if (rs.db !== accountDb || rs.stopped || view.conversationId !== rs.roomId) return;
       transcript.beforePaint(view);
       ui.messages = ui.notesOpen ? notesRows() : view.messages.filter((message) => message.authorNick !== "HistServ");
@@ -1500,10 +1497,10 @@ export function createClient(Alpine: any) {
         transcript.afterPaint(view, () => rs.db === accountDb && !rs.stopped && view.conversationId === rs.roomId);
       }
     });
-    projection.select(rs.roomId);
+    rs.projection.select(rs.roomId);
     rs.serverMarkers.clear();
-    unread = createUnreadProjection(accountDb, (message) => ui.greeting || !isDailyGreeting(message.authorAccount, message.text));
-    unread.counts.subscribe((counts) => {
+    rs.unreadProjection = createUnreadProjection(accountDb, (message) => ui.greeting || !isDailyGreeting(message.authorAccount, message.text));
+    rs.unreadProjection.counts.subscribe((counts) => {
       if (rs.db !== accountDb || rs.stopped) return;
       ui.unread = counts;
       applyUnreadChrome();
@@ -1544,8 +1541,8 @@ export function createClient(Alpine: any) {
       return;
     }
     rs.stopped = true;
-    projection?.dispose();
-    unread?.dispose(); unread = null; cancelMarkRead();
+    rs.projection?.dispose();
+    rs.unreadProjection?.dispose(); rs.unreadProjection = null; cancelMarkRead();
   }
 
   function onPageShow(event: PageTransitionEvent): void {
@@ -1719,7 +1716,7 @@ export function createClient(Alpine: any) {
       openPopup();
       lifecycle.abort(); unsubscribeNav();
       phoneAnimation?.cancel(); phoneAnimation = null;
-      rs.stopped = true; autoRefresh.stop(); closeSocket(); connectionNotice.reset(); rs.outbox?.stop(); projection?.dispose(); unread?.dispose(); unread = null; cancelMarkRead();
+      rs.stopped = true; autoRefresh.stop(); closeSocket(); connectionNotice.reset(); rs.outbox?.stop(); rs.projection?.dispose(); rs.unreadProjection?.dispose(); rs.unreadProjection = null; cancelMarkRead();
       pairing.stop(); phoneOffer.destroy(); scanner.destroy(); settings.destroy(); channelCreate.destroy(); newConversation.destroy(); addPrompts.destroy(); invitationsPage.destroy(); invitationAccept.destroy(); admission.destroy(); admissionFounder.destroy(); irc.destroy(); agents.destroy(); adminStatus.destroy(); branding.reset(); typing.destroy(); members.destroy(); channelDrag.reset(); document.body.classList.toggle("members-docked", false); transcript.reset();
     },
   });
