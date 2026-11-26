@@ -56,7 +56,7 @@
             :alt="media.alt"
             :width="media.width || 640"
             :height="media.height || 480"
-            x-init="$el.complete && mediaView.markLoaded($el)"
+            x-effect="$el.complete && mediaView.markLoaded($el)"
             x-on:load="mediaView.markLoaded($el); mediaView.recordMediaDims(media.href, $el.naturalWidth, $el.naturalHeight)"
             x-on:error="mediaView.recordMediaError(media.href)"
             :style="mediaView.mediaAspectStyle(media.href, media.width, media.height)"
