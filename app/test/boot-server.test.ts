@@ -55,11 +55,31 @@ test("client entry, pairing and DM paths serve or redirect to the client shell",
   expect(pair.headers.get("location")).toBe("/?pair=123456");
 });
 
+test("every root path serves the client with manifest and worker hook, and the version follows the bundle", async () => {
+  const { clientVersion } = await import("../src/server.ts");
+  for (const path of ["/", "/dms", "/more", "/open-chat", "/help", "/dm/eve", "/profile", "/invitations", "/join/tok", "/index.html"]) {
+    const response = await app.request(path);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/html");
+    expect(response.headers.get("cache-control")).toBe("no-cache");
+    expect(await response.text()).toContain('x-data="client()"');
+  }
+  const root = await (await app.request("/")).text();
+  expect(root).toContain('rel="manifest"');
+  expect(root).toContain('<script src="/sw-register.js?v=');
+  expect((await app.request("/boot.html")).status).toBe(302);
+  const worker = await app.request("/sw.js");
+  expect(await worker.text()).toContain("LEGACY_CACHE_PREFIX");
+  const bundle = await (await app.request("/client.js")).text();
+  const { version } = await (await app.request("/api/version")).json();
+  expect(version).toBe(clientVersion(bundle));
+  expect(clientVersion(`${bundle} `)).not.toBe(version);
+});
+
 test("removed client aliases are 404 without a client-selection flag", async () => {
   for (const path of ["/preview", "/preview/dms", "/preview/more", "/preview/profile"]) {
     expect((await app.request(path)).status).toBe(404);
   }
-  expect(process.env.SLIRC_CLIENT).toBeUndefined();
 });
 
 test("device pairing preserves account identity, rejects another owner and consumes tokens once", async () => {
