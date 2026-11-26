@@ -8,12 +8,9 @@ import { helpDialogComponent, jumpDialogComponent } from "@client/palettes.ts";
 import { slashHelpPanelComponent, mentionPickerComponent } from "@client/composer-pickers.ts";
 import { pullRefreshComponent } from "@client/pull-refresh.ts";
 
-async function start(): Promise<void> {
-  // A scanned pairing link (/pair#o=…): take the token out of the address bar and spend it before
-  // the client reads the route or asks who is signed in.
-  const pairFailure = await landOffer(location, history);
-  const Alpine: any = (await import("../public/vendor/alpine.js")).default;
-  const client = createClient(Alpine);
+// Every Alpine directive and component. `() => client.x` hands every mount the same object, so each
+// name may be mounted once in the shell and never inside a template.
+export function registerComponents(Alpine: any, client: ReturnType<typeof createClient>): void {
   Alpine.directive("tooltip", tooltipDirective);
   Alpine.directive("code", codeDirective);
   Alpine.data("jumpDialog", jumpDialogComponent);
@@ -51,6 +48,15 @@ async function start(): Promise<void> {
   Alpine.data("linkActions", () => client.links);
   Alpine.data("pullRefresh", (target: "list" | "chat") => pullRefreshComponent(target, { refresh: client.pullRefresh, enabled: () => client.ui.authenticated && !client.ui.isDesktop }));
   Alpine.data("client", () => client.ui);
+}
+
+async function start(): Promise<void> {
+  // A scanned pairing link (/pair#o=…): take the token out of the address bar and spend it before
+  // the client reads the route or asks who is signed in.
+  const pairFailure = await landOffer(location, history);
+  const Alpine: any = (await import("../public/vendor/alpine.js")).default;
+  const client = createClient(Alpine);
+  registerComponents(Alpine, client);
   Alpine.start();
   await client.connect();
   // connect() resets account UI when nobody is signed in, so the reason goes on the sign-in card after it.

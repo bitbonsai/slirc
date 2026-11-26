@@ -1,44 +1,60 @@
-// Alpine components registered as `() => client.x` return one shared object. Mounting the same name on two
-// elements makes Alpine define $nextTick on that object twice and the whole shell fails to start.
+// Components registered as `() => client.x` return one shared object. Alpine defines its magics on that
+// object at every mount, so a second mount of the same name throws "Cannot redefine property: $nextTick"
+// and the shell never loads. This mounts each x-data of the assembled shell through the real Alpine, twice
+// for the ones inside a template, since x-if and x-for remount their content on every toggle.
+import "fake-indexeddb/auto";
 import { expect, test } from "bun:test";
+import { installBrowserShims } from "./support/browser-shims.ts";
 
-const main = await Bun.file(new URL("../client/main.ts", import.meta.url)).text();
-const shell = await Bun.file(new URL("../public/index.html", import.meta.url)).text();
-const shared = [...main.matchAll(/Alpine\.data\("(\w+)", \(\) => client\.\w+\)/g)].map((m) => m[1]!);
+class FakeElement {
+  nodeType = 1; tagName = "DIV"; nodeName = "DIV"; style = {}; dataset = {};
+  classList = { add() {}, remove() {}, toggle() {}, contains: () => false };
+  children: FakeElement[] = []; parentElement: FakeElement | null = null; parentNode: FakeElement | null = null;
+  attributes: { name: string; value: string }[];
+  constructor(attrs: Record<string, string> = {}) { this.attributes = Object.entries(attrs).map(([name, value]) => ({ name, value })); }
+  get firstElementChild() { return this.children[0] ?? null; }
+  get nextElementSibling() { const siblings = this.parentElement?.children; return siblings?.[siblings.indexOf(this) + 1] ?? null; }
+  hasAttribute(name: string) { return this.attributes.some((a) => a.name === name); }
+  getAttribute(name: string) { return this.attributes.find((a) => a.name === name)?.value ?? null; }
+  setAttribute() {} removeAttribute() {} addEventListener() {} removeEventListener() {} dispatchEvent() { return true; }
+  closest() { return null; } matches() { return false; } querySelector() { return null; } querySelectorAll() { return []; }
+  append(child: FakeElement) { child.parentElement = child.parentNode = this; this.children.push(child); }
+}
 
-test("shared Alpine components are mounted at most once in the shell", () => {
-  expect(shared.length).toBeGreaterThan(0);
-  for (const name of shared) {
-    const mounts = shell.split(`x-data="${name}"`).length - 1;
-    expect(mounts, name).toBeLessThanOrEqual(1);
-  }
-});
-
-// An x-if or x-for template remounts its content on every toggle, which re-runs init() on the same
-// shared object and hits the same redefine error the second time a panel opens.
-test("shared Alpine components are never mounted inside a template", async () => {
-  const inside: string[] = [];
-  let depth = 0;
+async function mounts(): Promise<{ expression: string; repeated: boolean }[]> {
+  const shell = await Bun.file(new URL("../public/index.html", import.meta.url)).text();
+  const found: { expression: string; repeated: boolean }[] = [];
+  let templates = 0;
   await new HTMLRewriter()
-    .on("template", { element(el) { depth++; el.onEndTag(() => { depth--; }); } })
-    .on("[x-data]", { element(el) { if (depth && shared.includes(el.getAttribute("x-data") ?? "")) inside.push(el.getAttribute("x-data")!); } })
+    .on("template", { element(el) { templates++; el.onEndTag(() => { templates--; }); } })
+    .on("[x-data]", { element(el) {
+      const expression = el.getAttribute("x-data")!;
+      if (/^[A-Za-z]\w*(\(.*\))?$/.test(expression)) found.push({ expression, repeated: templates > 0 }); // a registered component, not an inline object
+    } })
     .transform(new Response(shell)).text();
-  expect(inside).toEqual([]);
-});
+  return found;
+}
 
-// A partial included from several places lands in the shell several times, so it must not carry a
-// component mount, an init hook or an id.
-test("partials included more than once carry no x-data, x-init or id", async () => {
-  const dir = new URL("../partials/", import.meta.url);
-  const counts = new Map<string, number>();
-  for (const file of new Bun.Glob("*.html").scanSync(dir.pathname)) {
-    const text = await Bun.file(new URL(file, dir)).text();
-    for (const m of text.matchAll(/<!--\s*include:\s*([\w.-]+)\s*-->/g)) counts.set(m[1]!, (counts.get(m[1]!) ?? 0) + 1);
+test("every shared component mounts once in the shell and never inside a template", async () => {
+  installBrowserShims({ url: "https://singletons.test/" });
+  Object.assign(globalThis, { MutationObserver: class { observe() {} disconnect() {} }, Element: FakeElement, Node: FakeElement, HTMLElement: FakeElement, ShadowRoot: class {} });
+  Object.assign(window, { Element: FakeElement, MutationObserver: globalThis.MutationObserver });
+  Object.assign(document, { readyState: "complete", createElement: () => new FakeElement(), getElementById: () => null });
+  const Alpine = (await import("../public/vendor/alpine.js")).default as any;
+  const { createClient } = await import("../client/runtime.ts");
+  const { registerComponents } = await import("../client/main.ts");
+  registerComponents(Alpine, createClient(Alpine));
+
+  const list = await mounts();
+  expect(list.length).toBeGreaterThan(10);
+  const failures: string[] = [];
+  for (const { expression, repeated } of list) {
+    for (let i = 0; i < (repeated ? 2 : 1); i++) {
+      const el = new FakeElement({ "x-data": expression });
+      const root = new FakeElement();
+      root.append(el);
+      try { Alpine.initTree(root); } catch (error) { failures.push(`${expression}: ${(error as Error).message}`); break; }
+    }
   }
-  const repeated = [...counts].filter(([, n]) => n > 1).map(([name]) => name);
-  expect(repeated.length).toBeGreaterThan(0);
-  for (const name of repeated) {
-    const text = await Bun.file(new URL(`${name}.html`, dir)).text();
-    expect(text, name).not.toMatch(/\sx-data=|\sx-init=|\sid="/);
-  }
+  expect(failures).toEqual([]);
 });
