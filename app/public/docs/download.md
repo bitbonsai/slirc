@@ -9,7 +9,7 @@ lead: Install the Slirc app on your Mac, iPhone, or any browser, or connect an I
 
 The Mac app is built from the `desktop/` directory in the repository for macOS 14 or later. If your operator distributes a signed DMG, open it and drag Slirc to Applications. On first launch, enter any verified HTTPS Slirc instance address (hosted or self-hosted). Up to six workspaces stay live in one window, and **Switch Workspace…** in the Slirc menu (Option-Cmd-O) or the left workspace rail switches between them.
 
-The Mac app has no notifications yet. If you want them, install Slirc from the browser as below.
+The Mac app shows notifications while it's open. Turn them on in your profile, as on the [notifications page](/docs/notifications).
 
 ## iPhone
 
@@ -20,7 +20,7 @@ The iPhone app is built from the `native/` directory and can be distributed thro
 3. Tap **Install**.
 4. Open Slirc and enter any verified HTTPS Slirc instance address (hosted or self-hosted).
 
-The iPhone app has no notifications yet. For notifications, add Slirc to the Home Screen from Safari instead. Open your instance, tap the share button, then **Add to Home Screen**. [Getting started](/docs/getting-started#save-slirc-to-your-home-screen) has a video.
+The iPhone app shows notifications even when it's closed, once your workspace is set up for them. Turn them on in your profile. On a workspace without them, add Slirc to the Home Screen from Safari instead. Open your instance, tap the share button, then **Add to Home Screen**. [Getting started](/docs/getting-started#save-slirc-to-your-home-screen) has a video.
 
 ## Windows, Android and Linux
 

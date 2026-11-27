@@ -1,7 +1,7 @@
 import { type ClientSession, type ClientState } from "@client/client-state.ts";
 import { editPairCode, isPairCodeComplete, normalizePairCode, pairDeliveryUrl, pairDigitInput, pairRequestUrl } from "@client/pairing.ts";
 
-export function createDevicePairing(reactive: <T extends object>(value: T) => T, { core, nextTick, session, suspended, viewEpoch, email: readEmail, onDirect = () => {}, onChannels = () => {}, onAgentPresence = () => {}, onAgentUpdated = () => {}, onAgentRemoved = () => {}, onAgentPending = () => {}, onAgentConnectRequest = () => {}, onAgentRequests = () => {}, onOfferRedeemed = () => {}, onNotes = () => {}, onReplyThreads = () => {}, onPoll = () => {}, onStreamReady = () => {} }: {
+export function createDevicePairing(reactive: <T extends object>(value: T) => T, { core, nextTick, session, suspended, viewEpoch, email: readEmail, onDirect = () => {}, onChannels = () => {}, onAgentPresence = () => {}, onAgentUpdated = () => {}, onAgentRemoved = () => {}, onAgentPending = () => {}, onAgentConnectRequest = () => {}, onAgentRequests = () => {}, onOfferRedeemed = () => {}, onNotes = () => {}, onReplyThreads = () => {}, onPoll = () => {}, onNotify = () => {}, onStreamReady = () => {} }: {
   core: Pick<ClientState, "authenticated">;
   nextTick: (callback?: () => void) => Promise<void>;
   session: ClientSession;
@@ -29,6 +29,8 @@ export function createDevicePairing(reactive: <T extends object>(value: T) => T,
   onReplyThreads?: () => void;
   // And a poll in one of this account's channels changed: a vote, an unvote or a close.
   onPoll?: (id: number) => void;
+  // And a notification for this account, which the Mac app shows natively (native-shell.ts).
+  onNotify?: (data: unknown) => void;
   // The stream (re)connected; anything it carries may have changed while it was down.
   onStreamReady?: () => void;
 }) {
@@ -241,6 +243,10 @@ export function createDevicePairing(reactive: <T extends object>(value: T) => T,
           const data = JSON.parse((event as MessageEvent).data);
           if (Number.isSafeInteger(data?.id)) onPoll(data.id);
         } catch {}
+      });
+      pairEvents.addEventListener("notify", (event) => {
+        if (pairEventScope !== key || session.stopped() || !core.authenticated) return;
+        try { onNotify(JSON.parse((event as MessageEvent).data)); } catch {}
       });
       pairEvents.addEventListener("notes", () => {
         if (pairEventScope !== key || session.stopped() || !core.authenticated) return;

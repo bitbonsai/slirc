@@ -1,4 +1,5 @@
 import Capacitor
+import UserNotifications
 import WebKit
 
 // The bridge is Capacitor's channel from page JavaScript to native plugins. The bundled picker,
@@ -9,6 +10,8 @@ import WebKit
 let workspaceBridgeMethods: Set<String> = [
     "SlircShell.switchWorkspace",
     "SlircShell.workspaces",
+    "SlircShell.notificationStatus",
+    "SlircShell.enableNotifications",
 ]
 
 // Tracks the verified workspace origin currently loaded in the WebView. Only the bundled picker
@@ -102,6 +105,29 @@ class BridgeViewController: CAPBridgeViewController {
     func open(link: URL) {
         loadViewIfNeeded()
         showPicker(query: "link", value: link.absoluteString)
+    }
+
+    // A tapped notification: origin is the workspace that sent it, path its conversation. The
+    // workspace on screen moves there as a click would, keeping its socket; another one opens
+    // through the picker, which checks and saves it like any link.
+    func openNotification(origin: URL?, path: String) {
+        loadViewIfNeeded()
+        let path = path.hasPrefix("/") && !path.hasPrefix("//") ? path : "/"
+        if let webView = webView, origin == nil || origin.map(workspaceState.isActiveOrigin) == true {
+            let argument = (try? JSONSerialization.data(withJSONObject: [path])).flatMap { String(data: $0, encoding: .utf8) } ?? "[\"/\"]"
+            webView.evaluateJavaScript("(() => { const [path] = \(argument); history.pushState(null, '', path); dispatchEvent(new PopStateEvent('popstate', { state: null })); })()")
+        } else if let origin = origin, let link = URL(string: path, relativeTo: origin)?.absoluteURL {
+            open(link: link)
+        }
+    }
+
+    // Whether the conversation a notification is about is already on screen, so the banner can
+    // stay away while the person reads it.
+    func isShowing(origin: URL?, path: String, completion: @escaping (Bool) -> Void) {
+        guard path != "/", let webView = webView, let origin = origin, workspaceState.isActiveOrigin(origin) else { return completion(false) }
+        webView.evaluateJavaScript("document.visibilityState === 'visible' ? location.pathname + location.hash : ''") { value, _ in
+            completion((value as? String) == path)
+        }
     }
 
     // A workspace that failed to load, or loaded without its client starting, goes back to the
@@ -325,6 +351,8 @@ class SlircShellPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "openWorkspace", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "switchWorkspace", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "workspaces", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "notificationStatus", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "enableNotifications", returnType: CAPPluginReturnPromise),
     ]
     private let workspaceState: WorkspaceNavigationState
     private let loadWatch: WorkspaceLoadWatch
@@ -376,6 +404,40 @@ class SlircShellPlugin: CAPPlugin, CAPBridgedPlugin {
         let raw = UserDefaults.standard.string(forKey: "CapacitorStorage.workspaces") ?? "[]"
         let list = (try? JSONSerialization.jsonObject(with: Data(raw.utf8))) as? [String] ?? []
         call.resolve(["workspaces": list])
+    }
+
+    // Notifications for the workspace page's Settings toggle. Both answer { permission } (granted,
+    // denied or default) and, once granted, this iPhone's APNs token and which Apple server it
+    // belongs to, which the page stores on its workspace (POST /push/native). notificationStatus
+    // never prompts; enableNotifications shows the system prompt the first time.
+    @objc func notificationStatus(_ call: CAPPluginCall) {
+        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
+            self?.answer(call, Self.permission(settings.authorizationStatus))
+        }
+    }
+
+    @objc func enableNotifications(_ call: CAPPluginCall) {
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] _, _ in
+            center.getNotificationSettings { settings in self?.answer(call, Self.permission(settings.authorizationStatus)) }
+        }
+    }
+
+    private func answer(_ call: CAPPluginCall, _ permission: String) {
+        guard permission == "granted" else { return call.resolve(["permission": permission]) }
+        DeviceToken.shared.request { token in
+            var result: [String: Any] = ["permission": permission, "environment": DeviceToken.environment]
+            if let token = token { result["token"] = token }
+            call.resolve(result)
+        }
+    }
+
+    private static func permission(_ status: UNAuthorizationStatus) -> String {
+        switch status {
+        case .authorized, .provisional, .ephemeral: return "granted"
+        case .denied: return "denied"
+        default: return "default"
+        }
     }
 
     @objc func switchWorkspace(_ call: CAPPluginCall) {
@@ -531,5 +593,45 @@ final class CancelledLoadGuard: NSObject, WKNavigationDelegate {
 
     override func forwardingTarget(for aSelector: Selector!) -> Any? {
         handler
+    }
+}
+
+// This iPhone's APNs device token. iOS hands it to the app delegate after
+// registerForRemoteNotifications, so callers wait here until it arrives, fails or 10 seconds pass.
+final class DeviceToken {
+    static let shared = DeviceToken()
+    // A build from Xcode registers with Apple's sandbox server; TestFlight and App Store builds
+    // with production. The server sends each token to the one it came from.
+    #if DEBUG
+    static let environment = "sandbox"
+    #else
+    static let environment = "production"
+    #endif
+    private var waiting: [(String?) -> Void] = []
+
+    func request(_ done: @escaping (String?) -> Void) {
+        DispatchQueue.main.async {
+            self.waiting.append(done)
+            guard self.waiting.count == 1 else { return }
+            UIApplication.shared.registerForRemoteNotifications()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { self.finish(nil) }
+        }
+    }
+
+    func received(_ data: Data) {
+        finish(data.map { String(format: "%02x", $0) }.joined())
+    }
+
+    func failed(_ error: Error) {
+        CAPLog.print("⚡️  Push registration failed: " + error.localizedDescription)
+        finish(nil)
+    }
+
+    private func finish(_ token: String?) {
+        DispatchQueue.main.async {
+            let done = self.waiting
+            self.waiting = []
+            done.forEach { $0(token) }
+        }
     }
 }

@@ -123,6 +123,10 @@ Never put a real secret in a file under version control. Keep secrets in the env
 | `WAITLIST_ORIGIN` | `APP_ORIGIN` | Hosted only | Origin used in the links of admission emails. |
 | `TESTFLIGHT_URL` | none | Hosted only | TestFlight link for the iPhone beta. Only `https://testflight.apple.com/join/<code>` is accepted. Unset, the install link stays hidden. |
 | `APPLE_APP_IDS` | none | Hosted only | App IDs for Apple universal links, served at `/.well-known/apple-app-site-association`. |
+| `APNS_KEY` | none | Hosted only | Text of the Apple push key (`.p8`) for iPhone notifications. Write it on one line with `\n` for each line break. Apple ties the key to the team that signs the iPhone app, so only that team's instances can notify the App Store build. Without all four `APNS_` variables, iPhone notifications stay off and Settings in the iPhone app says so. |
+| `APNS_KEY_ID` | none | Hosted only | The 10-character ID Apple shows for that key. |
+| `APNS_TEAM_ID` | none | Hosted only | The Apple Developer team ID. |
+| `APNS_TOPIC` | none | Hosted only | Bundle ID of the iPhone app the notifications go to. |
 
 ## Development, tests and scripts
 

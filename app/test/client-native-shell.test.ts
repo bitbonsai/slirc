@@ -1,6 +1,7 @@
 // "Switch workspace" belongs to the iOS shell and the Mac app. Browsers, the installed Home Screen
 // app, iOS builds without the SlircShell plugin and Mac builds without the handler never see it.
 import { expect, test } from "bun:test";
+import { readShellState, shellNotifications, showShellNotification } from "../client/native-shell.ts";
 import { aboutLabel, canSwitchWorkspace, exposeWorkspaceDialog, openWorkspace, openWorkspaceLink, shellListsWorkspaces, shellVersion, shellWorkspaces, signedOut, switchWorkspace } from "../client/native-shell.ts";
 
 const shell = (plugins: string[], calls: string[] = []) => ({
@@ -167,4 +168,36 @@ test("the Mac menu's Switch Workspace opens the web dialog only while signed in"
   const old = mac(["slircShell", "slircSwitchWorkspace"]) as Record<string, unknown>;
   exposeWorkspaceDialog({ ...ui, workspaceDialog: false }, old);
   expect((old.SlircOpenWorkspaces as () => boolean)()).toBe(false);
+});
+
+test("only Mac and iOS builds with the notification bridge offer native notifications", () => {
+  expect(shellNotifications({})).toBeNull();
+  expect(shellNotifications(shell(["SlircShell"]))).toBeNull();
+  expect(shellNotifications({ webkit: { messageHandlers: { slircShell: {} } } } as never)).toBeNull();
+  expect(shellNotifications({ webkit: { messageHandlers: { slircNotify: { postMessage: async () => ({}) } } } } as never)?.platform).toBe("mac");
+  const ios = shell(["SlircShell"]) as any;
+  ios.Capacitor.Plugins.SlircShell.notificationStatus = async () => ({});
+  ios.Capacitor.Plugins.SlircShell.enableNotifications = async () => ({});
+  expect(shellNotifications(ios)?.platform).toBe("ios");
+});
+
+test("the app's answer is read defensively", () => {
+  expect(readShellState(null)).toEqual({ permission: "default" });
+  expect(readShellState({ permission: "granted", token: "AB".repeat(32), environment: "production" })).toEqual({ permission: "granted", token: "ab".repeat(32), environment: "production" });
+  expect(readShellState({ permission: "granted", token: "<script>", environment: "dev" })).toEqual({ permission: "granted" });
+});
+
+test("the Mac app gets each notification with a same-site route, except for the conversation on screen", () => {
+  const posted: any[] = [];
+  const win = { webkit: { messageHandlers: { slircNotify: { postMessage: async (body: unknown) => { posted.push(body); } } } } } as never;
+  expect(showShellNotification({ title: "ada in #general", body: "hi", tag: "t", url: "/#general" }, win, () => false)).toBe(true);
+  expect(posted.at(-1)).toEqual({ action: "show", title: "ada in #general", body: "hi", tag: "t", path: "/#general" });
+  showShellNotification({ title: "x", body: "y", tag: "t", url: "https://elsewhere.test/" }, win, () => false);
+  expect(posted.at(-1).path).toBe("/");
+  showShellNotification({ title: "x", body: "y", tag: "t", url: "//elsewhere.test" }, win, () => false);
+  expect(posted.at(-1).path).toBe("/");
+  expect(showShellNotification({ title: "x", body: "y", tag: "t", url: "/dm/ada" }, win, (url) => url === "/dm/ada")).toBe(false);
+  expect(showShellNotification({ body: "no title" }, win, () => false)).toBe(false);
+  expect(showShellNotification({ title: "x", body: "y" }, {} as never, () => false)).toBe(false);
+  expect(posted).toHaveLength(3);
 });

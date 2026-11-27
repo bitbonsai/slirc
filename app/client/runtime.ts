@@ -13,7 +13,7 @@ import { createIphoneApp } from "@client/iphone-app.ts";
 import { animateListHeight, filterWorkspaces, installWorkspaceKeys, savedWorkspaceCount, workspaceMark, workspaceRows, type WorkspaceFilter } from "@client/workspace-mark.ts";
 import { savedWorkspaces, takeCarriedWorkspaces, workspaceLink } from "@client/workspace-list.ts";
 import { createWorkspaceIcon } from "@client/workspace-icon.ts";
-import { aboutLabel, canSwitchWorkspace, exposeWorkspaceDialog, inMacApp, openWorkspace, openWorkspaceLink, shellListsWorkspaces, shellVersion, shellWorkspaces, signedOut, switchWorkspace as switchShellWorkspace } from "@client/native-shell.ts";
+import { aboutLabel, canSwitchWorkspace, exposeWorkspaceDialog, inMacApp, openWorkspace, openWorkspaceLink, shellListsWorkspaces, shellVersion, showShellNotification, shellWorkspaces, signedOut, switchWorkspace as switchShellWorkspace } from "@client/native-shell.ts";
 import { createQrScanner } from "@client/qr-scanner.ts";
 import { conversationId, foldIdentifier, scopeKey, type AccountScope, type Draft, type Message, type Operation } from "@client/model.ts";
 import { inviteToken, mentionToken } from "@client/mentions.ts";
@@ -366,6 +366,7 @@ export function createClient(Alpine: any) {
     onNotes: () => { void notes.load(); },
     onReplyThreads: () => { void replyThreads.load(); },
     onPoll: (id) => polls.changed(id),
+    onNotify: (data) => { showShellNotification(data, window as never); },
     onStreamReady: () => { polls.refreshAll(); void replyThreads.load(); },
     onDirect: (channel) => { if (!rs.authorized.some((item) => item.kind === "dm" && foldIdentifier(item.wireTarget) === foldIdentifier(channel))) void connect(); },
     // Another device (or person) changed this account's channels. Wait out a refresh already under

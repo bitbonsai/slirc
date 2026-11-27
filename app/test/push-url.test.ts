@@ -4,12 +4,14 @@ import { expect, test } from "bun:test";
 process.env.SLIRC_HELPERS_ENABLED = "false";
 const { pushUrl, isEdit, pushText, vapidContact } = await import("../src/slirc-bot.ts");
 
-test("a notification opens its channel or thread, and the root for a DM", () => {
+test("a notification opens its channel or thread, and a DM with its sender", () => {
   expect(pushUrl("#general")).toBe("/#general");
   expect(pushUrl("#t-abc123")).toBe("/#t-abc123");
+  expect(pushUrl("#dm-1234abcd", "ada")).toBe("/dm/ada");
+  expect(pushUrl("#DM-1234abcd", "Ben_2")).toBe("/dm/Ben_2");
   expect(pushUrl("#dm-1234abcd")).toBe("/");
-  expect(pushUrl("#DM-1234abcd")).toBe("/");
-  expect(pushUrl("bitbonsai")).toBe("/");
+  expect(pushUrl("#dm-1234abcd", "../x")).toBe("/");
+  expect(pushUrl("bitbonsai", "ada")).toBe("/");
 });
 
 test("an edit sends no push: people already saw the message", () => {
