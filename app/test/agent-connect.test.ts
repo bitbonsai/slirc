@@ -191,6 +191,13 @@ test("a ticket from the Agents page shows the Allow card to the person who copie
   } finally { unsubscribe(); }
 });
 
+test("a minted connect code never starts with a dash, which a command line reads as an option", () => {
+  for (let i = 0; i < 2_000; i++) {
+    const { ticket } = connect.mintTicket("bitbonsai");
+    expect(ticket).toMatch(/^[A-Za-z0-9_][A-Za-z0-9_-]{11}$/);
+  }
+});
+
 test("a ticket lasts ten minutes and stays with the session that presented it first", () => {
   connect.resetTicketsForTests();
   expect(connect.TICKET_TTL_MS).toBe(10 * 60_000);

@@ -18,6 +18,18 @@ test("a second argument is the connect code from the Agents page; 3.2.0's --tick
   expect(parseArgs(["calango", "--ticket=k7f2q9xdpa3m"])).toMatchObject({ ticket: "k7f2q9xdpa3m" });
 });
 
+test("a connect code starting with a dash is read as the code in the code slot", () => {
+  expect(parseArgs(["calango", "-CICsWc7mj84"])).toEqual({ name: "connect", workspace: "calango", ticket: "-CICsWc7mj84", unreleased: false, dryRun: false, extra: [] });
+  expect(parseArgs(["calango", "-CICsWc7mj84", "--harness", "pi"])).toMatchObject({ ticket: "-CICsWc7mj84", harness: "pi" });
+  expect(parseArgs(["calango", "--ticket", "-CICsWc7mj84"])).toMatchObject({ ticket: "-CICsWc7mj84" });
+  // Without a workspace before it there is no code slot: the error names --ticket.
+  expect(() => parseArgs(["-CICsWc7mj84"])).toThrow("Unknown option -CICsWc7mj84. Run slirc-agent --help to see the options, or give a connect code as --ticket=-CICsWc7mj84.");
+  // Short options and double-dash words stay options.
+  expect(() => parseArgs(["calango", "-x"])).toThrow("Unknown option -x. Run slirc-agent --help to see the options.");
+  expect(() => parseArgs(["calango", "--harnesss"])).toThrow("Unknown option --harnesss");
+  expect(parseArgs(["install", "--dry-run"])).toMatchObject({ dryRun: true });
+});
+
 test("help, version and subcommands", () => {
   expect(parseArgs(["--help"])).toEqual({ name: "help" });
   expect(parseArgs(["-h"])).toEqual({ name: "help" });

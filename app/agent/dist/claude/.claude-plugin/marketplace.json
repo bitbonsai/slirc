@@ -8,7 +8,7 @@
     {
       "name": "slirc",
       "source": "./slirc",
-      "version": "3.4.0",
+      "version": "3.4.1",
       "description": "Connect this Claude Code session to a Slirc workspace: Slirc requests arrive as turns and the model replies with slirc_reply."
     }
   ]

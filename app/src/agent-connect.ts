@@ -187,7 +187,10 @@ const forget = (map: Map<string, { expiresAt: number }>, now: number) => { for (
 
 export function mintTicket(owner: string, now = Date.now()): { ticket: string; expiresAt: number } {
   forget(tickets, now);
-  const ticket = randomBytes(9).toString("base64url");
+  // base64url can start with "-", which a shell command line reads as an option (slirc-agent said
+  // "Unknown option"). Draw again until it doesn't; same alphabet, so redeemTicket is unchanged.
+  let ticket = "";
+  do ticket = randomBytes(9).toString("base64url"); while (ticket.startsWith("-"));
   const expiresAt = now + TICKET_TTL_MS;
   tickets.set(sha(ticket), { owner, expiresAt });
   return { ticket, expiresAt };

@@ -79,8 +79,10 @@ function parseFlags(input, allowWorkspace) {
       ticket = arg === "--ticket" ? input[++index] : arg.slice(9);
       if (!ticket)
         throw new Error(BAD_CODE);
-    } else if (arg.startsWith("-"))
-      throw new Error(`Unknown option ${arg}. Run slirc-agent --help to see the options.`);
+    } else if (allowWorkspace && positional.length === 1 && !arg.startsWith("--") && validCode(arg))
+      positional.push(arg);
+    else if (arg.startsWith("-"))
+      throw new Error(`Unknown option ${arg}. Run slirc-agent --help to see the options${allowWorkspace && validCode(arg) ? `, or give a connect code as --ticket=${arg}` : ""}.`);
     else
       positional.push(arg);
   }
@@ -1496,7 +1498,7 @@ import { fileURLToPath } from "node:url";
 // package.json
 var package_default = {
   name: "slirc-agent",
-  version: "3.4.0",
+  version: "3.4.1",
   description: "Connect coding agents to Slirc rooms",
   keywords: [
     "slirc",

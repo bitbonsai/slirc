@@ -76,7 +76,10 @@ function parseFlags(input: string[], allowWorkspace: boolean) {
       ticket = arg === "--ticket" ? input[++index] : arg.slice(9);
       if (!ticket) throw new Error(BAD_CODE);
     }
-    else if (arg.startsWith("-")) throw new Error(`Unknown option ${arg}. Run slirc-agent --help to see the options.`);
+    // A connect code can start with "-" (older Slirc minted those). In the code slot, after the
+    // workspace, one that looks like a code is the code, not an option.
+    else if (allowWorkspace && positional.length === 1 && !arg.startsWith("--") && validCode(arg)) positional.push(arg);
+    else if (arg.startsWith("-")) throw new Error(`Unknown option ${arg}. Run slirc-agent --help to see the options${allowWorkspace && validCode(arg) ? `, or give a connect code as --ticket=${arg}` : ""}.`);
     else positional.push(arg);
   }
   // Two positionals are the workspace and the connect code. `--ticket`, from 3.2.0's copied
