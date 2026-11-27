@@ -157,7 +157,10 @@ export function createAgentsPage(reactive: <T extends object>(value: T) => T, { 
 }) {
   let epoch = 0;
   let copyTimer: ReturnType<typeof setTimeout> | null = null;
+  let expiryTimer: ReturnType<typeof setTimeout> | null = null;
+  let minting: Promise<void> | null = null;
   let invoker: HTMLElement | null = null;
+  let renameInvoker: HTMLElement | null = null;
   const local = reactive({
     loading: false,
     loaded: false,
@@ -242,17 +245,29 @@ export function createAgentsPage(reactive: <T extends object>(value: T) => T, { 
     if (waitTimer !== null) { clearTimeout(waitTimer); waitTimer = null; }
   }
 
-  // A new ticket for each copy. The server keeps tickets in memory only, so one this page minted
-  // earlier may be gone after a restart, and the first session to use one holds it: reusing it
-  // left the page waiting while Slirc treated the paste as an unknown code. Without a ticket the
-  // command still works: the session shows its link and code.
-  async function freshTicket(scope: { current(): boolean }): Promise<void> {
-    local.ticket = null;
-    try {
-      const body = await request("/api/agents/connect-ticket", { method: "POST", headers: { "Content-Type": "application/json", "X-Slirc-Connect": "1" }, body: "{}" });
-      const expiresAt = normalizeExpiry(body.expiresAt);
-      if (scope.current() && typeof body.ticket === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(body.ticket) && expiresAt) local.ticket = { value: body.ticket, expiresAt };
-    } catch {}
+  // The command on the page carries a connect code, so what shows is what a copy (or a hand
+  // selection) takes. One is minted when the page opens, after each copy (the copied one is in
+  // use) and a little before it expires. The server keeps tickets in memory only and the first
+  // session to use one holds it, so a code is never reused. Without one the command still works:
+  // the session shows its link and code.
+  function mint(): Promise<void> {
+    if (minting) return minting;
+    const scope = owner();
+    if (!scope || !local.capability?.enabled || !local.capability.commands.bunx) return Promise.resolve();
+    const run = (async () => {
+      let ticket: { value: string; expiresAt: number } | null = null;
+      try {
+        const body = await request("/api/agents/connect-ticket", { method: "POST", headers: { "Content-Type": "application/json", "X-Slirc-Connect": "1" }, body: "{}" });
+        const expiresAt = normalizeExpiry(body.expiresAt);
+        if (typeof body.ticket === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(body.ticket) && expiresAt) ticket = { value: body.ticket, expiresAt };
+      } catch {}
+      if (!scope.current()) return;
+      local.ticket = ticket;
+      if (expiryTimer !== null) clearTimeout(expiryTimer);
+      expiryTimer = ticket ? setTimeout(() => { expiryTimer = null; void mint(); }, Math.max(1_000, ticket.expiresAt - 30_000 - Date.now())) : null;
+    })().finally(() => { if (minting === run) minting = null; });
+    minting = run;
+    return run;
   }
 
   // The session's request arrived on this owner's event stream, sent because it carried this
@@ -263,6 +278,7 @@ export function createAgentsPage(reactive: <T extends object>(value: T) => T, { 
     if (!card) return;
     local.card = card;
     local.ticket = null;
+    if (expiryTimer !== null) { clearTimeout(expiryTimer); expiryTimer = null; }
     local.cardError = ""; local.connected = "";
     stopWaiting();
   }
@@ -293,6 +309,7 @@ export function createAgentsPage(reactive: <T extends object>(value: T) => T, { 
       if (!rows) throw new Error("Could not read agents.");
       local.rows = rows.map(cleanAgent).filter((row): row is AgentRow => row !== null).map(withPresence);
       local.loaded = true;
+      if (!liveTicket()) void mint();
       onRows(rows);
       const token = peekConnectToken();
       if (token && !local.card) void openCard({ token });
@@ -352,6 +369,7 @@ export function createAgentsPage(reactive: <T extends object>(value: T) => T, { 
       const body = await response.json().catch(() => ({})) as { error?: unknown; nick?: unknown };
       if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "Could not answer this request.");
       local.card = null;
+      if (!liveTicket()) void mint();
       if (allow) {
         local.connected = typeof body.nick === "string" ? body.nick : "";
         await load();
@@ -363,14 +381,14 @@ export function createAgentsPage(reactive: <T extends object>(value: T) => T, { 
     }
   }
 
-  function dismissCard(): void { local.card = null; local.cardError = ""; }
+  function dismissCard(): void { local.card = null; local.cardError = ""; if (!liveTicket()) void mint(); }
 
   async function copy(): Promise<void> {
     const scope = owner();
     if (!scope || !firstLine()) return;
-    // Safari keeps the clipboard only inside the click, so the text goes in as a promise that
-    // settles once the ticket is minted. Elsewhere the plain write after minting is fine.
-    const text = freshTicket(scope).then(() => firstLine());
+    // Safari keeps the clipboard only inside the click, so the text goes in as a promise. It is the
+    // command on the page, or the next one when none is live or a new code is on its way.
+    const text = (liveTicket() && !minting ? Promise.resolve() : mint()).then(() => firstLine());
     try {
       if (typeof ClipboardItem !== "undefined" && navigator.clipboard.write) {
         await navigator.clipboard.write([new ClipboardItem({ "text/plain": text.then((line) => new Blob([line], { type: "text/plain" })) })]);
@@ -380,10 +398,12 @@ export function createAgentsPage(reactive: <T extends object>(value: T) => T, { 
       if (copyTimer !== null) clearTimeout(copyTimer);
       copyTimer = setTimeout(() => { copyTimer = null; if (local.copied === "first") local.copied = ""; }, 2_200);
       const ticket = liveTicket();
+      // The copied code is in use now: the page moves on to a new one.
+      void mint();
       if (!ticket) return;
       local.waiting = true;
       if (waitTimer !== null) clearTimeout(waitTimer);
-      waitTimer = setTimeout(() => { waitTimer = null; local.waiting = false; local.ticket = null; }, Math.max(0, Math.min(WAIT_MS, ticket.expiresAt - Date.now())));
+      waitTimer = setTimeout(() => { waitTimer = null; local.waiting = false; }, Math.max(0, Math.min(WAIT_MS, ticket.expiresAt - Date.now())));
     } catch {
       if (scope.current()) local.error = "Could not copy. Select the command and copy it manually.";
     }
@@ -437,9 +457,10 @@ export function createAgentsPage(reactive: <T extends object>(value: T) => T, { 
   }
 
   // Owner rename. The server shows it at once and syncs it into the session when it is attached.
-  function askRename(row: AgentRow, button: HTMLElement): void {
+  // It is edited in the row: the pencil turns the name into an input, Enter or blur saves, Esc cancels.
+  function askRename(row: AgentRow, button: HTMLElement | null): void {
     if (!owner() || local.busy) return;
-    invoker = button;
+    renameInvoker = button;
     local.error = "";
     local.renameValue = agentTitle(row);
     local.renameTarget = row;
@@ -447,15 +468,21 @@ export function createAgentsPage(reactive: <T extends object>(value: T) => T, { 
 
   function closeRename(): void {
     local.renameTarget = null;
-    void Promise.resolve().then(() => {
-      if (invoker?.isConnected && invoker.getClientRects().length) invoker.focus();
-      invoker = null;
-    });
+    const button = renameInvoker;
+    renameInvoker = null;
+    // Focus returns to the pencil unless the member already moved on to another control.
+    setTimeout(() => {
+      if (typeof document === "undefined") return;
+      const active = document.activeElement;
+      if (button?.isConnected && button.getClientRects().length && (!active || active === document.body || !active.getClientRects().length)) button.focus();
+    }, 0);
   }
 
   async function confirmRename(): Promise<void> {
     const scope = owner(), target = local.renameTarget;
     if (!scope || !target || local.busy) return;
+    // An unchanged name is not a request.
+    if (local.renameValue.trim().slice(0, 80) === agentTitle(target)) { closeRename(); return; }
     local.busy = true; local.error = "";
     try {
       const body = await request(`/api/agents/${encodeURIComponent(target.nick)}/name`, {
@@ -547,9 +574,11 @@ export function createAgentsPage(reactive: <T extends object>(value: T) => T, { 
   function reset(): void {
     epoch += 1;
     if (copyTimer !== null) { clearTimeout(copyTimer); copyTimer = null; }
+    if (expiryTimer !== null) { clearTimeout(expiryTimer); expiryTimer = null; }
+    minting = null;
     stopWaiting();
     seenPresence.clear();
-    invoker = null;
+    invoker = null; renameInvoker = null;
     local.loading = false; local.loaded = false; local.busy = false; local.error = "";
     local.capabilityError = "";
     local.capability = null; local.rows = [];

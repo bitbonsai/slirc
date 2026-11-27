@@ -136,6 +136,37 @@ test("renaming an agent posts the trimmed name to the owner endpoint and patches
   expect(agents.renameTarget).toBeNull();
 });
 
+test("an inline rename that is cancelled or unchanged sends nothing, and a refusal keeps the edit open", async () => {
+  let posts = 0, refuse = true;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith("/api/agents/capabilities")) return json({ enabled: true, supportedHarnesses: ["pi"] });
+    if (url === "/api/agents") return json([{ nick: "pi-a143", machine: "laptop", lastSeen: 1, status: "ready", agent: { harness: "pi", name: "old" } }]);
+    if (init?.method === "POST") { posts++; return refuse ? json({ error: "name taken" }, false, 409) : json({ agent: { harness: "pi", name: "new" } }); }
+    throw new Error(`unexpected ${url}`);
+  }) as typeof fetch;
+  const agents = page();
+  await agents.load();
+  const row = agents.rows[0]!;
+  agents.askRename(row, null);
+  agents.closeRename();
+  expect(agents.renameTarget).toBeNull();
+  agents.askRename(row, null);
+  await agents.confirmRename();
+  expect(posts).toBe(0);
+  expect(agents.renameTarget).toBeNull();
+  agents.askRename(row, null);
+  agents.renameValue = "new";
+  await agents.confirmRename();
+  expect(agents.error).toBe("name taken");
+  expect(agents.renameTarget).not.toBeNull();
+  refuse = false;
+  await agents.confirmRename();
+  expect(posts).toBe(2);
+  expect(agents.agentTitle(agents.rows[0]!)).toBe("new");
+  expect(agents.renameTarget).toBeNull();
+});
+
 test("Read my DMs saves the moment it is toggled and goes back when the server refuses", async () => {
   const posts: { url: string; body: unknown; header: string | null }[] = [];
   let refuse = false;
@@ -177,7 +208,9 @@ test("capability and card parsing keep only what the server named, and fail clos
   expect(normalizeExpiry(-1)).toBeNull();
 });
 
-test("each copy mints a fresh connect code, copies the command with it and waits; the runner choice is remembered", async () => {
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+test("the page shows a connect code from the start, copies exactly what shows, then moves to a new code; the runner choice is remembered", async () => {
   localStorage.removeItem("slirc.agentRunner");
   let minted = 0;
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -189,7 +222,7 @@ test("each copy mints a fresh connect code, copies the command with it and waits
       expect(new Headers(init.headers).get("X-Slirc-Connect")).toBe("1");
       expect(new Headers(init.headers).get("Content-Type")).toBe("application/json");
       minted++;
-      return json({ ticket: ["k7f2q9xdpa3m", "n3w2q9xdpa3m"][minted - 1], expiresAt: Date.now() + 120_000 });
+      return json({ ticket: ["k7f2q9xdpa3m", "n3w2q9xdpa3m", "p5v8q9xdpa3m", "r2c4q9xdpa3m"][minted - 1], expiresAt: Date.now() + 120_000 });
     }
     throw new Error(`unexpected ${url}`);
   }) as typeof fetch;
@@ -198,31 +231,61 @@ test("each copy mints a fresh connect code, copies the command with it and waits
   const agents = page();
   await agents.load();
   expect(agents.runner).toBe("bunx");
-  // Before copy the box shows the plain command; what was copied shows after.
-  expect(agents.firstLine()).toBe("bunx slirc-agent@latest calango");
+  // The box carries a code from the moment the page opens.
+  await settle();
+  expect(minted).toBe(1);
+  expect(agents.firstLine()).toBe("bunx slirc-agent@latest calango k7f2q9xdpa3m");
   expect(agents.waiting).toBe(false);
   await agents.copy();
   expect(agents.copied).toBe("first");
   expect(agents.waiting).toBe(true);
-  expect(agents.firstLine()).toBe("bunx slirc-agent@latest calango k7f2q9xdpa3m");
-  agents.toggleRunner();
-  expect(agents.firstLine()).toBe("npx slirc-agent@latest calango k7f2q9xdpa3m");
-  // Copied again: a new code, never the earlier one, which a restart may have dropped or another
-  // session may already hold.
-  await agents.copy();
+  // The copy is what showed, and the page moves on to a new code.
+  await settle();
+  expect(written).toEqual(["bunx slirc-agent@latest calango k7f2q9xdpa3m"]);
   expect(minted).toBe(2);
+  expect(agents.firstLine()).toBe("bunx slirc-agent@latest calango n3w2q9xdpa3m");
+  agents.toggleRunner();
+  expect(agents.firstLine()).toBe("npx slirc-agent@latest calango n3w2q9xdpa3m");
+  // Copied again: the new code, never the earlier one, which another session may already hold.
+  await agents.copy();
+  await settle();
+  expect(minted).toBe(3);
   expect(written).toEqual(["bunx slirc-agent@latest calango k7f2q9xdpa3m", "npx slirc-agent@latest calango n3w2q9xdpa3m"]);
   expect(page().runner).toBe("npx");
   // The session's request arrives on the event stream: the card replaces the waiting row and the
-  // ticket is spent, so the next copy mints a fresh one.
+  // ticket is spent, and a new one is minted once the card is dismissed.
   agents.showRequest({ id: "r1", harnessName: "Pi", sessionName: "", repo: "slirc", machine: "devbox", code: "K7QX-M2PD", expiresAt: Date.now() + 600_000 });
   expect(agents.card?.id).toBe("r1");
   expect(agents.waiting).toBe(false);
   expect(agents.firstLine()).toBe("npx slirc-agent@latest calango");
   agents.showRequest({ nonsense: true });
   expect(agents.card?.id).toBe("r1");
+  agents.dismissCard();
+  await settle();
+  expect(agents.firstLine()).toBe("npx slirc-agent@latest calango r2c4q9xdpa3m");
   agents.reset();
   localStorage.removeItem("slirc.agentRunner");
+});
+
+test("a code that is about to expire is replaced when copying, so the copy is always valid", async () => {
+  let minted = 0;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/api/agents/capabilities")) return json(capability);
+    if (url === "/api/agents") return json([]);
+    if (url === "/api/agents/connect-ticket") { minted++; return json({ ticket: minted === 1 ? "old2q9xdpa3m" : "new2q9xdpa3m", expiresAt: Date.now() + (minted === 1 ? 20_000 : 120_000) }); }
+    throw new Error(`unexpected ${url}`);
+  }) as typeof fetch;
+  const written: string[] = [];
+  clipboard(async (text) => { written.push(text); });
+  const agents = page();
+  await agents.load();
+  await settle();
+  // Under 30 seconds left counts as expired: the box shows no stale code.
+  expect(agents.firstLine()).toBe("bunx slirc-agent@latest calango");
+  await agents.copy();
+  expect(written).toEqual(["bunx slirc-agent@latest calango new2q9xdpa3m"]);
+  agents.reset();
 });
 
 test("without a ticket the command still copies, and nothing waits", async () => {

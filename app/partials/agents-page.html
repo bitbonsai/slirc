@@ -65,14 +65,15 @@
             <ul class="agent-rows agent-panel" x-show="agents.rows.length">
               <template x-for="row in agents.rows" :key="row.nick">
                 <li class="agent-row">
-                  <button type="button" class="agent-open" x-on:click="agents.openAgent(row)">
+                  <button type="button" class="agent-open" x-show="agents.renameTarget?.nick !== row.nick" x-on:click="agents.openAgent(row)">
                     <span class="agent-avatar" :data-state="agents.status(row).key" aria-hidden="true"><img :src="avatarUrl(row.nick, undefined, row.harness)" alt="" /></span>
                     <span class="agent-copy">
                       <strong x-text="agents.agentTitle(row)"></strong>
                       <small><span class="agent-status" :data-state="agents.status(row).key" x-text="agents.status(row).label"></span><span class="agent-sub" x-show="agents.agentSubtitle(row)" x-text="agents.agentSubtitle(row)"></span></small>
                     </span>
                   </button>
-                  <button type="button" class="agent-icon-button agent-rename" x-show="row.harness" :aria-label="'Rename ' + agents.agentTitle(row)" x-tooltip x-on:click.stop="agents.askRename(row, $el)"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('pencil')"></span></button>
+                  <span class="agent-copy agent-renaming" x-show="agents.renameTarget?.nick === row.nick"><input type="text" class="agent-rename-input" maxlength="80" aria-label="Agent name" x-model="agents.renameValue" x-effect="agents.renameTarget?.nick === row.nick && requestAnimationFrame(() => { $el.focus(); $el.select(); })" x-on:keydown.enter.prevent="agents.confirmRename()" x-on:keydown.escape.prevent.stop="agents.closeRename()" x-on:blur="agents.confirmRename()" /><small class="profile-error" role="alert" x-show="agents.error" x-text="agents.error"></small></span>
+                  <button type="button" class="agent-icon-button agent-rename" x-show="row.harness && agents.renameTarget?.nick !== row.nick" :aria-label="'Rename ' + agents.agentTitle(row)" x-tooltip x-on:click.stop="agents.askRename(row, $el)"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('pencil')"></span></button>
                   <button type="button" class="settings-toggle agent-dm-switch" role="switch" x-show="row.harness" :aria-checked="row.readDms ? 'true' : 'false'" :aria-label="'Read my DMs: ' + agents.agentTitle(row)" data-tooltip="Reads your DMs with others when you ask. Can't post there." x-tooltip x-on:click.stop="agents.toggleReadDms(row)"><span><strong>Read my DMs</strong></span><span></span></button>
                   <button type="button" class="agent-icon-button danger agent-remove" :aria-label="'Remove ' + row.nick" x-tooltip x-on:click.stop="agents.askRemove(row, $el)"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('trash')"></span></button>
                 </li>
@@ -82,7 +83,4 @@
         </section>
       </section>
     </div>
-    <dialog class="custom-modal" aria-labelledby="agent-rename-title" tabindex="-1" x-on:keydown="agents.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && agentsRoute && agents.renameTarget" x-on:cancel.prevent="if (!agents.busy) agents.closeRename()">
-      <form class="notice-card" x-on:submit.prevent="agents.confirmRename()"><h2 id="agent-rename-title">Rename agent</h2><p>Also renames the coding session when it is connected.</p><input type="text" class="agent-rename-input" maxlength="80" aria-label="Agent name" autofocus x-model="agents.renameValue" :disabled="agents.busy" /><p class="profile-error" role="alert" x-show="agents.error" x-text="agents.error"></p><div class="pair-actions"><button type="button" class="btn-secondary" :disabled="agents.busy" x-on:click="agents.closeRename()">Cancel</button><button type="submit" class="btn-primary" :disabled="agents.busy" x-text="agents.busy ? 'Saving…' : 'Save'"></button></div></form>
-    </dialog>
   </div>
