@@ -72,12 +72,18 @@ function setUp(harness: Harness, env: Env, io: Io, dryRun: boolean): false | "in
   if (status.state === "conflict") throw new CliError(status.detail ?? `Something is in the way of the Slirc extension for ${harness.name}.`);
   const steps = harness.install(env, VERSION);
   if (!steps.length) { io.out(`${harness.name}: Slirc extension ${status.version ?? VERSION} is set up.`); return false; }
-  io.out(`${harness.name}: ${status.state === "missing" ? "adding" : `updating from ${status.version ?? "an older version"} to ${VERSION}`} the Slirc extension.`);
+  io.out(status.state === "missing"
+    ? `${harness.name}: adding the Slirc extension.`
+    : `${harness.name}: updating the Slirc extension from ${status.version ?? "an older version"} to ${VERSION}.`);
   for (const step of steps) {
     io.out(`  ${step.doing}`);
     if (dryRun) continue;
     try { step.apply(); }
-    catch (error) { throw new CliError(`${error instanceof Error ? error.message : String(error)}\nNothing else changed. Fix that, then run this again.`); }
+    catch (error) {
+      // A step that already says what to do next isn't told to "fix that" on top.
+      const message = error instanceof Error ? error.message : String(error);
+      throw new CliError(`${message}\nNothing else changed.${/run this again\.$/.test(message) ? "" : " Fix that, then run this again."}`);
+    }
   }
   if (dryRun) { io.out("Dry run: nothing changed."); return false; }
   return status.state === "missing" ? "installed" : "updated";

@@ -3,7 +3,7 @@ import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 import { harnessInfo } from "../../../../shared/harnesses.ts";
-import type { Env, Harness, Step } from "../types.ts";
+import type { Env, Harness } from "../types.ts";
 
 // Pi loads Slirc as a Pi package: `pi install npm:slirc-agent` adds it to Pi's settings, and the
 // package's `pi.extensions` entry (./extension.ts, built to dist/pi-extension.js) runs inside every
@@ -28,6 +28,24 @@ function run(env: Env, args: string[]): string {
 }
 
 const probe = (env: Env, args: string[]) => { try { return run(env, args); } catch { return undefined; } };
+
+// Right after a release npm can answer ETARGET for the new version for a little while. Tests
+// shorten the wait.
+export const npmRetry = { tries: 6, waitMs: 5_000 };
+const pause = (ms: number) => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); };
+
+// `pi install npm:slirc-agent@<version>` replaces any slirc-agent entry Pi has, and a failed one
+// leaves it as it was, so an update never removes the working extension first.
+function install(env: Env, target: string, version: string): void {
+  for (let attempt = 1; ; attempt++) {
+    try { run(env, ["install", target]); return; }
+    catch (error) {
+      if (!/ETARGET|notarget/i.test(error instanceof Error ? error.message : String(error))) throw error;
+      if (attempt >= npmRetry.tries) throw new Error(`npm doesn't offer slirc-agent ${version} yet. That's a short delay npm has after each release. Wait a minute, then run this again.`);
+      pause(npmRetry.waitMs);
+    }
+  }
+}
 
 // `pi list` prints each source, then its installed folder on the next line.
 export function installedFolder(env: Env, listing = probe(env, ["list"]) ?? ""): string | undefined {
@@ -82,14 +100,7 @@ const pi: Harness = {
     if (status.state === "current" || status.state === "conflict") return [];
     // Pinning the exact version makes Pi fetch it even when npm's cache holds an older one.
     const target = env.SLIRC_PI_SOURCE ? resolve(env.SLIRC_PI_SOURCE) : `${NPM_SOURCE}@${version}`;
-    const steps: Step[] = [];
-    const folder = installedFolder(env);
-    if (status.state === "outdated" && folder) {
-      const listed = (probe(env, ["list"]) ?? "").split("\n").map((line) => line.trim()).find((line) => line === NPM_SOURCE || line.startsWith(`${NPM_SOURCE}@`)) ?? NPM_SOURCE;
-      steps.push({ doing: `pi remove ${listed}`, apply: () => { run(env, ["remove", listed]); } });
-    }
-    steps.push({ doing: `pi install ${target}`, apply: () => { run(env, ["install", target]); } });
-    return steps;
+    return [{ doing: `pi install ${target}`, apply: () => install(env, target, version) }];
   },
 
   uninstall(env) {

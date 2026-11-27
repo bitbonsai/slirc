@@ -76,6 +76,18 @@ for (const [name, runtime] of runtimes) {
     expect(fake.calls().filter((call) => call.startsWith("install"))).toHaveLength(1);
   });
 
+  test(`${name}: an update that fails leaves the old extension working and says so`, async () => {
+    fake = fakePi({ broken: true });
+    fake.install("npm:slirc-agent@3.0.0");
+    const run = await cli(runtime, [host()], { ...fake.env, PI_CODING_AGENT: "true" });
+    expect(run.code).toBe(1);
+    expect(run.out).toContain(`Pi: updating the Slirc extension from 3.0.0 to ${VERSION}.`);
+    expect(run.out).not.toContain("pi remove");
+    expect(run.err).toContain(`pi install npm:slirc-agent@${VERSION} failed`);
+    expect(run.err).toContain("Nothing else changed. Fix that, then run this again.");
+    expect(fake.installed()).toEqual(["npm:slirc-agent@3.0.0"]);
+  });
+
   test(`${name}: in a plain terminal, it sets up and starts Pi with pairing armed`, async () => {
     fake = fakePi();
     const run = await cli(runtime, [host(), "--", "--model", "x"], fake.env);

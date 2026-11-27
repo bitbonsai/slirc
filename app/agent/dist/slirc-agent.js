@@ -1406,6 +1406,24 @@ var probe = (env, args) => {
     return;
   }
 };
+var npmRetry = { tries: 6, waitMs: 5000 };
+var pause = (ms) => {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+};
+function install(env, target, version) {
+  for (let attempt = 1;; attempt++) {
+    try {
+      run(env, ["install", target]);
+      return;
+    } catch (error) {
+      if (!/ETARGET|notarget/i.test(error instanceof Error ? error.message : String(error)))
+        throw error;
+      if (attempt >= npmRetry.tries)
+        throw new Error(`npm doesn't offer slirc-agent ${version} yet. That's a short delay npm has after each release. Wait a minute, then run this again.`);
+      pause(npmRetry.waitMs);
+    }
+  }
+}
 function installedFolder(env, listing = probe(env, ["list"]) ?? "") {
   const lines = listing.split(`
 `).map((line) => line.trim());
@@ -1460,19 +1478,7 @@ var pi = {
     if (status.state === "current" || status.state === "conflict")
       return [];
     const target = env.SLIRC_PI_SOURCE ? resolve(env.SLIRC_PI_SOURCE) : `${NPM_SOURCE}@${version}`;
-    const steps = [];
-    const folder = installedFolder(env);
-    if (status.state === "outdated" && folder) {
-      const listed = (probe(env, ["list"]) ?? "").split(`
-`).map((line) => line.trim()).find((line) => line === NPM_SOURCE || line.startsWith(`${NPM_SOURCE}@`)) ?? NPM_SOURCE;
-      steps.push({ doing: `pi remove ${listed}`, apply: () => {
-        run(env, ["remove", listed]);
-      } });
-    }
-    steps.push({ doing: `pi install ${target}`, apply: () => {
-      run(env, ["install", target]);
-    } });
-    return steps;
+    return [{ doing: `pi install ${target}`, apply: () => install(env, target, version) }];
   },
   uninstall(env) {
     const listed = (probe(env, ["list"]) ?? "").split(`
@@ -1977,7 +1983,7 @@ var module_default3 = codex;
 
 // src/harnesses/opencode/module.ts
 import { spawnSync as spawnSync4 } from "node:child_process";
-import { cpSync as cpSync3, existsSync as existsSync4, mkdirSync as mkdirSync3, readFileSync as readFileSync6, rmSync as rmSync4 } from "node:fs";
+import { cpSync as cpSync3, existsSync as existsSync4, mkdirSync as mkdirSync3, readFileSync as readFileSync6, renameSync, rmSync as rmSync4 } from "node:fs";
 import { homedir as homedir8 } from "node:os";
 import { dirname as dirname6, join as join8 } from "node:path";
 import { fileURLToPath as fileURLToPath3 } from "node:url";
@@ -2079,8 +2085,11 @@ var opencode = {
         if (found !== wanted && !env.SLIRC_OPENCODE_SOURCE)
           throw new Error(`The bundled OpenCode plugin is ${found}, not ${wanted}. Reinstall slirc-agent, then run this again.`);
         mkdirSync3(dirname6(folder), { recursive: true });
+        const next = `${folder}.new`;
+        rmSync4(next, { recursive: true, force: true });
+        cpSync3(source, next, { recursive: true });
         rmSync4(folder, { recursive: true, force: true });
-        cpSync3(source, folder, { recursive: true });
+        renameSync(next, folder);
       }
     }, {
       doing: "reload OpenCode so it loads the plugin",
@@ -2106,7 +2115,7 @@ var harnesses = [module_default, module_default2, module_default3, module_defaul
 
 // src/arm.ts
 import { randomBytes } from "node:crypto";
-import { closeSync, mkdirSync as mkdirSync4, openSync as openSync2, readFileSync as readFileSync7, renameSync, rmSync as rmSync5, writeSync } from "node:fs";
+import { closeSync, mkdirSync as mkdirSync4, openSync as openSync2, readFileSync as readFileSync7, renameSync as renameSync2, rmSync as rmSync5, writeSync } from "node:fs";
 import { join as join9 } from "node:path";
 var ARM_TTL_MS = 10 * 60000;
 var KEY = /^[A-Za-z0-9_-]{1,128}$/;
@@ -2127,7 +2136,7 @@ function writeArm(harness, key, arm, env = process.env, now = Date.now()) {
   } finally {
     closeSync(fd);
   }
-  renameSync(temp, path);
+  renameSync2(temp, path);
   return path;
 }
 
@@ -2205,7 +2214,7 @@ function setUp(harness, env, io, dryRun) {
     io.out(`${harness.name}: Slirc extension ${status.version ?? VERSION} is set up.`);
     return false;
   }
-  io.out(`${harness.name}: ${status.state === "missing" ? "adding" : `updating from ${status.version ?? "an older version"} to ${VERSION}`} the Slirc extension.`);
+  io.out(status.state === "missing" ? `${harness.name}: adding the Slirc extension.` : `${harness.name}: updating the Slirc extension from ${status.version ?? "an older version"} to ${VERSION}.`);
   for (const step of steps) {
     io.out(`  ${step.doing}`);
     if (dryRun)
@@ -2213,8 +2222,9 @@ function setUp(harness, env, io, dryRun) {
     try {
       step.apply();
     } catch (error) {
-      throw new CliError2(`${error instanceof Error ? error.message : String(error)}
-Nothing else changed. Fix that, then run this again.`);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new CliError2(`${message}
+Nothing else changed.${/run this again\.$/.test(message) ? "" : " Fix that, then run this again."}`);
     }
   }
   if (dryRun) {

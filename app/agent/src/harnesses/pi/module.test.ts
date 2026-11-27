@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import pi from "./module.ts";
+import pi, { npmRetry } from "./module.ts";
 import { fakePi, type FakePi } from "../../../test/support/fake-pi.ts";
 
 let fake: FakePi;
@@ -30,7 +30,47 @@ test("a 2.x install is replaced, not doubled", () => {
   expect(pi.status(fake.env, "3.0.0")).toEqual({ state: "outdated", version: "2.4.1" });
   pi.install(fake.env, "3.0.0").forEach((step) => step.apply());
   expect(fake.installed()).toEqual(["npm:slirc-agent@3.0.0"]);
-  expect(fake.calls().filter((call) => /^(install|remove)/.test(call))).toEqual(["remove npm:slirc-agent", "install npm:slirc-agent@3.0.0"]);
+  expect(fake.calls().filter((call) => /^(install|remove)/.test(call))).toEqual(["install npm:slirc-agent@3.0.0"]);
+});
+
+test("an update installs over the old version and never removes it first", () => {
+  fake = fakePi();
+  fake.install("npm:slirc-agent@3.4.0");
+  const steps = pi.install(fake.env, "3.5.0");
+  expect(steps.map((step) => step.doing)).toEqual(["pi install npm:slirc-agent@3.5.0"]);
+  steps.forEach((step) => step.apply());
+  expect(fake.installed()).toEqual(["npm:slirc-agent@3.5.0"]);
+  expect(fake.calls().some((call) => call.startsWith("remove"))).toBe(false);
+});
+
+test("a failed update leaves the working extension installed", () => {
+  fake = fakePi({ broken: true });
+  fake.install("npm:slirc-agent@3.4.0");
+  const [step] = pi.install(fake.env, "3.5.0");
+  expect(() => step.apply()).toThrow("pi install npm:slirc-agent@3.5.0 failed");
+  expect(fake.installed()).toEqual(["npm:slirc-agent@3.4.0"]);
+  expect(pi.status(fake.env, "3.5.0")).toEqual({ state: "outdated", version: "3.4.0" });
+});
+
+test("npm's delay right after a release is waited out, then named when it lasts", () => {
+  const saved = { ...npmRetry };
+  npmRetry.waitMs = 1;
+  try {
+    // ETARGET twice, then the version shows up.
+    fake = fakePi({ notYet: 2 });
+    fake.install("npm:slirc-agent@3.4.0");
+    pi.install(fake.env, "3.5.0").forEach((step) => step.apply());
+    expect(fake.installed()).toEqual(["npm:slirc-agent@3.5.0"]);
+    expect(fake.calls().filter((call) => call.startsWith("install"))).toHaveLength(3);
+    fake.done();
+    // Still missing after every try: a plain message, and the old version still works.
+    fake = fakePi({ notYet: 99 });
+    fake.install("npm:slirc-agent@3.4.0");
+    const [step] = pi.install(fake.env, "3.5.0");
+    expect(() => step.apply()).toThrow("npm doesn't offer slirc-agent 3.5.0 yet. That's a short delay npm has after each release. Wait a minute, then run this again.");
+    expect(fake.calls().filter((call) => call.startsWith("install"))).toHaveLength(npmRetry.tries);
+    expect(fake.installed()).toEqual(["npm:slirc-agent@3.4.0"]);
+  } finally { Object.assign(npmRetry, saved); }
 });
 
 test("uninstall removes only the Slirc package", () => {

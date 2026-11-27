@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -84,9 +84,13 @@ const opencode: Harness = {
         const found = manifest(source)?.version;
         if (manifest(source)?.name !== PACKAGE) throw new Error(`The Slirc plugin for OpenCode is missing from ${source}. Reinstall slirc-agent, then run this again.`);
         if (found !== wanted && !env.SLIRC_OPENCODE_SOURCE) throw new Error(`The bundled OpenCode plugin is ${found}, not ${wanted}. Reinstall slirc-agent, then run this again.`);
+        // Copied beside the old one first, so a failed copy leaves the working plugin in place.
         mkdirSync(dirname(folder), { recursive: true });
+        const next = `${folder}.new`;
+        rmSync(next, { recursive: true, force: true });
+        cpSync(source, next, { recursive: true });
         rmSync(folder, { recursive: true, force: true });
-        cpSync(source, folder, { recursive: true });
+        renameSync(next, folder);
       },
     }, {
       // A running service picks up a changed plugin it already knows, but not a new one, until
