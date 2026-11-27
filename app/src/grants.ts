@@ -3,6 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { ergoOperUser } from "./config.ts";
 import { SERVICE_BOT_NICKS } from "../shared/service-bots.ts";
+import { foldIdentifier as fold } from "../shared/fold.ts";
 import { IrcClient, type ParsedMessage } from "./irc.ts";
 import { clearChannelHistory, deleteHistoryMsgid, joinHistoryChannel, validHistoryChannel, type ChannelHistoryResult } from "./history.ts";
 
@@ -273,7 +274,6 @@ export async function grantChannelAccess(channel: string, nick: string): Promise
 const WHO_TOKEN = "152";
 export type Occupant = { nick: string; account: string };
 export async function channelOccupants(client: IrcClient, channel: string, timeoutMs = NAMES_TIMEOUT_MS): Promise<Occupant[]> {
-  const fold = (value: string) => value.toLowerCase();
   const self = fold(client.nick);
   const occupants: Occupant[] = [];
   const reply = client.waitFor((message) => {
@@ -368,7 +368,6 @@ export async function readDirectChannelReady(channel: string, members: string[],
   // One budget includes TCP/TLS, CAP, SASL, welcome, OPER and the complete proof.
   const deadline = performance.now() + timeoutMs;
   if (!/^#[a-z0-9][a-z0-9_-]{0,63}$/i.test(channel)) return false;
-  const fold = (value: string) => value.replace(/[A-Z]/g, (char) => char.toLowerCase());
   const target = fold(channel);
   let client: IrcClient | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -408,7 +407,7 @@ export async function readDirectChannelReady(channel: string, members: string[],
       new Promise<false>((resolve) => { timer = setTimeout(() => resolve(false), Math.max(0, deadline - performance.now())); }),
     ]);
     // Ergo canonicalizes bare nick invite exceptions to nick!*@*.
-    const people = new Set(members.map(fold));
+    const people = new Set(members.map((nick) => fold(nick)));
     const allowedAccounts = new Set([...people, ...appAccounts()]);
     const allowedMasks = new Set([...people, "slirc"].map((nick) => `${nick}!*@*`));
     return confirmed && privateMode && listComplete && registered && whoComplete

@@ -1,6 +1,7 @@
 // Mention matching for the composer's `@` picker. Pure so the token boundary and candidate order
 // (room members before contacts, deduped, capped) are testable without the browser client.
 import { foldIdentifier } from "./model.ts";
+import { matchRank } from "./match.ts";
 
 const MENTION_TOKEN_RE = /(?:^|\s)@([^\s@]*)$/;
 
@@ -26,23 +27,22 @@ export function inviteToken(text: string): string | null {
 
 /** People search results to offer for `/invite`: server order, minus me and known members, max 8. */
 export function inviteCandidates(results: readonly string[], exclude: readonly string[]): string[] {
-  const skip = new Set(exclude.map(foldIdentifier));
+  const skip = new Set(exclude.map((nick) => foldIdentifier(nick)));
   return results.filter((nick) => !skip.has(foldIdentifier(nick))).slice(0, 8);
 }
 
-/** Room members first, then contacts, deduped, max 8. A row matches when the query is a case-insensitive
- * prefix of its nick or of its display name (`nameOf`, empty when it has none).
+/** Room members first, then contacts, deduped, max 8. A row matches when the query starts its nick or its
+ * display name (`nameOf`, empty when it has none), or any word in either; prefix hits go first.
  * `keep` drops nicks the picker must not offer, such as an agent that isn't attached. */
 export function mentionCandidates(query: string, members: readonly string[], contacts: readonly string[], keep: (nick: string) => boolean = () => true, nameOf: (nick: string) => string = () => ""): string[] {
-  const folded = foldIdentifier(query);
   const seen = new Set<string>();
-  const out: string[] = [];
+  const found: { nick: string; rank: number }[] = [];
   for (const nick of [...members, ...contacts]) {
     const key = foldIdentifier(nick);
     if (!key || seen.has(key)) continue;
     seen.add(key);
-    if ((!folded || key.startsWith(folded) || foldIdentifier(nameOf(nick)).startsWith(folded)) && keep(nick)) out.push(nick);
-    if (out.length >= 8) break;
+    const rank = matchRank(query, nick, nameOf(nick));
+    if (rank && keep(nick)) found.push({ nick, rank });
   }
-  return out;
+  return found.sort((a, b) => b.rank - a.rank).slice(0, 8).map((entry) => entry.nick);
 }

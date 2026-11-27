@@ -94,7 +94,9 @@ test("typing in the dialog's field narrows the rows by name and host", () => {
   expect(origins("  ")).toEqual(rows.map((row) => row.origin));
   expect(origins("XM")).toEqual(["https://xmiro.slirc.app"]);
   expect(origins("example.com")).toEqual(["https://chat.example.com"]);
-  expect(origins("slirc")).toEqual(["https://ai-guild.slirc.app", "https://xmiro.slirc.app", OPEN_WORKSPACE]);
+  // This workspace stays first; then the name that starts with the text, then the host that has it as a word.
+  expect(origins("slirc")).toEqual(["https://ai-guild.slirc.app", OPEN_WORKSPACE, "https://xmiro.slirc.app"]);
+  expect(origins("guild")).toEqual(["https://ai-guild.slirc.app"]);
   expect(origins("https://xmiro")).toEqual(["https://xmiro.slirc.app"]);
   expect(filterWorkspaces(rows, "xm").open).toBeNull();
 });

@@ -1,4 +1,5 @@
 import { createLimiter } from "../request-security.ts";
+import { rankMatches } from "../../shared/match.ts";
 import { invitationCsrf, hash, completeFirstVerification, startSession, devLinks, appOrigin, verifiedHuman, admissionCsrf, currentUser, userAgentDetails, sessionCookie, acctCookie } from "../http/session.ts";
 import { emailInviteByToken, normalizeEmail, emailInviteAllowance, beginConversationOperation, completeConversationOperation, pendingEmailInvite, reserveEmailInvites, emailInviteLimit, listEmailInvites, settleEmailInvite, createEmailInvite, recordEmailInviteDelivery, inviteById, acceptEmailInviteById, claimEmailInviteResend, finishEmailInviteResend, cancelEmailInvite } from "../email-invites.ts";
 import { db } from "../db.ts";
@@ -244,19 +245,21 @@ invitations.get("/api/people", (c) => {
   if (query.length < 1 || query.length > 80) return c.json({ error: "search query must be 1–80 characters" }, 400);
   if (!peopleSearchLimit.check(account.id)) return c.json({ error: "too many searches" }, 429);
   c.header("Cache-Control", "no-store");
+  const wanted = query.replace(/^@/, "");
   const escaped = query.replace(/[\\%_]/g, "\\$&");
   // Shared discovery gate includes public admin contacts and the admin human directory.
   const discovery = humanDiscovery(account.nick);
-  const people = db.query(`SELECT a.account_id, a.nick, p.full_name, p.avatar_path, p.avatar_version FROM accounts a
+  const found = db.query(`SELECT a.account_id, a.nick, p.full_name, p.avatar_path, p.avatar_version FROM accounts a
     LEFT JOIN profiles p ON p.account = a.nick COLLATE NOCASE
     WHERE a.kind = 'human' AND a.verified_at IS NOT NULL AND a.account_id <> ?
       AND (a.nick LIKE ? ESCAPE '\\' COLLATE NOCASE OR p.full_name LIKE ? ESCAPE '\\' COLLATE NOCASE)
       AND ${discovery.sql}
-    ORDER BY CASE WHEN a.nick = ? COLLATE NOCASE THEN 0 ELSE 1 END, a.nick LIMIT 20`)
+    ORDER BY CASE WHEN a.nick = ? COLLATE NOCASE THEN 0 ELSE 1 END, a.nick LIMIT 200`)
     .all(account.id, `%${escaped}%`, `%${escaped}%`, ...discovery.params, query) as Array<{ account_id: string; nick: string; full_name: string | null; avatar_path: string | null; avatar_version: number | null }>;
+  // The query has to start the nick or full name, or a word in either, like every other picker; the SQL above only narrows.
+  const people = rankMatches(found, wanted, (person) => [person.nick, person.full_name]).slice(0, 20);
   // help and remind come first when they run here; the client draws their bot mark.
-  const wanted = query.replace(/^@/, "").toLowerCase();
-  const helpers = contactHelpers().filter((helper) => helper.includes(wanted)).flatMap((helper) => {
+  const helpers = rankMatches(contactHelpers(), wanted, (helper) => [helper]).flatMap((helper) => {
     const row = db.query("SELECT account_id, nick FROM accounts WHERE nick = ? COLLATE NOCASE AND kind = 'bot'").get(helper) as { account_id: string; nick: string } | null;
     return row ? [{ accountId: row.account_id, nick: row.nick, displayName: row.nick, avatarUrl: "", avatarVersion: 0, kind: "bot" }] : [];
   });

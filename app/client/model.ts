@@ -1,12 +1,6 @@
 // Device records are projections of Ergo, never a second conversation authority.
-export type CaseMapping = "ascii" | "rfc1459" | "strict-rfc1459";
-
-export function foldIdentifier(value: string, mapping: CaseMapping = "ascii"): string {
-  const lower = value.replace(/[A-Z]/g, (ch) => ch.toLowerCase());
-  if (mapping === "ascii") return lower;
-  return lower.replace(/[\[\]\\^]/g, (ch) =>
-    ({ "[": "{", "]": "}", "\\": "|", "^": mapping === "rfc1459" ? "~" : "^" })[ch]!);
-}
+import { foldIdentifier, type CaseMapping } from "../shared/fold.ts";
+export { foldIdentifier, type CaseMapping };
 
 export interface AccountScope {
   instance: string; // canonical HTTP(S) origin, never a caller-supplied display host

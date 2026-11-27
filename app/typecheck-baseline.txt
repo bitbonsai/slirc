@@ -1,12 +1,9 @@
 client/core/connection.ts TS2367 This comparison appears to be unintentional because the types 'true' and 'false' have no overlap.
 client/core/session.ts TS2339 Property 'tab' does not exist on type 'Screen'.
-client/features/direct-messages.ts TS2345 Argument of type '(value: string, mapping?: CaseMapping) => string' is not assignable to parameter of type '(value: string, index: number, array: string[]) => string'.
 client/features/media-upload.ts TS2322 Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'.
 client/main.ts TS7016 Could not find a declaration file for module '../public/vendor/alpine.js'. '<app>/public/vendor/alpine.js' implicitly has an 'any' type.
 client/media-send.ts TS2322 Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'.
-client/mentions.ts TS2345 Argument of type '(value: string, mapping?: CaseMapping) => string' is not assignable to parameter of type '(value: string, index: number, array: readonly string[]) => string'.
 client/outbox.ts TS2322 Type 'SendState' is not assignable to type '"confirmed" | "failed" | "queued" | "sending" | "uncertain"'.
-client/people-card.ts TS2345 Argument of type '(value: string, mapping?: CaseMapping) => string' is not assignable to parameter of type '(value: string, index: number, array: string[]) => string'.
 client/presentation.ts TS7016 Could not find a declaration file for module '../public/vendor/nueglow.js'. '<app>/public/vendor/nueglow.js' implicitly has an 'any' type.
 client/profile-page.ts TS7022 'submitted' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
 client/store.ts TS2367 This comparison appears to be unintentional because the types '"failed" | "queued" | "sending" | "uncertain"' and '"saving"' have no overlap.

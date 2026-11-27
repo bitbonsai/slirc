@@ -222,7 +222,7 @@ export function createPeopleCard(reactive: <T extends object>(value: T) => T, { 
   function loadSharedGroupMembers(nick: string): void {
     const epoch = ++groupMemberEpoch;
     const key = foldIdentifier(nick);
-    const sharedChannels = new Set(whoisChannelList().map(foldIdentifier));
+    const sharedChannels = new Set(whoisChannelList().map((channel) => foldIdentifier(channel)));
     for (const item of conversations()) {
       const detail = channelDetails().find((entry) => entry.isGroup === true && foldIdentifier(entry.channel) === foldIdentifier(item.wireTarget));
       if (item.kind !== "room" || !detail || !sharedChannels.has(foldIdentifier(item.wireTarget))) continue;

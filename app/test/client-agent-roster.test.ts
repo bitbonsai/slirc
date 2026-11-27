@@ -146,5 +146,9 @@ test("`/invite @sa-` offers your matching agents before people search answers", 
   expect(picker("/invite slirc").matches()).toEqual(["pi-a143"]);
   expect(picker("/invite @pi", { roomMembers: ["pi-a143"] }).matches()).toEqual([]);
   expect(agentInviteMatches(mergeAgents({}, details), "eve", "")).toEqual([]);
+  // A word start counts, the middle of a word does not.
+  expect(picker("/invite @9f").matches()).toEqual(["sa-9f2c"]);
+  expect(picker("/invite @f2c").matches()).toEqual([]);
+  expect(picker("/invite @sa-9").matches()).toEqual(["sa-9f2c"]);
   component.stopInviteSearch();
 });

@@ -394,6 +394,10 @@ test("thread palette filters by title and channel and keeps the parent's authori
   expect(filterThreadPalette(rows, "  DEPLOY  ").map((row) => row.channel)).toEqual(["#t-aaa111", "#t-ccc333", "#t-other1"]);
   expect(filterThreadPalette(rows, "#t-bbb222").map((row) => row.channel)).toEqual(["#t-bbb222"]);
   expect(filterThreadPalette(rows, "zzz")).toEqual([]);
+  // A word inside the title matches, after titles that start with the text.
+  expect(filterThreadPalette(rows, "rollback").map((row) => row.channel)).toEqual(["#t-ccc333"]);
+  expect(filterThreadPalette(rows, "plans").map((row) => row.channel)).toEqual(["#t-bbb222"]);
+  expect(filterThreadPalette(rows, "ploy")).toEqual([]);
 });
 
 test("thread palette selection clamps at both ends and only resets on a query change", () => {

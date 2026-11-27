@@ -87,7 +87,7 @@ export function createDirectMessages(deps: DirectMessagesDeps) {
 
   async function restorePendingDirects(targetDb: ClientDatabase): Promise<void> {
     const nickById = new Map(Object.entries(ui.accountIds).map(([nick, id]: [string, any]) => [String(id), nick]));
-    const contacts = new Set((ui.contacts as string[]).map(foldIdentifier));
+    const contacts = new Set((ui.contacts as string[]).map((nick) => foldIdentifier(nick)));
     try {
       const [drafts, operations] = await Promise.all([targetDb.drafts.toArray(), targetDb.operations.toArray()]);
       if (rs.db !== targetDb || rs.stopped || !rs.scope || rs.currentScope !== scopeKey(targetDb.scope)) return;

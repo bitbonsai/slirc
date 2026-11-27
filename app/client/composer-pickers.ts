@@ -1,4 +1,5 @@
 import { foldIdentifier } from "@client/model.ts";
+import { matchRank } from "@client/match.ts";
 import { inviteAtOnly, inviteCandidates, inviteToken, mentionCandidates, mentionToken } from "@client/mentions.ts";
 import { agentInviteMatches, agentLabel, mentionableNick, ownAgentNicks } from "@client/agent-roster.ts";
 import { hiddenCommands, slashSuggestions, type SlashCommand } from "@client/commands.ts";
@@ -149,6 +150,7 @@ export function mentionPickerComponent(openPopup?: OpenPopup): Record<string, un
     index: 0,
     dismissed: false,
     inviteResults: [] as string[],
+    inviteNames: {} as Record<string, string>,
     inviteFor: null as string | null,
     _inviteAsked: "",
     _inviteTimer: null as ReturnType<typeof setTimeout> | null,
@@ -192,7 +194,7 @@ export function mentionPickerComponent(openPopup?: OpenPopup): Record<string, un
         // People search never lists agents, so your own come first, straight from the local roster.
         const agents = agentInviteMatches(this.agentProfiles, String(this.account ?? ""), invite);
         // Until the fresh answer lands, keep the last list narrowed to nicks that still fit.
-        const fits = this.inviteFor === null ? [] : this.inviteFor === invite ? this.inviteResults : this.inviteResults.filter((nick: string) => foldIdentifier(nick).includes(foldIdentifier(invite)));
+        const fits = this.inviteFor === null ? [] : this.inviteFor === invite ? this.inviteResults : this.inviteResults.filter((nick: string) => matchRank(invite, nick, this.inviteNames[nick]) > 0);
         return inviteCandidates([...agents, ...fits].filter((nick, i, all) => all.findIndex((other) => foldIdentifier(other) === foldIdentifier(nick)) === i),
           [String(this.account ?? ""), ...(Array.isArray(this.roomMembers) ? this.roomMembers : [])]);
       }
@@ -259,7 +261,9 @@ export function mentionPickerComponent(openPopup?: OpenPopup): Record<string, un
           const response = await fetch(`/api/people?q=${encodeURIComponent(query)}&limit=8`, { credentials: "same-origin", signal: abort.signal });
           const body = response.ok ? await response.json() : {};
           if (abort.signal.aborted) return;
-          this.inviteResults = Array.isArray(body.people) ? body.people.map((person: { nick?: unknown }) => person?.nick).filter((nick: unknown): nick is string => typeof nick === "string" && !!nick) : [];
+          const people: { nick?: unknown; displayName?: unknown }[] = Array.isArray(body.people) ? body.people : [];
+          this.inviteResults = people.map((person) => person?.nick).filter((nick: unknown): nick is string => typeof nick === "string" && !!nick);
+          this.inviteNames = Object.fromEntries(people.filter((person) => typeof person?.nick === "string" && typeof person.displayName === "string").map((person) => [person.nick, person.displayName]));
           this.inviteFor = query;
           this.index = 0;
           this.sync();

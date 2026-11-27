@@ -7,6 +7,8 @@
 // other workspaces' icons too. The letter tile stays until the icon has loaded, and comes back when
 // there is none.
 
+import { rankMatches } from "./match.ts";
+
 export type WorkspaceMark = { name: string; letter: string; color: string; logo: string; icon: string; iconReady: boolean };
 
 // Twelve Catppuccin Mocha accents. Dark text (#11111b) reads on each of them in both themes. The
@@ -133,7 +135,9 @@ export function filterWorkspaces(rows: WorkspaceChoice[], query: string): Worksp
   const typed = String(query || "").trim();
   const text = typed.toLowerCase().replace(/^https:\/\//, "");
   if (!text) return { rows, open: null };
-  const matches = rows.filter((row) => row.name.toLowerCase().includes(text) || row.host.toLowerCase().includes(text));
+  // This workspace stays first; the rest rank prefix hits above word-start hits.
+  const ranked = rankMatches(rows, text, (row) => [row.name, row.host]);
+  const matches = [...ranked.filter((row) => row.current), ...ranked.filter((row) => !row.current)];
   if (matches.length) return { rows: matches, open: null };
   const origin = workspaceOrigin(typed);
   return { rows: [], open: { origin, label: origin ? origin.slice("https://".length) : typed } };

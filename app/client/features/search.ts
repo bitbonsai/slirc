@@ -2,6 +2,7 @@ import { conversationId, type Message } from "@client/model.ts";
 import type { AuthorizedConversation } from "@client/sync.ts";
 import { NOTES_CONVERSATION_ID } from "@client/navigation.ts";
 import { jumpRows, type JumpRow } from "@client/jump.ts";
+import { agentFor } from "@client/agent-roster.ts";
 import { embedMetaFromResponse, type EmbedMeta } from "@client/embed.ts";
 import { searchConversation, searchNotes, type SearchKind } from "@client/search.ts";
 import { recallStep, sentTexts, type Recall } from "@client/composer-history.ts";
@@ -15,7 +16,7 @@ import type { ClientState } from "@client/client-state.ts";
 
 export interface SearchDeps {
   state: Pick<RuntimeState, "authorized" | "db" | "directories" | "roomId" | "stopped" | "sync">;
-  ui: Pick<ClientState, "account" | "authenticated" | "channel" | "channels" | "composer" | "directs" | "editingMessageId" | "embeds" | "greeting" | "messages" | "mobileNav" | "notesOpen" | "pendingDm" | "pendingThread" | "roomLabel" | "threads"> & { nick?: string; view: ReturnType<typeof createView> };
+  ui: Pick<ClientState, "account" | "agentProfiles" | "authenticated" | "channel" | "channels" | "composer" | "directs" | "editingMessageId" | "embeds" | "greeting" | "messages" | "mobileNav" | "notesOpen" | "pendingDm" | "pendingThread" | "roomLabel" | "threads"> & { nick?: string; view: ReturnType<typeof createView> };
   isDesktop: boolean;
   openPopup: ReturnType<typeof createPopupOpener>;
   notes: ReturnType<typeof createNotes>;
@@ -46,8 +47,8 @@ export function createSearch(deps: SearchDeps) {
       groups: ui.channels.filter((item: AuthorizedConversation) => isGroup(item.wireTarget)).map((item: AuthorizedConversation) => ({
         wireTarget: item.wireTarget, label: roomLabelFor(item.wireTarget), unread: unreadCount(item.conversationId),
       })),
-      directs: ui.directs.map((item: { nick: string; channel: string }) => ({ nick: item.nick, unread: unreadCount(conversationIdForDm(item.channel)) })),
-      people: contactList(),
+      directs: ui.directs.map((item: { nick: string; channel: string }) => ({ nick: item.nick, name: agentFor(ui.agentProfiles, item.nick)?.name, unread: unreadCount(conversationIdForDm(item.channel)) })),
+      people: contactList().map((nick: string) => ({ nick, name: agentFor(ui.agentProfiles, nick)?.name })),
     });
     openPopup();
     window.dispatchEvent(new CustomEvent("slirc:jump-open", { detail: { rows } }));

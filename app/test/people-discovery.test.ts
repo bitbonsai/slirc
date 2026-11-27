@@ -338,6 +338,23 @@ test("people search hides secret-only outsiders by nick and display name", async
   expect(await search("Tom Hidden")).toEqual([]);
 });
 
+test("people search matches the start of the nick or display name, or of a word in either, prefix first", async () => {
+  addHuman("zed-bob", { fullName: "Zed Smith" });
+  addHuman("bobby", { fullName: "Robert Jones" });
+  addHuman("carol", { fullName: "Carol Bob" });
+  addHuman("steve", { fullName: "Steve Jones" });
+  channel("#d-public", "workspace");
+  members("#d-public", ["zed-bob", "bobby", "carol", "steve"]);
+  const search = async (q: string): Promise<string[]> => {
+    const response = await app.request(`/api/people?q=${encodeURIComponent(q)}`, { headers: auth("owner-session") });
+    return (await response.json() as { people: { nick: string }[] }).people.map((person) => person.nick);
+  };
+  expect(await search("bob")).toEqual(["bobby", "carol", "zed-bob"]);
+  expect(await search("BOB")).toEqual(["bobby", "carol", "zed-bob"]);
+  expect(await search("smith")).toEqual(["zed-bob"]);
+  expect(await search("ev")).toEqual([]);
+});
+
 test("a guessed hidden accountId fails generically before any side effect", async () => {
   const tom = addHuman("tom");
   channel("#d-vault", "secret", "someone");

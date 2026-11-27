@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { hosts as DEFAULT_HOSTS } from "../hosts.ts";
+import "../www/match.js";
 import "../www/picker.js";
 
 type Check = "yes" | "no" | "unknown";
@@ -549,7 +550,8 @@ describe("filterWorkspaces", () => {
   test("typing narrows the cards by name and host", () => {
     expect(picker.filterWorkspaces(saved, "XM").matches).toEqual(["https://xmiro.slirc.app"]);
     expect(picker.filterWorkspaces(saved, "example").matches).toEqual([SELF_HOSTED]);
-    expect(picker.filterWorkspaces(saved, "slirc").matches).toEqual(["https://ai-guild.slirc.app", "https://xmiro.slirc.app", picker.OPEN_WORKSPACE]);
+    // The card named Slirc starts with the text; the others only have it as a host word.
+    expect(picker.filterWorkspaces(saved, "slirc").matches).toEqual([picker.OPEN_WORKSPACE, "https://ai-guild.slirc.app", "https://xmiro.slirc.app"]);
     expect(picker.filterWorkspaces(saved, "xm").open).toBeNull();
   });
   test("with no card left it offers the typed address", () => {

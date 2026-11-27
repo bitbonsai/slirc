@@ -2,7 +2,7 @@
 // open the web client's workspace dialog. It draws rows with the dialog's workspace marks and lets
 // the app check every address.
 import { expect, test } from "bun:test";
-import { assets } from "../../desktop/picker-assets.ts";
+import { assets, nativeAssets } from "../../desktop/picker-assets.ts";
 import { WORKSPACE_PALETTE } from "../client/workspace-mark.ts";
 
 const picker = new URL("../../desktop/Slirc/Picker/", import.meta.url);
@@ -15,6 +15,9 @@ const { pickerRows, label } = (globalThis as unknown as { slircMacPicker: { pick
 test("the picker's copies of the web dialog's marks are current", async () => {
   for (const [name, make] of Object.entries(assets)) {
     expect(await Bun.file(new URL(name, picker)).text(), `run bun desktop/picker-assets.ts (${name})`).toBe(await make());
+  }
+  for (const [path, make] of Object.entries(nativeAssets)) {
+    expect(await Bun.file(new URL(`../../${path}`, import.meta.url)).text(), `run bun desktop/picker-assets.ts (${path})`).toBe(await make());
   }
 });
 

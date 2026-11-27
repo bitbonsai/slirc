@@ -1,5 +1,34 @@
 // Generated from app/client/workspace-mark.ts by desktop/picker-assets.ts. Do not edit.
 (() => {
+function foldIdentifier(value, mapping = "ascii") {
+  const lower = value.replace(/[A-Z]/g, (ch) => ch.toLowerCase());
+  if (mapping === "ascii")
+    return lower;
+  return lower.replace(/[\[\]\\^]/g, (ch) => ({ "[": "{", "]": "}", "\\": "|", "^": mapping === "rfc1459" ? "~" : "^" })[ch]);
+}
+function foldText(value) {
+  return String(value ?? "").toLowerCase();
+}
+const WORD_CHAR = /[\p{L}\p{N}]/u;
+function matchRank(query, ...fields) {
+  const needle = foldText(query);
+  if (!needle)
+    return 2;
+  let best = 0;
+  for (const field of fields) {
+    const text = foldText(field);
+    if (text.startsWith(needle))
+      return 2;
+    for (let at = text.indexOf(needle, 1);at > 0 && best < 1; at = text.indexOf(needle, at + 1)) {
+      if (!WORD_CHAR.test(text[at - 1]))
+        best = 1;
+    }
+  }
+  return best;
+}
+function rankMatches(items, query, fields) {
+  return items.map((item) => ({ item, rank: matchRank(query, ...fields(item)) })).filter((entry) => entry.rank > 0).sort((a, b) => b.rank - a.rank).map((entry) => entry.item);
+}
 const WORKSPACE_PALETTE = ["#f5c2e7", "#cba6f7", "#f38ba8", "#eba0ac", "#fab387", "#f9e2af", "#a6e3a1", "#94e2d5", "#89dceb", "#74c7ec", "#89b4fa", "#b4befe"];
 const OWN_HOST = "app.slirc.org";
 const TENANT_SUFFIX = ".slirc.app";
@@ -89,7 +118,8 @@ function filterWorkspaces(rows, query) {
   const text = typed.toLowerCase().replace(/^https:\/\//, "");
   if (!text)
     return { rows, open: null };
-  const matches = rows.filter((row) => row.name.toLowerCase().includes(text) || row.host.toLowerCase().includes(text));
+  const ranked = rankMatches(rows, text, (row) => [row.name, row.host]);
+  const matches = [...ranked.filter((row) => row.current), ...ranked.filter((row) => !row.current)];
   if (matches.length)
     return { rows: matches, open: null };
   const origin = workspaceOrigin(typed);

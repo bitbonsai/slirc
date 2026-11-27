@@ -2,7 +2,10 @@
 // Pure parts live here so they can be tested without a browser; palettes.ts holds the dialog.
 
 export type JumpKind = "channel" | "group" | "dm" | "person";
-export interface JumpRow { id: string; kind: JumpKind; label: string; hint: string; target: string; unread: number }
+import { matchRank } from "./match.ts";
+
+// `alias` is a second name the row answers to, such as an agent's display name when the label is its nick.
+export interface JumpRow { id: string; kind: JumpKind; label: string; alias?: string; hint: string; target: string; unread: number }
 
 const APPLE = /Mac|iPhone|iPad|iPod/;
 
@@ -25,15 +28,15 @@ export function isWorkspacesShortcut(event: { code: string; metaKey: boolean; ct
   return apple ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
 }
 
-// Higher is better, 0 is no match. Exact, then prefix, then substring, then the letters in order
-// ("dvt" finds "dev-test"). Shorter labels and earlier hits win ties.
-export function fuzzyScore(label: string, query: string): number {
+// Higher is better, 0 is no match. Exact, then the shared matcher (start of the label or alias, then
+// start of a word in either), then the letters in order ("dvt" finds "dev-test"). Shorter labels win ties.
+export function fuzzyScore(label: string, query: string, alias = ""): number {
   const text = label.toLowerCase(), needle = query.trim().toLowerCase().replace(/^[#@]/, "");
   if (!needle) return 1;
   if (text === needle) return 100;
-  if (text.startsWith(needle)) return 80 - text.length / 100;
-  const at = text.indexOf(needle);
-  if (at >= 0) return 60 - at / 100;
+  const rank = matchRank(needle, label, alias);
+  if (rank === 2) return 80 - text.length / 100;
+  if (rank === 1) return 60 - text.length / 100;
   let position = 0;
   for (const char of needle) {
     position = text.indexOf(char, position);
@@ -49,7 +52,7 @@ export const JUMP_LIMIT = 12;
 // equal scores keep the sidebar order.
 export function rankJump(rows: readonly JumpRow[], query: string, limit = JUMP_LIMIT): JumpRow[] {
   if (!query.trim()) return [...rows].sort((a, b) => Number(b.unread > 0) - Number(a.unread > 0)).slice(0, limit);
-  return rows.map((row, order) => ({ row, order, score: fuzzyScore(row.label, query) }))
+  return rows.map((row, order) => ({ row, order, score: fuzzyScore(row.label, query, row.alias) }))
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score || a.order - b.order)
     .slice(0, limit)
@@ -60,8 +63,8 @@ export function rankJump(rows: readonly JumpRow[], query: string, limit = JUMP_L
 export function jumpRows(input: {
   channels: readonly { wireTarget: string; label: string; secret: boolean; unread: number }[];
   groups: readonly { wireTarget: string; label: string; unread: number }[];
-  directs: readonly { nick: string; unread: number }[];
-  people: readonly string[];
+  directs: readonly { nick: string; name?: string; unread: number }[];
+  people: readonly (string | { nick: string; name?: string })[];
 }): JumpRow[] {
   const rows: JumpRow[] = [];
   const seen = new Set<string>();
@@ -71,13 +74,14 @@ export function jumpRows(input: {
     const key = direct.nick.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    rows.push({ id: `dm:${key}`, kind: "dm", label: direct.nick, hint: "Direct message", target: direct.nick, unread: direct.unread });
+    rows.push({ id: `dm:${key}`, kind: "dm", label: direct.nick, hint: "Direct message", target: direct.nick, unread: direct.unread, ...(direct.name && direct.name !== direct.nick ? { alias: direct.name } : {}) });
   }
-  for (const nick of input.people) {
+  for (const person of input.people) {
+    const nick = typeof person === "string" ? person : person.nick;
     const key = nick.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    rows.push({ id: `person:${key}`, kind: "person", label: nick, hint: "Start a direct message", target: nick, unread: 0 });
+    rows.push({ id: `person:${key}`, kind: "person", label: nick, hint: "Start a direct message", target: nick, unread: 0, ...(typeof person !== "string" && person.name && person.name !== nick ? { alias: person.name } : {}) });
   }
   return rows;
 }

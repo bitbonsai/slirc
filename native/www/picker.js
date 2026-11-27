@@ -1,6 +1,7 @@
 // The picker's rules for which addresses the shell accepts and when a saved one opens. A plain
 // script with no imports or exports: index.html loads it with a script tag, and
-// native/test/picker.test.ts imports it, and both read globalThis.slircPicker.
+// native/test/picker.test.ts imports it, and both read globalThis.slircPicker. It needs match.js
+// (generated from app/shared/match.ts) loaded first.
 (() => {
   const NOT_FOUND = "We couldn't find a workspace at that address. Check the spelling.";
   const UNREACHABLE = "We couldn't reach your workspace. Check your connection, or enter a different address.";
@@ -191,7 +192,7 @@
     const typed = String(query || "").trim();
     const text = typed.toLowerCase().replace(/^https:\/\//, "");
     if (!text) return { matches: origins, open: null };
-    const matches = origins.filter((origin) => nameOf(origin).toLowerCase().includes(text) || hostOf(origin).includes(text));
+    const matches = globalThis.slircMatch.rankMatches(origins, text, (origin) => [nameOf(origin), hostOf(origin)]);
     if (matches.length) return { matches, open: null };
     const origin = workspaceOrigin(typed);
     return { matches: [], open: { origin, label: origin ? hostOf(origin) : typed } };

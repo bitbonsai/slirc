@@ -830,6 +830,13 @@ test("jump rows list each place once and rank fuzzy matches", () => {
   expect(rankJump(rows, "ben").map((row) => row.label)).toEqual(["Ben", "Ada, Ben"]);
   expect(rankJump(rows, "zzz")).toEqual([]);
   expect(fuzzyScore("eve", "eve")).toBeGreaterThan(fuzzyScore("everyone", "eve"));
+  // A row answers to its alias too, and a word start beats scattered letters.
+  const named = jumpRows({ channels: [{ wireTarget: "#demo-dev", label: "demo-dev", secret: false, unread: 0 }], groups: [], directs: [{ nick: "claude-bcdb", name: "bit", unread: 0 }], people: [{ nick: "pi-a1", name: "docs" }] });
+  expect(rankJump(named, "b").map((row) => row.label)).toEqual(["claude-bcdb"]);
+  expect(rankJump(named, "bc").map((row) => row.label)).toEqual(["claude-bcdb"]);
+  expect(rankJump(named, "dev").map((row) => row.label)).toEqual(["demo-dev"]);
+  expect(rankJump(named, "docs").map((row) => row.label)).toEqual(["pi-a1"]);
+  expect(fuzzyScore("demo-dev", "dev")).toBeGreaterThan(fuzzyScore("demo-dev", "dv"));
 });
 
 test("jump palette: arrows wrap, Enter picks, Esc closes and gives focus back", () => {

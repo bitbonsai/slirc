@@ -3,6 +3,7 @@
 // part of the record, so a merge never blanks a field a richer source already filled.
 import { foldIdentifier } from "@client/model.ts";
 import { agentAvatarUrl } from "@client/presentation.ts";
+import { rankMatches } from "@client/match.ts";
 
 export interface AgentProfile {
   nick: string;
@@ -112,13 +113,10 @@ export function ownAgentNicks(profiles: AgentProfiles | undefined, account: stri
   return Object.values(profiles ?? {}).filter((agent) => ownedBy(agent, account)).map((agent) => agent.nick);
 }
 
-/** Own agents whose nick or name contains the `/invite` query. */
+/** Own agents whose nick or name starts with the `/invite` query, or any word in either; prefix hits first. */
 export function agentInviteMatches(profiles: AgentProfiles | undefined, account: string, query: string): string[] {
-  const folded = foldIdentifier(query);
-  if (!folded) return [];
-  return Object.values(profiles ?? {})
-    .filter((agent) => ownedBy(agent, account) && (foldIdentifier(agent.nick).includes(folded) || agent.name.toLowerCase().includes(query.toLowerCase())))
-    .map((agent) => agent.nick);
+  if (!foldIdentifier(query)) return [];
+  return rankMatches(Object.values(profiles ?? {}).filter((agent) => ownedBy(agent, account)), query, (agent) => [agent.nick, agent.name]).map((agent) => agent.nick);
 }
 
 export interface AgentNavRow { nick: string; label: string; channel: string }

@@ -2,6 +2,7 @@ import { conversationId, foldIdentifier, type Message, type QueueText } from "@c
 import { type AuthorizedConversation } from "@client/sync.ts";
 import { messageLinkLabel, routeUrl, type Screen } from "@client/navigation.ts";
 import { mountUrl } from "@client/presentation.ts";
+import { rankMatches } from "@client/match.ts";
 import { type ThreadGrant } from "@client/access.ts";
 import { queuedTextFor } from "@client/drafts.ts";
 
@@ -35,7 +36,7 @@ export function nestedThreads(threads: readonly ThreadGrant[], parent: string, l
 export function filterThreadPalette(threads: readonly ThreadGrant[], query: string): ThreadGrant[] {
   const needle = query.trim().toLowerCase();
   if (!needle) return [...threads];
-  return threads.filter((thread) => thread.title.toLowerCase().includes(needle) || thread.channel.toLowerCase().includes(needle));
+  return rankMatches(threads, needle, (thread) => [thread.title, thread.channel]);
 }
 
 export function clampThreadIndex(index: number, length: number): number {
