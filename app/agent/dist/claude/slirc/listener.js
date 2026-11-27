@@ -441,6 +441,18 @@ class SessionClient {
       query.set("before", args.before);
     return requestJson(`${this.state.origin}${API}/history?${query}`, this.state.secret, this.state.lease);
   }
+  async ownerDms(args) {
+    if (this.retired || !this.state.lease)
+      throw new Error(`Slirc is not attached to this ${this.adapter.noun}`);
+    if (!args.nick)
+      return requestJson(`${this.state.origin}${API}/owner-dms`, this.state.secret, this.state.lease);
+    const query = new URLSearchParams;
+    if (args.limit)
+      query.set("limit", String(args.limit));
+    if (args.before)
+      query.set("before", args.before);
+    return requestJson(`${this.state.origin}${API}/owner-dms/${encodeURIComponent(args.nick)}?${query}`, this.state.secret, this.state.lease);
+  }
   notify(message, level = "info") {
     if (!this.retired)
       this.adapter.notify(message, level);
@@ -955,7 +967,7 @@ function consents(prompt, host) {
 // package.json
 var package_default = {
   name: "slirc-agent",
-  version: "3.3.5",
+  version: "3.4.0",
   description: "Connect coding agents to Slirc rooms",
   keywords: [
     "slirc",
@@ -1180,6 +1192,7 @@ Slirc delivery receipt: ${receipt}`, receipt });
     "/send": async (args) => ({ text: await live().send(String(args.requestId), String(args.text)) }),
     "/delete": async (args) => ({ text: await live().remove(String(args.requestId), String(args.messageId)) }),
     "/history": async (args) => ({ text: JSON.stringify(await live().history(args)) }),
+    "/owner-dms": async (args) => ({ text: JSON.stringify(await live().ownerDms(args)) }),
     "/started": async (args) => {
       const id = receipts.get(String(args.receipt));
       if (!id || !client?.active)

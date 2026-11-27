@@ -1496,7 +1496,7 @@ import { fileURLToPath } from "node:url";
 // package.json
 var package_default = {
   name: "slirc-agent",
-  version: "3.3.5",
+  version: "3.4.0",
   description: "Connect coding agents to Slirc rooms",
   keywords: [
     "slirc",

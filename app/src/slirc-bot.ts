@@ -185,10 +185,14 @@ export function isEdit(tags: ParsedMessage["tags"]): boolean {
 // everyone (a private workspace) still gets notifications. Its password is derived from the oper
 // secret: nothing new to store, and it never leaves the server. Without ERGO_OPER_PASS the relay
 // connects unauthenticated as before, which only works where Ergo exempts the app's network.
-export async function relayCredentials(): Promise<{ saslUser: string; saslPass: string } | null> {
+export function relayPassword(): string | null {
   const operPass = process.env.ERGO_OPER_PASS;
-  if (!operPass) return null;
-  const saslPass = createHmac("sha256", operPass).update("slirc-relay").digest("base64url");
+  return operPass ? createHmac("sha256", operPass).update("slirc-relay").digest("base64url") : null;
+}
+
+export async function relayCredentials(): Promise<{ saslUser: string; saslPass: string } | null> {
+  const saslPass = relayPassword();
+  if (!saslPass) return null;
   const registered = await ergo("/v1/ns/saregister", { accountName: "slirc", passphrase: saslPass });
   if (!registered.success && registered.errorCode !== "ACCOUNT_EXISTS") throw new Error(registered.error || "Could not create the slirc relay account.");
   const updated = await ergo("/v1/ns/passwd", { accountName: "slirc", passphrase: saslPass });

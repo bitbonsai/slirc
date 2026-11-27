@@ -96,7 +96,7 @@ test("a session Slirc never connected starts nothing and its tools refuse", asyn
   expect(existsSync(liveFile(env, THREAD))).toBe(false);
   const [init, list, call] = await mcp([{ id: 1, method: "initialize", params: { protocolVersion: "2025-06-18" } }, { id: 2, method: "tools/list" }, reply(THREAD, "r0", "hi")]);
   expect(init.result.serverInfo.name).toBe("slirc");
-  expect(list.result.tools.map((tool: any) => tool.name)).toEqual(["slirc_reply", "slirc_send", "slirc_delete", "slirc_fail", "slirc_history"]);
+  expect(list.result.tools.map((tool: any) => tool.name)).toEqual(["slirc_reply", "slirc_send", "slirc_delete", "slirc_fail", "slirc_history", "slirc_owner_dms"]);
   expect(call.result).toMatchObject({ isError: true, content: [{ text: expect.stringContaining("not connected") }] });
 });
 

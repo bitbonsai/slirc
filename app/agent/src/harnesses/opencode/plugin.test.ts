@@ -112,7 +112,7 @@ const offer = (secret: string, id: string) => streams.get(secret)!.enqueue(enc.e
 test("/slirc pairs that session with no model turn, and the link goes only to the TUI", async () => {
   const one = await instance("/work/one");
   try {
-    expect([...one.tools.keys()].sort()).toEqual(["slirc_delete", "slirc_fail", "slirc_history", "slirc_reply", "slirc_send"]);
+    expect([...one.tools.keys()].sort()).toEqual(["slirc_delete", "slirc_fail", "slirc_history", "slirc_owner_dms", "slirc_reply", "slirc_send"]);
     expect(one.tools.get("slirc_reply").options).toEqual({ codemode: false });
     await one.commands.get("slirc").execute({ sessionID: "ses_a", prompt: { text: host() }, delivery: "steer" });
     await until(() => one.notices.some((notice) => notice.message.startsWith("Connected")));

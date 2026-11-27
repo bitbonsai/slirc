@@ -376,6 +376,16 @@ export class SessionClient {
     return requestJson(`${this.state.origin}${API}/history?${query}`, this.state.secret, this.state.lease);
   }
 
+  // The owner's DMs with other people, read-only. No nick lists them; a nick reads one.
+  async ownerDms(args: { nick?: string; limit?: number; before?: string }): Promise<unknown> {
+    if (this.retired || !this.state.lease) throw new Error(`Slirc is not attached to this ${this.adapter.noun}`);
+    if (!args.nick) return requestJson(`${this.state.origin}${API}/owner-dms`, this.state.secret, this.state.lease);
+    const query = new URLSearchParams();
+    if (args.limit) query.set("limit", String(args.limit));
+    if (args.before) query.set("before", args.before);
+    return requestJson(`${this.state.origin}${API}/owner-dms/${encodeURIComponent(args.nick)}?${query}`, this.state.secret, this.state.lease);
+  }
+
   notify(message: string, level: "info" | "warning" | "error" = "info"): void {
     if (!this.retired) this.adapter.notify(message, level);
   }

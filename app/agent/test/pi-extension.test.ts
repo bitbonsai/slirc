@@ -136,7 +136,7 @@ test("no tool can start pairing; /slirc needs a workspace the first time; /slirc
     const tools = new Map<string, any>();
     const commands = new Map<string, any>();
     slirc({ registerCommand: (name: string, options: any) => commands.set(name, options), registerTool: (options: any) => tools.set(options.name, options), on() {}, sendUserMessage() {} } as any);
-    expect([...tools.keys()].sort()).toEqual(["slirc_delete", "slirc_fail", "slirc_history", "slirc_reply", "slirc_send"]);
+    expect([...tools.keys()].sort()).toEqual(["slirc_delete", "slirc_fail", "slirc_history", "slirc_owner_dms", "slirc_reply", "slirc_send"]);
     const notices: string[] = [];
     const ctx = { sessionManager: { getSessionId: () => "s", getSessionFile: () => join(state, "s.jsonl") }, ui: { notify: (text: string) => notices.push(text) } };
     { const command = commands.get("slirc"); await command.handler("", ctx); await command.settled; }
@@ -211,6 +211,7 @@ test("adapter reports session name, repo folder and model on connect and attach,
     if (url.pathname.endsWith("/attach")) return Response.json({ leaseId: "lease-1", expiresAt: Date.now() + 45_000, connected: true });
     if (url.pathname.endsWith("/metadata")) return Response.json({ agent: {} });
     if (url.pathname.endsWith("/history")) return Response.json({ channel: url.searchParams.get("channel"), query: url.search, lease: request.headers.get("X-Slirc-Agent-Lease"), messages: [] });
+    if (url.pathname.includes("/owner-dms")) return Response.json({ path: url.pathname, query: url.search, lease: request.headers.get("X-Slirc-Agent-Lease") });
     if (url.pathname.endsWith("/req-9/send")) return Response.json({ status: "sent", messageId: "m-9" });
     if (url.pathname.endsWith("/req-9/delete")) return Response.json({ status: "deleted" });
     if (url.pathname.endsWith("/events")) return new Response(new ReadableStream({ start() {} }), { headers: { "Content-Type": "text/event-stream" } });
@@ -247,6 +248,11 @@ test("adapter reports session name, repo folder and model on connect and attach,
     // slirc_history reads through the authenticated lease-bound route; channel/limit/before pass through.
     const read = await tools.get("slirc_history").execute("call-h", { channel: "#room", limit: 20, before: "m1" }, undefined, undefined, ctx);
     expect(JSON.parse(read.content[0].text)).toEqual({ channel: "#room", query: "?channel=%23room&limit=20&before=m1", lease: "lease-1", messages: [] });
+    // slirc_owner_dms lists the owner's DMs without a nick and reads one by nick, both lease-bound.
+    const list = await tools.get("slirc_owner_dms").execute("call-o", {}, undefined, undefined, ctx);
+    expect(JSON.parse(list.content[0].text)).toEqual({ path: "/api/agent/session/owner-dms", query: "", lease: "lease-1" });
+    const dm = await tools.get("slirc_owner_dms").execute("call-o2", { nick: "ada", limit: 30, before: "m2" }, undefined, undefined, ctx);
+    expect(JSON.parse(dm.content[0].text)).toEqual({ path: "/api/agent/session/owner-dms/ada", query: "?limit=30&before=m2", lease: "lease-1" });
     // slirc_send and slirc_delete go to the request's own routes; the server picks the room.
     expect((await tools.get("slirc_send").execute("call-s", { requestId: "req-9", text: "part 2" }, undefined, undefined, ctx)).content[0].text).toContain("m-9");
     expect((await tools.get("slirc_delete").execute("call-d", { requestId: "req-9", messageId: "m-9" }, undefined, undefined, ctx)).content[0].text).toBe("Deleted.");

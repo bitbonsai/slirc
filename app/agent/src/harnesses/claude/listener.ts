@@ -180,6 +180,7 @@ export async function main(config: Config, env: NodeJS.ProcessEnv = process.env)
     "/send": async (args) => ({ text: await live().send(String(args.requestId), String(args.text)) }),
     "/delete": async (args) => ({ text: await live().remove(String(args.requestId), String(args.messageId)) }),
     "/history": async (args) => ({ text: JSON.stringify(await live().history(args)) }),
+    "/owner-dms": async (args) => ({ text: JSON.stringify(await live().ownerDms(args)) }),
     "/started": async (args) => {
       const id = receipts.get(String(args.receipt));
       if (!id || !client?.active) return { started: false };

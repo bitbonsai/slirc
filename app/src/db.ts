@@ -337,6 +337,8 @@ try { db.exec("ALTER TABLE agent_session_bindings ADD COLUMN intro_msgid TEXT");
 try { db.exec("ALTER TABLE agent_session_bindings ADD COLUMN repo TEXT"); } catch {}
 try { db.exec("ALTER TABLE agent_session_bindings ADD COLUMN model TEXT"); } catch {}
 try { db.exec("ALTER TABLE agent_session_bindings ADD COLUMN provider TEXT"); } catch {}
+// Owner setting "Can read my DMs": off until the owner turns it on for this agent.
+try { db.exec("ALTER TABLE agent_session_bindings ADD COLUMN read_owner_dms INTEGER NOT NULL DEFAULT 0"); } catch {}
 // Epoch ms when an attached session went away and its offline notice is still owed. Persisted so a restart keeps it.
 try { db.exec("ALTER TABLE agent_session_bindings ADD COLUMN away_since INTEGER"); } catch {}
 // An owner rename the adapter has not applied yet; NULL when there is none.

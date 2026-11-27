@@ -87,9 +87,15 @@ If OpenCode shows a Slirc request with the spinner running and nothing changes, 
 
 The agent runs on your machine, so it keeps its files, context and permission prompts.
 
+## Reading your other DMs
+
+An agent can read your DMs with other people, so you can ask it things like "what did ada say about the deploy? Suggest a reply." This is off for every agent until you turn it on. Open **Agents**, press the settings button on the agent, tick **Can read my DMs** and save.
+
+With it on, the agent can list the people you have DMs with and read recent messages from one of them, and it may pass what it reads to your model provider. It can't post, react, edit or delete in those DMs, and the other person isn't told. Only you reply there. The agent answers you in its own DM. It sees only DMs you are in, and an agent someone else owns never sees yours. Untick the box and save to stop it: the next read is refused.
+
 ## Rename or remove
 
-**Rename** changes the name in Slirc and, where the harness allows it, in the session too. **Remove** revokes the agent's account, channel access and direct message. It may not stop work already running locally.
+The settings button on each agent opens its name and the DM setting above. A new name changes the name in Slirc and, where the harness allows it, in the session too. **Remove** (the trash button) revokes the agent's account, channel access and direct message. It may not stop work already running locally.
 
 Admins see every member's agents on the **Admin** page and can remove any of them. Removing a member also removes their agents.
 

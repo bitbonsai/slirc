@@ -13,6 +13,7 @@ import { accountByNick, ergo } from "../accounts.ts";
 import { memberChannels, agentCanReadChannel } from "../rooms.ts";
 import { type ContentfulStatusCode } from "hono/utils/http-status";
 import { Hono } from "hono";
+import { ownerDmBinding, ownerDms, readOwnerDm, setOwnerDmAccess } from "../owner-dms.ts";
 
 export const agents = new Hono();
 
@@ -200,6 +201,35 @@ agents.get("/api/agent/session/history", async (c) => {
   const messages = await readRoomHistory(binding, lease, channel, cursor, Number(c.req.query("limit") || 50));
   if (!messages) return c.json({ error: "this agent cannot read that room" }, 403);
   return c.json({ channel: channel.toLowerCase(), messages });
+});
+
+// The owner's DMs, read-only, while the owner has "Can read my DMs" on for this agent. Lease-bound
+// like history. Nothing here can write: posting stays limited to the request routes below.
+const ownerDmsOff = (c: any) => c.json({ error: "Your owner hasn't turned on Can read my DMs for this agent. They can on the Agents page in Slirc.", code: "off" }, 403);
+
+agents.get("/api/agent/session/owner-dms", (c) => {
+  const binding = bindingForRequest(c);
+  const lease = binding && leaseForRequest(c, binding);
+  if (!binding || !lease) return c.json({ error: "session lease required" }, 401);
+  const allowed = ownerDmBinding(binding.id);
+  if (!allowed) return ownerDmsOff(c);
+  return c.json({ owner: allowed.owner_nick, dms: ownerDms(allowed) });
+});
+
+agents.get("/api/agent/session/owner-dms/:nick", async (c) => {
+  const binding = bindingForRequest(c);
+  const lease = binding && leaseForRequest(c, binding);
+  if (!binding || !lease) return c.json({ error: "session lease required" }, 401);
+  if (!ownerDmBinding(binding.id)) return ownerDmsOff(c);
+  const nick = c.req.param("nick");
+  const before = c.req.query("before") || "";
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(nick)) return c.json({ error: "invalid nick" }, 400);
+  const cursor = !before ? "*" : /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(before) ? `timestamp=${before}` : /^[A-Za-z0-9_.:-]{1,128}$/.test(before) ? `msgid=${before}` : "";
+  if (!cursor) return c.json({ error: "invalid before cursor" }, 400);
+  const messages = await readOwnerDm(binding.id, nick, cursor, Number(c.req.query("limit") || 50));
+  if (messages === "unavailable") return c.json({ error: "Slirc couldn't read that DM just now. Try again." }, 503);
+  if (!messages) return ownerDmBinding(binding.id) ? c.json({ error: `Your owner has no DM with ${nick}.` }, 404) : ownerDmsOff(c);
+  return c.json({ nick, messages });
 });
 
 agents.get("/api/agent/session/events", (c) => {
@@ -482,11 +512,11 @@ agents.get("/api/agents", async (c) => {
   const ownerId = accountByNick(owner)?.id;
   return c.json(await Promise.all(agents.map(async (agent) => {
     const details = await ergo("/v1/account_details", { accountName: agent.nick }).catch(() => null);
-    const binding = ownerId ? db.query(`SELECT id,harness,session_name,session_id,status,lease_expires_at FROM agent_session_bindings
+    const binding = ownerId ? db.query(`SELECT id,harness,session_name,session_id,status,lease_expires_at,read_owner_dms FROM agent_session_bindings
       WHERE nick=? COLLATE NOCASE AND owner_account_id=? AND status='ready'`).get(agent.nick, ownerId) as any : null;
     // Legacy IRC presence never proves a coding session is attached.
     const status = binding ? binding.lease_expires_at > Date.now() && agentRuntimeConnected(binding.id) ? "ready" : "offline" : "unknown";
-    return { ...agent, status, agent: agentMetadata(agent.nick), bindingId: binding?.id ?? null, ...(binding ? { harness: binding.harness, sessionName: binding.session_name, sessionId: binding.session_id } : {}), lastSeen: details?.success ? details.lastSeen ?? null : null };
+    return { ...agent, status, agent: agentMetadata(agent.nick), bindingId: binding?.id ?? null, ...(binding ? { harness: binding.harness, sessionName: binding.session_name, sessionId: binding.session_id, readDms: binding.read_owner_dms === 1 } : {}), lastSeen: details?.success ? details.lastSeen ?? null : null };
   })));
 });
 
@@ -504,6 +534,21 @@ agents.post("/api/agents/:nick/name", async (c) => {
   wakeAgent(binding.id);
   c.header("Cache-Control", "no-store");
   return c.json({ agent });
+});
+
+// Owner-only "Can read my DMs". Off revokes at once: every read checks the flag again.
+agents.post("/api/agents/:nick/read-dms", async (c) => {
+  if (!sameOriginJson(c, "X-Slirc-Agent")) return c.json({ error: "same-origin request required" }, 403);
+  const person = verifiedHuman(c);
+  if (!person?.id) return c.json({ error: "not signed in" }, 401);
+  const binding = db.query("SELECT * FROM agent_session_bindings WHERE nick=? COLLATE NOCASE AND owner_account_id=? AND status='ready'")
+    .get(c.req.param("nick"), person.id) as Binding | null;
+  if (!binding) return c.json({ error: "agent not found" }, 404);
+  const body = await c.req.json().catch(() => null);
+  if (!body || typeof body.enabled !== "boolean") return c.json({ error: "enabled must be true or false" }, 400);
+  setOwnerDmAccess(binding.id, body.enabled);
+  c.header("Cache-Control", "no-store");
+  return c.json({ readDms: body.enabled });
 });
 
 // Maintainer forward: hand one message from a channel you can read to your own attached agent with

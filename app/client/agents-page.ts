@@ -30,6 +30,8 @@ export interface AgentRow {
   model?: string;
   worktree?: string;
   status?: string;
+  /** Owner setting "Can read my DMs"; only session agents have it. */
+  readDms?: boolean;
 }
 
 // A coding session asking to pair, as the Allow card shows it.
@@ -141,6 +143,7 @@ function cleanAgent(value: unknown): AgentRow | null {
     model: text(agent.model),
     worktree: text(raw.worktree),
     status: text(raw.status),
+    readDms: raw.readDms === true,
   };
 }
 
@@ -176,6 +179,7 @@ export function createAgentsPage(reactive: <T extends object>(value: T) => T, { 
     removeTarget: null as Pick<AgentRow, "nick"> | null,
     renameTarget: null as AgentRow | null,
     renameValue: "",
+    readDmsValue: false,
   });
 
   function owner() {
@@ -436,6 +440,7 @@ export function createAgentsPage(reactive: <T extends object>(value: T) => T, { 
     invoker = button;
     local.error = "";
     local.renameValue = agentTitle(row);
+    local.readDmsValue = row.readDms === true;
     local.renameTarget = row;
   }
 
@@ -452,14 +457,27 @@ export function createAgentsPage(reactive: <T extends object>(value: T) => T, { 
     if (!scope || !target || local.busy) return;
     local.busy = true; local.error = "";
     try {
-      const body = await request(`/api/agents/${encodeURIComponent(target.nick)}/name`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: local.renameValue.trim().slice(0, 80) }),
-      });
-      if (!scope.current()) return;
-      applyUpdate({ nick: target.nick, agent: body.agent });
+      // "Can read my DMs" first: turning it off must not wait on a rename.
+      if (local.readDmsValue !== (target.readDms === true)) {
+        await request(`/api/agents/${encodeURIComponent(target.nick)}/read-dms`, {
+          method: "POST", headers: { "Content-Type": "application/json", "X-Slirc-Agent": "1" }, body: JSON.stringify({ enabled: local.readDmsValue }),
+        });
+        if (!scope.current()) return;
+        const index = local.rows.findIndex((row) => row.nick === target.nick);
+        if (index >= 0) local.rows[index] = { ...local.rows[index]!, readDms: local.readDmsValue };
+        target.readDms = local.readDmsValue;
+      }
+      const name = local.renameValue.trim().slice(0, 80);
+      if (name !== agentTitle(target)) {
+        const body = await request(`/api/agents/${encodeURIComponent(target.nick)}/name`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }),
+        });
+        if (!scope.current()) return;
+        applyUpdate({ nick: target.nick, agent: body.agent });
+      }
       closeRename();
     } catch (error) {
-      if (scope.current()) local.error = error instanceof Error ? error.message : "Could not rename agent.";
+      if (scope.current()) local.error = error instanceof Error ? error.message : "Could not save agent settings.";
     } finally {
       if (scope.current()) local.busy = false;
     }
@@ -522,7 +540,7 @@ export function createAgentsPage(reactive: <T extends object>(value: T) => T, { 
     local.capability = null; local.rows = [];
     local.copied = ""; local.codeInput = ""; local.ticket = null; local.card = null; local.cardError = ""; local.deciding = false; local.connected = "";
     local.removeTarget = null;
-    local.renameTarget = null; local.renameValue = "";
+    local.renameTarget = null; local.renameValue = ""; local.readDmsValue = false;
   }
 
   function open(): void { void load(); }

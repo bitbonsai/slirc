@@ -18,7 +18,7 @@ export type Binding = {
   session_id: string; session_file: string; secret_hash: string; nick: string;
   dm: string | null; agent_account_id: string | null; status: "provisioning" | "ready" | "revoked"; machine: string; session_name: string;
   repo: string | null; model: string | null; provider: string | null; rename_pending: string | null; confirmed_at: number | null;
-  lease_id: string | null; lease_nonce: string | null; lease_expires_at: number | null;
+  lease_id: string | null; lease_nonce: string | null; lease_expires_at: number | null; read_owner_dms?: number;
 };
 
 // `model` is the bare model id; `provider` is who serves it (e.g. openai-codex), never the harness.
