@@ -135,9 +135,19 @@ test("the list animates its height between filter results, not on first render o
 const rail = (names: string[], current = 0) => names.map((name, i) => ({ origin: "https://" + name + ".example.test", current: i === current }));
 const letters = (rows: { origin: string }[]) => rows.map((row) => row.origin.slice(8, 9));
 
-test("the rail shows everything while there are four workspaces or fewer", () => {
-  const rows = rail(["a", "b", "c", "d"]);
-  expect(railWorkspaces(rows, false)).toEqual({ shown: rows, peek: null, hidden: 0, foldable: false });
+test("the rail shows everything while there are two workspaces or fewer", () => {
+  for (const names of [["a"], ["a", "b"]]) {
+    const rows = rail(names);
+    expect(railWorkspaces(rows, false)).toEqual({ shown: rows, peek: null, hidden: 0, foldable: false });
+  }
+});
+
+test("from three workspaces on, the rail folds", () => {
+  const { shown, peek, hidden, foldable } = railWorkspaces(rail(["a", "b", "c"]), false);
+  expect(letters(shown)).toEqual(["a"]);
+  expect(peek?.origin).toBe("https://b.example.test");
+  expect(hidden).toBe(1);
+  expect(foldable).toBe(true);
 });
 
 test("folded, the rail shows this workspace and peeks at the next one", () => {

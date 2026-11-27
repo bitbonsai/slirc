@@ -92,9 +92,9 @@ export function workspaceChoices(here: string, saved: string[]): WorkspaceChoice
 // show in full, in their usual order. The first of the others peeks out under them, faded, and
 // tapping it or the chevron below opens the rail. Activity is never hidden, so several can show.
 // The rail has no unread state for other workspaces yet (each is its own origin), so callers pass
-// none and the rail folds to the current one. With RAIL_MAX or fewer rows nothing folds.
+// none and the rail folds to the current one. With RAIL_MAX (two) or fewer rows nothing folds.
 // foldable is whether the rail has a chevron at all; hidden counts the rows behind the peek.
-export const RAIL_MAX = 4;
+export const RAIL_MAX = 2;
 export function railWorkspaces<T extends { origin: string; current: boolean }>(rows: T[], expanded: boolean, active: ReadonlySet<string> = new Set(), max = RAIL_MAX): { shown: T[]; peek: T | null; hidden: number; foldable: boolean } {
   if (rows.length <= max) return { shown: rows, peek: null, hidden: 0, foldable: false };
   if (expanded) return { shown: rows, peek: null, hidden: 0, foldable: true };

@@ -61,7 +61,7 @@ function workspaceChoices(here, saved) {
     rows.push(row(OPEN_WORKSPACE, false, "Slirc's own workspace"));
   return rows;
 }
-const RAIL_MAX = 4;
+const RAIL_MAX = 2;
 function railWorkspaces(rows, expanded, active = new Set, max = RAIL_MAX) {
   if (rows.length <= max)
     return { shown: rows, peek: null, hidden: 0, foldable: false };
