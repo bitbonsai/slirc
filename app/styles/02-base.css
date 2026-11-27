@@ -40,6 +40,8 @@ html.booting body[data-client-root] > .boot-screen { transition: none; }
 }
 html.booting .auth-modal { z-index: var(--z-boot-dialog); background: transparent; backdrop-filter: none; }
 html.booting .auth-card { border-color: transparent; background: transparent; box-shadow: none; }
+/* The sign-in mark's alt text is text too: it must not show while the image loads during start. */
+html.booting .auth-card .login-logo { font-size: 0; color: transparent; }
 html.booting .auth-card > :not(.login-logo) { visibility: hidden; opacity: 0; pointer-events: none; }
 
 header {

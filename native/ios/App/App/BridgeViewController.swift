@@ -61,7 +61,7 @@ class BridgeViewController: CAPBridgeViewController {
     private var bridgeGuard: BridgeGuard?
     private var loadGuard: CancelledLoadGuard?
     private let workspaceState = WorkspaceNavigationState()
-    private lazy var startCover = StartCover(host: self)
+    private lazy var startCover = StartCover(host: self) { [weak self] in self?.workspaceState.activeOrigin?.host }
     private lazy var loadWatch = WorkspaceLoadWatch(workspaceState: workspaceState) { [weak self] origin in
         self?.showUnreachable(origin)
     }
@@ -245,7 +245,10 @@ final class WorkspaceLoadWatch {
 // regardless. It never takes touches.
 final class StartCover {
     private weak var host: BridgeViewController?
+    private let hostName: () -> String?
     private var screen: UIViewController?
+    private var captionToken: UUID?
+    private static let captionDelay: TimeInterval = 3
     private var generation = 0
     private static let giveUp: TimeInterval = 12
     private static let busyGrace: TimeInterval = 1
@@ -258,8 +261,9 @@ final class StartCover {
     document.getAnimations().some((a) => a.playState === 'running') ? 1 : 2
     """
 
-    init(host: BridgeViewController) {
+    init(host: BridgeViewController, hostName: @escaping () -> String?) {
         self.host = host
+        self.hostName = hostName
     }
 
     func show() {
@@ -271,9 +275,33 @@ final class StartCover {
             controller.view.isUserInteractionEnabled = false
             host.view.addSubview(controller.view)
             screen = controller
+            scheduleCaption(on: controller.view)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.giveUp) { [weak self] in
             if self?.generation == current { self?.hide() }
+        }
+    }
+
+    // The mark stands alone. Only if the start is still running after captionDelay seconds does a short
+    // line fade in under it, so a normal start never shows any text.
+    private func scheduleCaption(on view: UIView) {
+        let token = UUID()
+        captionToken = token
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.captionDelay) { [weak self, weak view] in
+            guard let self = self, let view = view, self.captionToken == token else { return }
+            let label = UILabel()
+            label.text = self.hostName().map { "Opening \($0)…" } ?? "Opening…"
+            label.font = .preferredFont(forTextStyle: .footnote)
+            label.textColor = .secondaryLabel
+            label.textAlignment = .center
+            label.alpha = 0
+            label.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(label)
+            NSLayoutConstraint.activate([
+                label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                label.topAnchor.constraint(equalTo: view.centerYAnchor, constant: 56),
+            ])
+            UIView.animate(withDuration: 0.2) { label.alpha = 1 }
         }
     }
 
@@ -312,6 +340,7 @@ final class StartCover {
         generation += 1
         guard let view = screen?.view else { return }
         screen = nil
+        captionToken = nil
         if fade <= 0 { view.removeFromSuperview(); return }
         UIView.animate(withDuration: fade, delay: 0, options: [.curveEaseOut], animations: { view.alpha = 0 }) { _ in view.removeFromSuperview() }
     }
