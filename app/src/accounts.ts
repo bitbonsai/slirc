@@ -56,6 +56,7 @@ if (ownerEmail) {
     db.query("UPDATE sessions SET nick = ? WHERE nick = ?").run(ownerNick, from);
     db.query("UPDATE magic_links SET nick = ? WHERE nick = ?").run(ownerNick, from);
     db.query("UPDATE subscriptions SET nick = ? WHERE nick = ?").run(ownerNick, from);
+    db.query("UPDATE native_devices SET nick = ? WHERE nick = ?").run(ownerNick, from);
     db.query("UPDATE notification_prefs SET nick = ? WHERE nick = ?").run(ownerNick, from);
     db.query("UPDATE uploads SET nick = ? WHERE nick = ?").run(ownerNick, from);
     db.query("UPDATE invites SET created_by = ? WHERE created_by = ?").run(ownerNick, from);
@@ -384,6 +385,7 @@ export function markRemoved(nick: string): string[] {
     db.query("DELETE FROM magic_links WHERE nick = ? COLLATE NOCASE").run(nick);
     db.query("DELETE FROM pair_offers WHERE nick = ? COLLATE NOCASE").run(nick);
     db.query("DELETE FROM subscriptions WHERE nick = ? COLLATE NOCASE").run(nick);
+    db.query("DELETE FROM native_devices WHERE nick = ? COLLATE NOCASE").run(nick);
     db.query("DELETE FROM channel_members WHERE nick = ? COLLATE NOCASE").run(nick);
     db.query("DELETE FROM notes WHERE account_id IN (SELECT account_id FROM accounts WHERE nick = ? COLLATE NOCASE)").run(nick);
     db.query("DELETE FROM uploads WHERE channel IN (SELECT 'notes:' || account_id FROM accounts WHERE nick = ? COLLATE NOCASE)").run(nick);

@@ -1,4 +1,5 @@
 import { type ClientSession, type ClientState } from "@client/client-state.ts";
+import { inIosApp, inMacApp, shellNotifications } from "@client/native-shell.ts";
 
 type WebSession = { id: string; device: string; createdAt: number; current: boolean };
 
@@ -17,6 +18,10 @@ export function createSettingsPage(reactive: <T extends object>(value: T) => T, 
     permission: "unsupported" as NotificationPermission | "unsupported",
     subscribed: false,
     preference: "all" as "all" | "mentions" | "none",
+    // Where notifications come from here: web push, the Mac app, the iPhone app, or an app build
+    // too old to offer them. apns is false for the iPhone app on a workspace without APNs set up.
+    platform: "web" as "web" | "mac" | "ios" | "old-app",
+    apns: true,
     sessions: [] as WebSession[],
     sessionsLoaded: false,
     sessionsBusy: false,
@@ -47,6 +52,12 @@ export function createSettingsPage(reactive: <T extends object>(value: T) => T, 
   function readPermission(): void {
     local.permission = typeof window !== "undefined" && "Notification" in window && "PushManager" in window && "serviceWorker" in navigator
       ? window.Notification.permission : "unsupported";
+    if (local.permission === "unsupported" && (inIosApp() || inMacApp())) local.platform = "old-app";
+  }
+
+  async function sha256(text: string): Promise<string> {
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+    return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
   }
 
   async function registration(): Promise<ServiceWorkerRegistration> {
@@ -66,16 +77,49 @@ export function createSettingsPage(reactive: <T extends object>(value: T) => T, 
   function notificationStatus(): string {
     if (local.notificationLoading) return "Checking…";
     if (local.permission === "unsupported") return "Unavailable";
-    if (local.permission === "denied") return "Blocked";
+    if (local.permission === "denied") return local.platform === "web" ? "Blocked" : "Off in system settings";
     return notificationsOn() ? "On" : "Off";
+  }
+
+  // The line under the toggle when it can't turn on, in the words of the place it runs.
+  function notificationHint(): string {
+    if (local.notificationLoading) return "";
+    if (local.permission === "denied") {
+      if (local.platform === "mac") return "Notifications for Slirc are off in macOS. Turn them on in System Settings > Notifications > Slirc, then reopen your profile.";
+      if (local.platform === "ios") return "Notifications for Slirc are off on this iPhone. Turn them on in Settings > Notifications > Slirc, then reopen your profile.";
+      return "Allow notifications in your browser's site settings, then reopen your profile.";
+    }
+    if (local.permission !== "unsupported") return "";
+    if (local.platform === "ios" && !local.apns) return "This workspace hasn't set up iPhone notifications yet.";
+    if (local.platform === "old-app") return "Update the Slirc app to turn on notifications here.";
+    return "Web push isn't available here. On iPhone, open Slirc from your Home Screen.";
+  }
+
+  // The apps: permission comes from the system, and the server holds the preference and, for the
+  // iPhone, this device's token.
+  async function loadShellNotifications(scope: NonNullable<ReturnType<typeof owner>>, shell: NonNullable<ReturnType<typeof shellNotifications>>): Promise<void> {
+    local.platform = shell.platform;
+    const state = await shell.status();
+    if (!scope.current()) return;
+    const device = shell.platform === "ios" ? `?device=${state.token ? await sha256(state.token) : ""}` : "";
+    const body = await (await request(`/push/preference${device}`)).json();
+    if (!scope.current()) return;
+    if (!["all", "mentions", "none"].includes(body.preference)) throw new Error("Could not read notification settings.");
+    local.apns = shell.platform !== "ios" || body.apns === true;
+    local.permission = local.apns ? state.permission : "unsupported";
+    local.preference = body.preference;
+    local.subscribed = shell.platform === "mac" || (!!state.token && body.subscribed === true);
+    local.notificationReady = true;
   }
 
   async function loadNotifications(): Promise<void> {
     const scope = owner();
     if (!scope || local.notificationLoading || local.notificationBusy) return;
     local.notificationLoading = true; local.notificationError = ""; local.notificationReady = false;
-    readPermission();
+    const shell = shellNotifications();
+    if (!shell) { local.platform = "web"; readPermission(); }
     try {
+      if (shell) return await loadShellNotifications(scope, shell);
       const subscription = local.permission === "unsupported" ? null : await (await registration()).pushManager.getSubscription();
       if (!scope.current()) return;
       const digest = subscription ? await crypto.subtle.digest("SHA-256", new TextEncoder().encode(subscription.endpoint)) : null;
@@ -95,13 +139,29 @@ export function createSettingsPage(reactive: <T extends object>(value: T) => T, 
   async function toggleNotifications(): Promise<void> {
     const scope = owner();
     if (!scope || !local.notificationReady || local.notificationBusy || local.notificationLoading) return;
-    readPermission();
+    const shell = shellNotifications();
+    if (!shell) readPermission();
     const enable = !notificationsOn();
     if (enable && (local.permission === "unsupported" || local.permission === "denied")) return;
     local.notificationBusy = true; local.notificationError = "";
     let created: PushSubscription | null = null;
     try {
-      if (enable) {
+      if (enable && shell) {
+        // The system asks once; after a refusal it answers denied, and the hint points to Settings.
+        const state = await shell.request();
+        if (!scope.current()) return;
+        local.permission = state.permission;
+        if (state.permission !== "granted") {
+          if (state.permission === "default") local.notificationError = "Permission wasn't granted. Try again when you're ready.";
+          return;
+        }
+        if (shell.platform === "ios") {
+          if (!state.token || !state.environment) throw new Error("This iPhone couldn't register for notifications. Try again.");
+          await request("/push/native", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accountId: scope.accountId, token: state.token, environment: state.environment }) });
+        } else {
+          await request("/push/preference", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accountId: scope.accountId, preference: "all" }) });
+        }
+      } else if (enable) {
         // Request permission before any other await, while the click still supplies user activation.
         const permission = window.Notification.permission === "default" ? await window.Notification.requestPermission() : window.Notification.permission;
         if (!scope.current()) return;
@@ -223,11 +283,11 @@ export function createSettingsPage(reactive: <T extends object>(value: T) => T, 
     epoch += 1; invoker = null;
     local.sessions = []; local.sessionsLoaded = false; local.sessionsBusy = false; local.sessionsError = ""; local.signOutTarget = null;
     local.notificationLoading = false; local.notificationBusy = false; local.notificationReady = false; local.notificationError = "";
-    local.permission = "unsupported"; local.preference = "all"; local.subscribed = false;
+    local.permission = "unsupported"; local.preference = "all"; local.subscribed = false; local.platform = "web"; local.apns = true;
     local.greetingBusy = false; local.greetingError = "";
   }
 
-  return Object.assign(local, { notificationsOn, notificationStatus, loadNotifications, toggleNotifications, toggleGreeting, loadSessions, askSignOut, closeSignOut, dialogKeydown, confirmSignOut, open, reset, destroy: reset,
+  return Object.assign(local, { notificationsOn, notificationStatus, notificationHint, loadNotifications, toggleNotifications, toggleGreeting, loadSessions, askSignOut, closeSignOut, dialogKeydown, confirmSignOut, open, reset, destroy: reset,
     sessionDate: (timestamp: number) => new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }),
   });
 }

@@ -54,7 +54,7 @@ Choose your avatar, at the bottom of the sidebar on desktop or at the top right 
 
 ## Turn on notifications
 
-Open your profile by choosing your avatar on desktop, or **More → Profile** on a phone. Choose **Change** beside **Notifications** and allow them when your browser asks. On iPhone, add **Slirc** to your Home Screen first (see below); notifications only arrive in the Home Screen app.
+Open your profile by choosing your avatar on desktop, or **More → Profile** on a phone. Choose **Change** beside **Notifications** and allow them when your browser or the app asks. On iPhone in Safari, add **Slirc** to your Home Screen first (see below), since Safari sends notifications only to the Home Screen app.
 
 ## Good to know
 
@@ -70,7 +70,7 @@ Once it's on your Home Screen, **Slirc** opens from its icon, like any other app
 
 Open **Slirc** in Safari, tap Share, then **Add to Home Screen**.
 
-If your instance offers the iPhone app in TestFlight, signed-in members find the link under **More → Get the iPhone app** on a phone; it has no notifications yet. See [Download](/docs/download#iphone) for details.
+If your instance offers the iPhone app in TestFlight, signed-in members find the link under **More → Get the iPhone app** on a phone. See [Download](/docs/download#iphone) for details.
 
 <video src="/media/a2hs-iphone.mp4" width="1080" height="1920" controls muted loop playsinline preload="metadata" aria-label="Adding Slirc to the Home Screen on iPhone" style="display:block;width:min(16rem,100%);height:auto;margin-inline:auto;border-radius:1rem"></video>
 

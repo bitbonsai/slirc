@@ -3,6 +3,7 @@
 // browser tab can't: its own window and menu bar, the window controls over the web header, and
 // links that leave the workspace opening in the default browser. See desktop/README.md.
 import AppKit
+import UserNotifications
 import WebKit
 
 @main
@@ -35,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.mainMenu = mainMenu()
+        UNUserNotificationCenter.current().delegate = self
         updates.show = { [weak self] message in self?.showToast(message) }
         #if DEBUG
         // Sparkle never offers a Debug build an update, so `-SlircToastDemo YES` shows the ready toast
@@ -486,8 +488,9 @@ enum Workspace {
 /// opens in the default browser. It tags the page with `mac-shell` so the web client can make room
 /// for the window controls, and tells the title bar strip whether the pointer is over something
 /// clickable, since WKWebView has no `-webkit-app-region`. The page's "Switch workspace" button can
-/// also open the workspace picker, and its workspace dialog can open a workspace. The page can tell the app nothing else.
-final class ShellWebView: WKWebView, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
+/// also open the workspace picker, its workspace dialog can open a workspace, and Settings can turn on
+/// notifications, which the page then hands to the app to show. The page can tell the app nothing else.
+final class ShellWebView: WKWebView, WKScriptMessageHandler, WKScriptMessageHandlerWithReply, WKNavigationDelegate, WKUIDelegate {
     /// Marks the Edit menu, whose shortcuts go to the page first. See performKeyEquivalent.
     static let editMenu = NSUserInterfaceItemIdentifier("edit")
     var onUnreachable: (() -> Void)?
@@ -531,6 +534,9 @@ final class ShellWebView: WKWebView, WKScriptMessageHandler, WKNavigationDelegat
         // A handler of its own, so the page can tell this build from older ones, which lack it, and
         // show "Switch workspace" only where it works (app/client/native-shell.ts).
         content.add(WeakHandler(self), name: "slircSwitchWorkspace")
+        // Notifications: the page asks for permission from Settings and hands over what the server
+        // sent its account. Its presence tells the web client this build can show them.
+        content.addScriptMessageHandler(WeakReplyHandler(self), contentWorld: .page, name: "slircNotify")
         // The workspaces opened on this Mac, for the page's workspace dialog. The app refreshes it
         // on every switch, since a pooled page outlives the list it was built with.
         let known = (try? JSONSerialization.data(withJSONObject: Workspace.known.map(\.absoluteString))).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
@@ -576,16 +582,20 @@ final class ShellWebView: WKWebView, WKScriptMessageHandler, WKNavigationDelegat
 
     // MARK: Messages from the page
 
-    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
-        // Only the workspace's own top-level page reports. A page can at most make the strip let a
-        // click through, which is what a browser tab does with every click anyway, or open the
-        // workspace picker, which the menu bar offers too.
+    /// Only the workspace's own top-level page may talk to the app.
+    private func fromWorkspace(_ message: WKScriptMessage) -> Bool {
         let origin = message.frameInfo.securityOrigin
         let originPort = origin.port == 0 ? 443 : origin.port
-        guard message.frameInfo.isMainFrame,
-              origin.protocol == "https",
-              origin.host.lowercased() == workspace.host?.lowercased(),
-              originPort == (workspace.port ?? 443) else { return }
+        return message.frameInfo.isMainFrame
+            && origin.protocol == "https"
+            && origin.host.lowercased() == workspace.host?.lowercased()
+            && originPort == (workspace.port ?? 443)
+    }
+
+    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+        // A page can at most make the strip let a click through, which is what a browser tab does
+        // with every click anyway, or open the workspace picker, which the menu bar offers too.
+        guard fromWorkspace(message) else { return }
         if message.name == "slircSwitchWorkspace" {
             // After the message returns: opening the picker or a workspace covers this view.
             // { open: origin } comes from the page's workspace dialog, { signedOut: true } from
@@ -601,6 +611,51 @@ final class ShellWebView: WKWebView, WKScriptMessageHandler, WKNavigationDelegat
         }
         guard let state = message.body as? String else { return }
         pointerOnControl = state == "control"
+    }
+
+    // MARK: Notifications
+
+    /// slircNotify: { action: "status" } and { action: "request" } answer { permission }, granted,
+    /// denied or default, and request shows the system prompt once. { action: "show", title, body,
+    /// tag, path } posts a notification; clicking it opens this workspace on path (AppDelegate).
+    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage, replyHandler: @escaping (Any?, String?) -> Void) {
+        guard fromWorkspace(message) else { return replyHandler(nil, "This page can't use notifications.") }
+        let body = message.body as? [String: Any] ?? [:]
+        let center = UNUserNotificationCenter.current()
+        switch body["action"] as? String {
+        case "status":
+            Task { @MainActor in replyHandler(["permission": Self.permission(await center.notificationSettings())], nil) }
+        case "request":
+            Task { @MainActor in
+                _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
+                replyHandler(["permission": Self.permission(await center.notificationSettings())], nil)
+            }
+        case "show":
+            guard let title = body["title"] as? String, let text = body["body"] as? String else { return replyHandler(nil, "Nothing to show.") }
+            let raw = body["path"] as? String ?? "/"
+            let path = raw.hasPrefix("/") && !raw.hasPrefix("//") ? raw : "/"
+            let note = UNMutableNotificationContent()
+            note.title = String(title.prefix(200))
+            note.body = String(text.prefix(1000))
+            note.sound = .default
+            note.threadIdentifier = workspace.absoluteString + path
+            note.userInfo = ["origin": workspace.absoluteString, "path": path]
+            // The same tag replaces the notification before it, as web push does.
+            let tag = body["tag"] as? String ?? ""
+            let id = tag.isEmpty ? UUID().uuidString : workspace.absoluteString + " " + tag
+            center.add(UNNotificationRequest(identifier: id, content: note, trigger: nil))
+            replyHandler([:], nil)
+        default:
+            replyHandler(nil, "Unknown action.")
+        }
+    }
+
+    private static func permission(_ settings: UNNotificationSettings) -> String {
+        switch settings.authorizationStatus {
+        case .authorized, .provisional: return "granted"
+        case .denied: return "denied"
+        default: return "default"
+        }
     }
 
     // MARK: Navigation
@@ -760,6 +815,37 @@ final class PickerView: WKWebView, WKScriptMessageHandler, WKNavigationDelegate 
     // The page never leaves itself.
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         decisionHandler(action.request.url?.isFileURL == true ? .allow : .cancel)
+    }
+}
+
+/// The workspace's notifications. While Slirc is the active app they show as banners too, since the
+/// page skips the conversation already on screen. A click opens that workspace on the conversation,
+/// switching to it if another one is showing.
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .list, .sound])
+    }
+
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        let info = response.notification.request.content.userInfo
+        let origin = (info["origin"] as? String).flatMap(URL.init(string:))
+        let path = info["path"] as? String ?? "/"
+        completionHandler()
+        Task { @MainActor in
+            NSApp.activate(ignoringOtherApps: true)
+            guard let origin, Workspace.known.contains(origin) else { return }
+            self.open(origin, path: path)
+        }
+    }
+}
+
+/// The reply-capable twin of WeakHandler, for messages the page awaits.
+private final class WeakReplyHandler: NSObject, WKScriptMessageHandlerWithReply {
+    weak var target: WKScriptMessageHandlerWithReply?
+    init(_ target: WKScriptMessageHandlerWithReply) { self.target = target }
+    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage, replyHandler: @escaping (Any?, String?) -> Void) {
+        guard let target else { return replyHandler(nil, "The page is gone.") }
+        target.userContentController(controller, didReceive: message, replyHandler: replyHandler)
     }
 }
 
