@@ -63,16 +63,13 @@ function workspaceChoices(here, saved) {
 }
 const RAIL_MAX = 4;
 function railWorkspaces(rows, expanded, active = new Set, max = RAIL_MAX) {
-  if (expanded || rows.length <= max)
-    return { shown: rows, hidden: 0 };
-  const keep = new Set(rows.filter((row) => row.current || active.has(row.origin)).map((row) => row.origin));
-  for (const row of rows) {
-    if (keep.size >= max)
-      break;
-    keep.add(row.origin);
-  }
-  const shown = rows.filter((row) => keep.has(row.origin));
-  return { shown, hidden: rows.length - shown.length };
+  if (rows.length <= max)
+    return { shown: rows, peek: null, hidden: 0, foldable: false };
+  if (expanded)
+    return { shown: rows, peek: null, hidden: 0, foldable: true };
+  const shown = rows.filter((row) => row.current || active.has(row.origin));
+  const rest = rows.filter((row) => !shown.includes(row));
+  return { shown, peek: rest[0] ?? null, hidden: Math.max(0, rest.length - 1), foldable: rest.length > 0 };
 }
 function savedWorkspaceCount(rows) {
   return rows.filter((row) => !row.note).length;

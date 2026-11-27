@@ -88,19 +88,19 @@ export function workspaceChoices(here: string, saved: string[]): WorkspaceChoice
   return rows;
 }
 
-// The instance rail shows this workspace and the workspaces with activity (unread or a mention),
-// then fills up to RAIL_MAX icons with the rest in their usual order. Everything else folds behind
-// one "+n" control. Activity is never hidden, so more than RAIL_MAX can show. The rail has no
-// unread state for other workspaces yet (each is its own origin), so callers pass none and the
-// rail keeps the most recently used ones: the rows arrive newest first. With RAIL_MAX or fewer
-// rows, or when expanded, every row shows.
+// The instance rail, folded: this workspace and the workspaces with activity (unread or a mention)
+// show in full, in their usual order. The first of the others peeks out under them, faded, and
+// tapping it or the chevron below opens the rail. Activity is never hidden, so several can show.
+// The rail has no unread state for other workspaces yet (each is its own origin), so callers pass
+// none and the rail folds to the current one. With RAIL_MAX or fewer rows nothing folds.
+// foldable is whether the rail has a chevron at all; hidden counts the rows behind the peek.
 export const RAIL_MAX = 4;
-export function railWorkspaces<T extends { origin: string; current: boolean }>(rows: T[], expanded: boolean, active: ReadonlySet<string> = new Set(), max = RAIL_MAX): { shown: T[]; hidden: number } {
-  if (expanded || rows.length <= max) return { shown: rows, hidden: 0 };
-  const keep = new Set(rows.filter((row) => row.current || active.has(row.origin)).map((row) => row.origin));
-  for (const row of rows) { if (keep.size >= max) break; keep.add(row.origin); }
-  const shown = rows.filter((row) => keep.has(row.origin));
-  return { shown, hidden: rows.length - shown.length };
+export function railWorkspaces<T extends { origin: string; current: boolean }>(rows: T[], expanded: boolean, active: ReadonlySet<string> = new Set(), max = RAIL_MAX): { shown: T[]; peek: T | null; hidden: number; foldable: boolean } {
+  if (rows.length <= max) return { shown: rows, peek: null, hidden: 0, foldable: false };
+  if (expanded) return { shown: rows, peek: null, hidden: 0, foldable: true };
+  const shown = rows.filter((row) => row.current || active.has(row.origin));
+  const rest = rows.filter((row) => !shown.includes(row));
+  return { shown, peek: rest[0] ?? null, hidden: Math.max(0, rest.length - 1), foldable: rest.length > 0 };
 }
 
 // The count beside the workspace row on the phone's More tab: the workspaces in the dialog,

@@ -131,43 +131,48 @@ test("the list animates its height between filter results, not on first render o
   expect(runs).toHaveLength(1);
 });
 
-// The instance rail folds all but a few workspaces behind one "+n" control.
+// The instance rail folds to this workspace, with the next one peeking out under it.
 const rail = (names: string[], current = 0) => names.map((name, i) => ({ origin: "https://" + name + ".example.test", current: i === current }));
+const letters = (rows: { origin: string }[]) => rows.map((row) => row.origin.slice(8, 9));
 
 test("the rail shows everything while there are four workspaces or fewer", () => {
   const rows = rail(["a", "b", "c", "d"]);
-  expect(railWorkspaces(rows, false)).toEqual({ shown: rows, hidden: 0 });
+  expect(railWorkspaces(rows, false)).toEqual({ shown: rows, peek: null, hidden: 0, foldable: false });
 });
 
-test("the rail keeps this workspace and the first ones in order, and counts the rest", () => {
+test("folded, the rail shows this workspace and peeks at the next one", () => {
   const rows = rail(["a", "b", "c", "d", "e", "f", "g", "h"]);
-  const { shown, hidden } = railWorkspaces(rows, false);
-  expect(shown.map((row) => row.origin)).toEqual(rows.slice(0, 4).map((row) => row.origin));
-  expect(hidden).toBe(4);
+  const { shown, peek, hidden, foldable } = railWorkspaces(rows, false);
+  expect(letters(shown)).toEqual(["a"]);
+  expect(peek?.origin).toBe("https://b.example.test");
+  expect(hidden).toBe(6);
+  expect(foldable).toBe(true);
 });
 
-test("the rail never hides this workspace, even when it comes late in the list", () => {
-  const rows = rail(["a", "b", "c", "d", "e", "f"], 5);
-  const { shown, hidden } = railWorkspaces(rows, false);
-  expect(shown.map((row) => row.origin)).toEqual(["https://a.example.test", "https://b.example.test", "https://c.example.test", "https://f.example.test"]);
-  expect(hidden).toBe(2);
+test("folded, this workspace stays in its usual place even when it comes late", () => {
+  const rows = rail(["a", "b", "c", "d", "e", "f"], 3);
+  const { shown, peek } = railWorkspaces(rows, false);
+  expect(letters(shown)).toEqual(["d"]);
+  expect(peek?.origin).toBe("https://a.example.test");
 });
 
-test("workspaces with activity come first in the cut, in their usual order", () => {
+test("workspaces with activity show in full beside this one, and the peek moves on", () => {
   const rows = rail(["a", "b", "c", "d", "e", "f", "g"]);
-  const { shown } = railWorkspaces(rows, false, new Set(["https://f.example.test", "https://e.example.test"]));
-  expect(shown.map((row) => row.origin.slice(8, 9))).toEqual(["a", "b", "e", "f"]);
+  const { shown, peek, hidden } = railWorkspaces(rows, false, new Set(["https://f.example.test", "https://b.example.test"]));
+  expect(letters(shown)).toEqual(["a", "b", "f"]);
+  expect(peek?.origin).toBe("https://c.example.test");
+  expect(hidden).toBe(3);
 });
 
-test("workspaces with activity are never hidden, so more than four can show", () => {
-  const rows = rail(["a", "b", "c", "d", "e", "f", "g"]);
-  const active = new Set(rows.slice(1, 6).map((row) => row.origin));
-  const { shown, hidden } = railWorkspaces(rows, false, active);
-  expect(shown.map((row) => row.origin.slice(8, 9))).toEqual(["a", "b", "c", "d", "e", "f"]);
-  expect(hidden).toBe(1);
-});
-
-test("expanded, the rail shows every workspace", () => {
+test("workspaces with activity are never hidden, even when every workspace has some", () => {
   const rows = rail(["a", "b", "c", "d", "e", "f"]);
-  expect(railWorkspaces(rows, true)).toEqual({ shown: rows, hidden: 0 });
+  const all = railWorkspaces(rows, false, new Set(rows.map((row) => row.origin)));
+  expect(letters(all.shown)).toEqual(["a", "b", "c", "d", "e", "f"]);
+  expect(all.peek).toBeNull();
+  expect(all.foldable).toBe(false);
+});
+
+test("expanded, the rail shows every workspace and keeps its chevron", () => {
+  const rows = rail(["a", "b", "c", "d", "e", "f"]);
+  expect(railWorkspaces(rows, true)).toEqual({ shown: rows, peek: null, hidden: 0, foldable: true });
 });
