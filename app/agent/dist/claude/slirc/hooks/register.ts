@@ -17,7 +17,7 @@ type Line =
   | { type: 'ready'; socket: string; token: string }
   | { type: 'deliver'; id: string; prompt: string; receipt: string }
   | { type: 'notify'; message: string; level: string }
-  | { type: 'link'; url: string; code: string; expiresAt: number }
+  | { type: 'link'; url: string; code: string; expiresAt: number; onPage?: boolean; expired?: boolean }
   | { type: 'connected'; text: string }
   | { type: 'rename'; name: string }
   | { type: 'busy' }
@@ -97,7 +97,16 @@ function show($: any, line: Line): void {
   else if (line.type === 'link') {
     // A dim transcript row keeps the whole link and code after the toast goes; $.ui.log never
     // reaches the model. The status line stays short enough for any width.
-    $.ui.log(`Slirc code ${line.code}: enter it on the Agents page in Slirc, or open ${line.url}`)
+    // The Agents page the command came from shows Allow already, so only that, until nobody
+    // allowed for a while and the listener sends the link again without onPage.
+    if (line.onPage) {
+      const text = `Choose Allow on your Agents page in Slirc. Code ${line.code}.`
+      $.ui.log(text)
+      $.ui.status(text)
+      $.ui.toast(text, { timeoutMs: 30_000 })
+      return
+    }
+    $.ui.log(`${line.expired ? "That connect code expired, so your Agents page didn't get this request. " : ''}Slirc code ${line.code}: enter it on the Agents page in Slirc, or open ${line.url}`)
     const text = `Enter ${line.code} on the Agents page in Slirc`
     $.ui.status(text)
     $.ui.toast(text, { timeoutMs: 30_000 })

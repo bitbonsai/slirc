@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import slirc from "../src/harnesses/pi/extension.ts";
+import { pairTiming } from "../src/adapter-core.ts";
 import { VERSION } from "../src/version.ts";
 import { fakePi, type FakePi } from "./support/fake-pi.ts";
 
@@ -25,7 +26,8 @@ beforeAll(() => {
     const url = new URL(request.url);
     const json = await request.json().catch(() => ({})) as any;
     if (url.pathname === "/api/agent/version") return Response.json({ version: VERSION, enabled: true });
-    if (url.pathname === "/api/agent/session/request") { asked.push(json); return Response.json({ url: `http://${url.host}/agents#connect=t`, code: `CODE-${asked.length}`, expiresAt: Date.now() + 600_000 }); }
+    // The code "onpagecode12" stands for one a signed-in page minted: Slirc shows that page the request.
+    if (url.pathname === "/api/agent/session/request") { asked.push(json); return Response.json({ url: `http://${url.host}/agents#connect=t`, code: `CODE-${asked.length}`, expiresAt: Date.now() + 600_000, ...(json.ticket === "onpagecode12" ? { onPage: true } : {}) }); }
     if (url.pathname === "/api/agent/session/connect") return hold
       ? Response.json({ error: "Waiting for Allow in Slirc.", code: "owner_confirmation" }, { status: 409 })
       : Response.json({ instanceId: "i", ownerAccountId: "o", bindingId: "b", nick: "pi-3f2a", dm: "#dm", status: "ready" });
@@ -120,6 +122,24 @@ test("backgrounded and repeated runs of the same command show the same code and 
   expect(pi.notices.some((text) => /something ran slirc-agent|expired|error/i.test(text))).toBe(false);
   hold = false;
   await until(() => pi.notices.at(-1) === `Connected to ${host()} as pi-3f2a.`, 6_000);
+});
+
+test("when the Agents page shows the request, the session says only to choose Allow, and adds the link if nobody does", async () => {
+  hold = true;
+  const saved = pairTiming.onPageMs;
+  pairTiming.onPageMs = 300;
+  try {
+    const pi = session("paste-onpage");
+    expect(await pi.paste(`bunx slirc-agent@latest ${host()} onpagecode12`)).toEqual({ action: "handled" });
+    await until(() => pi.notices.some((text) => text.startsWith("Choose Allow")));
+    const code = /Code (CODE-\d+)\./.exec(pi.notices.at(-1)!)![1];
+    expect(pi.notices.at(-1)).toBe(`Choose Allow on your Agents page in Slirc. Code ${code}.`);
+    expect(pi.notices.some((text) => text.includes("http"))).toBe(false);
+    // Nobody allowed in time: the link and the code to type show too.
+    await until(() => pi.notices.at(-1) === `Slirc: Open http://${host()}/agents#connect=t to connect this session, or enter ${code} under Agents in Slirc.`, 3_000);
+    hold = false;
+    await until(() => pi.notices.at(-1) === `Connected to ${host()} as pi-3f2a.`, 6_000);
+  } finally { pairTiming.onPageMs = saved; hold = false; }
 });
 
 test("first install, run in the background: the reloaded extension connects with the pasted code", async () => {

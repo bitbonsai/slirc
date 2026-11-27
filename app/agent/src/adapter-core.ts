@@ -49,10 +49,22 @@ export type Adapter = {
 const CONFIRM_WAIT_MS = 10 * 60_000;
 const CONFIRM_POLL_MS = 2_000;
 
-export const CODE_EXPIRED = "That connect code expired. Copy the command again.";
+export const CODE_EXPIRED = "That connect code expired, so your Agents page didn't get this request.";
+// How long the session shows only "Choose Allow" when the person's Agents page already shows the
+// request, before it adds the link and code to type. Tests shorten it.
+export const pairTiming = { onPageMs: 30_000 };
 
 // What the owner opens or types to allow a session.
-export type PairLink = { url: string; code: string; expiresAt: number };
+// `onPage`: the Agents page the command came from shows this request with Allow. `expired`: the
+// command's connect code didn't reach a page.
+export type PairLink = { url: string; code: string; expiresAt: number; onPage?: boolean; expired?: boolean };
+
+// What a session shows the person while it waits for Allow. Never for the model.
+export function pairText(link: PairLink, noun = "this session"): string {
+  if (link.onPage) return `Choose Allow on your Agents page in Slirc. Code ${link.code}.`;
+  const open = `open ${link.url} to connect ${noun}, or enter ${link.code} under Agents in Slirc.`;
+  return link.expired ? `${CODE_EXPIRED} To connect, ${open}` : `O${open.slice(1)}`;
+}
 
 export class HttpError extends Error {
   constructor(readonly status: number, readonly code: string | undefined, message: string) { super(message); }
@@ -291,16 +303,21 @@ export class SessionClient {
     const asked = await requestJson(`${origin}${API}/request`, stored.secret, undefined, ticket ? { ...body, ticket } : body).catch((error) => { throw friendly(error, origin); });
     if (!current()) return;
     const deadline = typeof asked.expiresAt === "number" ? asked.expiresAt : Date.now() + CONFIRM_WAIT_MS;
-    if (ticket && asked.connectCode === "expired") adapter.notify(CODE_EXPIRED, "warning");
-    if (!asked.bound) show({ url: String(asked.url), code: String(asked.code), expiresAt: deadline });
+    const link: PairLink = { url: String(asked.url), code: String(asked.code), expiresAt: deadline,
+      ...(asked.onPage === true ? { onPage: true } : {}), ...(ticket && asked.connectCode === "expired" ? { expired: true } : {}) };
+    if (!asked.bound) show(link);
+    // The page shows Allow, so the session says only that. Nobody allowed after a while: maybe
+    // that page was closed, so the link and the code to type show too.
+    let fullAt = link.onPage ? Date.now() + pairTiming.onPageMs : Infinity;
     for (;;) {
+      if (Date.now() >= fullAt) { fullAt = Infinity; if (!asked.bound) show({ url: link.url, code: link.code, expiresAt: link.expiresAt }); }
       try {
         stored.binding = await requestJson(`${origin}${API}/connect`, stored.secret, undefined, body) as Binding;
         break;
       } catch (error) {
         if (!(error instanceof HttpError && error.code === "owner_confirmation")) throw friendly(error, origin);
         if (Date.now() > deadline) throw new Error("The link expired before anyone allowed it. Type /slirc again for a new one.");
-        await new Promise((done) => setTimeout(done, CONFIRM_POLL_MS));
+        await new Promise((done) => setTimeout(done, Math.min(CONFIRM_POLL_MS, Math.max(10, fullAt - Date.now()))));
         if (!current()) return;
       }
     }

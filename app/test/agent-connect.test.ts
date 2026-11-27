@@ -163,6 +163,8 @@ test("a ticket from the Agents page shows the Allow card to the person who copie
     const asked = await (await ask(first, { ...session, ticket })).json();
     expect(asked.code).toMatch(/^.{4}-.{4}$/);
     expect(asked.connectCode).toBeUndefined();
+    // The page shows it, so the session can say only "Choose Allow".
+    expect(asked.onPage).toBe(true);
     expect(cards()).toHaveLength(1);
     expect(cards()[0].data).toMatchObject({ harnessName: "Pi", sessionName: "fix login", code: asked.code });
     expect(cards()[0].data.sessionFile).toBeUndefined();
@@ -172,7 +174,9 @@ test("a ticket from the Agents page shows the Allow card to the person who copie
     // Each is told the connect code expired, so the session can say so.
     const held = await ask(secret(), { ...session, sessionId: "s2", ticket });
     expect(held.status).toBe(200);
-    expect((await held.json()).connectCode).toBe("expired");
+    const heldBody = await held.json();
+    expect(heldBody.connectCode).toBe("expired");
+    expect(heldBody.onPage).toBeUndefined();
     const madeUp = await ask(secret(), { ...session, sessionId: "s3", ticket: "not-a-real-ticket" });
     expect(madeUp.status).toBe(200);
     expect((await madeUp.json())).toMatchObject({ connectCode: "expired", code: expect.stringMatching(/^.{4}-.{4}$/) });

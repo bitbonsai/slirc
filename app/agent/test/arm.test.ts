@@ -166,7 +166,7 @@ test("Pi pairs from an arm file after the bash tool only when the person typed t
     typed.bash();
     await typed.commands.get("slirc").settled;
     expect(asked.at(-1)).toMatchObject({ harness: "pi", sessionId: "pi-typed", ticket: "k7f2q9xdpa3m" });
-    expect(typed.notices).toContain(`Slirc: open http://${host}/agents#connect=${"t".repeat(43)} to connect this session, or enter K7QX-M2PD under Agents in Slirc.`);
+    expect(typed.notices).toContain(`Slirc: Open http://${host}/agents#connect=${"t".repeat(43)} to connect this session, or enter K7QX-M2PD under Agents in Slirc.`);
     expect(typed.notices.at(-1)).toBe(`Connected to ${host} as pi-3f2a.`);
     // Armed again once connected: said so, nothing new.
     writeArm("pi", "pi-typed", { host }, env, Date.now());
@@ -179,9 +179,9 @@ test("Pi pairs from an arm file after the bash tool only when the person typed t
     writeArm("pi", "pi-late", { host, ticket: "oldcode12345" }, env, Date.now());
     late.bash();
     await late.commands.get("slirc").settled;
-    expect(late.notices).toContain("That connect code expired. Copy the command again.");
-    expect(late.notices.some((text) => text.includes("enter K7QX-M2PD under Agents"))).toBe(true);
-    expect(typed.notices).not.toContain("That connect code expired. Copy the command again.");
+    // One notice, since Pi shows only the newest: the expired code and the link together.
+    expect(late.notices).toContain(`Slirc: That connect code expired, so your Agents page didn't get this request. To connect, open http://${host}/agents#connect=${"t".repeat(43)} to connect this session, or enter K7QX-M2PD under Agents in Slirc.`);
+    expect(typed.notices.some((text) => text.includes("expired"))).toBe(false);
 
     // Armed for after a reload (the CLI just updated the extension): the runtime loaded now
     // leaves it, and the one that starts after /reload takes it.

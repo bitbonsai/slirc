@@ -242,10 +242,12 @@ export function createAgentsPage(reactive: <T extends object>(value: T) => T, { 
     if (waitTimer !== null) { clearTimeout(waitTimer); waitTimer = null; }
   }
 
-  // A live ticket, minted when there is none. Without one the command still works: the session
-  // shows its link and code, as before.
-  async function ensureTicket(scope: { current(): boolean }): Promise<void> {
-    if (liveTicket()) return;
+  // A new ticket for each copy. The server keeps tickets in memory only, so one this page minted
+  // earlier may be gone after a restart, and the first session to use one holds it: reusing it
+  // left the page waiting while Slirc treated the paste as an unknown code. Without a ticket the
+  // command still works: the session shows its link and code.
+  async function freshTicket(scope: { current(): boolean }): Promise<void> {
+    local.ticket = null;
     try {
       const body = await request("/api/agents/connect-ticket", { method: "POST", headers: { "Content-Type": "application/json", "X-Slirc-Connect": "1" }, body: "{}" });
       const expiresAt = normalizeExpiry(body.expiresAt);
@@ -367,7 +369,7 @@ export function createAgentsPage(reactive: <T extends object>(value: T) => T, { 
     if (!scope || !firstLine()) return;
     // Safari keeps the clipboard only inside the click, so the text goes in as a promise that
     // settles once the ticket is minted. Elsewhere the plain write after minting is fine.
-    const text = ensureTicket(scope).then(() => firstLine());
+    const text = freshTicket(scope).then(() => firstLine());
     try {
       if (typeof ClipboardItem !== "undefined" && navigator.clipboard.write) {
         await navigator.clipboard.write([new ClipboardItem({ "text/plain": text.then((line) => new Blob([line], { type: "text/plain" })) })]);

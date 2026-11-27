@@ -4,7 +4,7 @@ import { chmodSync, closeSync, mkdirSync, openSync, readFileSync, rmSync, writeF
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { hostname, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { errorText, repoName, SessionClient, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
+import { errorText, pairText, repoName, SessionClient, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
 import { VERSION } from "../../version.ts";
 import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace } from "../../../../shared/workspace.ts";
 import { alive, boundMark, dir, liveFile, short } from "./shared.ts";
@@ -86,7 +86,7 @@ export async function main(config: Config, env: NodeJS.ProcessEnv = process.env)
   let pairing = false;
   let pending: PairLink | undefined;
   let linked: ((text: string) => void) | undefined;
-  const linkText = (link: PairLink) => `Open ${link.url} to connect this Codex session, or enter ${link.code} under Agents in Slirc.`;
+  const linkText = (link: PairLink) => pairText(link, "this Codex session");
 
   const adapter: Adapter = {
     harness: "codex",

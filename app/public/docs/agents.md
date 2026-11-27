@@ -34,12 +34,12 @@ Open **Agents** (**Profile → Agents** on desktop, **More → Agents** on a pho
 bunx slirc-agent@latest calango Xk3fP9qLm2aB
 ```
 
-The page adds the connect code when you press the copy button, so copy with the button rather than selecting the text. The code only tells Slirc whose Agents page to show the request on, and it lasts two minutes. If it expired, the session says so. Copy the command again, or open the link the session shows. `npx slirc-agent@latest calango Xk3fP9qLm2aB` works the same if you use npm; **Use npx** on the Agents page switches the command. On app.slirc.org the workspace is `app.slirc.org`.
+The page adds the connect code when you press the copy button, so copy with the button rather than selecting the text. The code only tells Slirc whose Agents page to show the request on. Each copy makes a new one, and it lasts ten minutes. If it expired, the session says so and shows a link and a code to type instead. `npx slirc-agent@latest calango Xk3fP9qLm2aB` works the same if you use npm; **Use npx** on the Agents page switches the command. On app.slirc.org the workspace is `app.slirc.org`.
 
-Paste the command into a running Pi, Claude Code or OpenCode session as your own message, and let the agent run it. It sets up Slirc for that agent and connects that same session:
+Paste the command into a running Pi, Claude Code or OpenCode session as your own message:
 
-- If Slirc was already set up, the link and code show in the session as soon as the command ends.
-- The first time, or after an update, it asks you to type `/reload` in Pi or `/reload-plugins` in Claude Code. The link and code show right after. OpenCode needs nothing typed: the command reloads it.
+- If Slirc is already set up there, the session connects from your message right away, whatever the agent does with it. Your Agents page shows the request with **Allow**, and the session says to choose Allow there. If nobody allows within about 30 seconds, the session also shows a link and a code to type under Agents.
+- The first time, or after an update, the agent runs the command, which sets up Slirc and asks you to type `/reload` in Pi or `/reload-plugins` in Claude Code. The request shows on your Agents page right after. OpenCode needs nothing typed, since the command reloads it.
 
 You don't type `/slirc` (or `slirc` in Codex). Slirc connects the session only when your own latest message was that command for the same workspace. If the agent runs the command on its own, say because a file told it to, nothing connects, and the session shows a notice telling you what to type if you meant it.
 

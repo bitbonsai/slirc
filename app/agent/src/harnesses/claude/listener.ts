@@ -3,7 +3,7 @@ import { chmodSync, closeSync, mkdirSync, openSync, readFileSync, rmSync, writeF
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
-import { errorText, repoName, SessionClient, stateDir, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
+import { errorText, pairText, repoName, SessionClient, stateDir, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
 import { connectCommand, takeArm } from "../../arm.ts";
 import { VERSION } from "../../version.ts";
 import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, workspaceArg } from "../../../../shared/workspace.ts";
@@ -18,7 +18,7 @@ import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, works
 // `prompted`: the person just submitted what looks like the Agents page's command.
 export type Config = { sessionId: string; cwd: string; model: string; armed?: string; ticket?: string; arm?: { prompt?: string; command?: string; starting?: boolean }; prompted?: string };
 type Out = { type: "ready"; socket: string; token: string } | { type: "deliver"; id: string; prompt: string; receipt: string }
-  | { type: "notify"; message: string; level: string } | { type: "link"; url: string; code: string; expiresAt: number }
+  | { type: "notify"; message: string; level: string } | ({ type: "link" } & PairLink)
   | { type: "connected"; text: string } | { type: "rename"; name: string } | { type: "busy" } | { type: "bound" };
 
 // Exit codes the mod reads: another listener already serves this session, so don't respawn.
@@ -84,7 +84,7 @@ export async function main(config: Config, env: NodeJS.ProcessEnv = process.env)
   // The link waiting for Allow, so /slirc can show it again in full.
   let pending: PairLink | undefined;
   let linked: ((text: string) => void) | undefined;
-  const linkText = (link: PairLink) => `Open ${link.url} to connect this session, or enter ${link.code} under Agents in Slirc.`;
+  const linkText = (link: PairLink) => pairText(link);
 
   const adapter: Adapter = {
     harness: "claude",

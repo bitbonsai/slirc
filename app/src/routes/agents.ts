@@ -96,6 +96,8 @@ agents.post("/api/agent/session/request", async (c) => {
   }
   c.header("Cache-Control", "no-store");
   return c.json({ url: `${appOrigin(c.req.header("host"))}/agents#connect=${created.token}`, code: created.code, expiresAt: created.expiresAt,
+    // onPage: that person's Agents page shows this request with Allow, so the session says only that.
+    ...(ticketOwner ? { onPage: true } : {}),
     ...(body.ticket !== undefined && !ticketOwner ? { connectCode: "expired" } : {}) });
 });
 

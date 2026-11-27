@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { Type } from "typebox";
-import { errorText, repoName, SessionClient, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
+import { errorText, pairText, repoName, SessionClient, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
 import { connectCommand, isDelivery, takeArm } from "../../arm.ts";
 import { compareVersions, VERSION } from "../../version.ts";
 import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, workspaceArg } from "../../../../shared/workspace.ts";
@@ -184,7 +184,7 @@ export default function slirc(pi: PiApi): void {
   // The pairing waiting for Allow. Asked again for the same workspace with no new connect code,
   // it shows its code again instead of starting over, so a second run of the command is harmless.
   let pairing: { host: string; ticket?: string; link?: PairLink; epoch: number } | undefined;
-  const linkText = (link: PairLink) => `Slirc: open ${link.url} to connect this session, or enter ${link.code} under Agents in Slirc.`;
+  const linkText = (link: PairLink) => link.onPage ? pairText(link) : `Slirc: ${pairText(link)}`;
 
   async function connect(ctx: any, host: string, ticket?: string): Promise<void> {
     if (pairing?.epoch === sessionEpoch && pairing.host === host && (!ticket || ticket === pairing.ticket)) {

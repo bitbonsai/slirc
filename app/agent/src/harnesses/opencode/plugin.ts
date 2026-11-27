@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
 import { existsSync } from "node:fs";
 import { armPath, connectCommand, isDelivery, takeArm } from "../../arm.ts";
-import { errorText, readState, repoName, SessionClient, stateDir, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
+import { errorText, pairText, readState, repoName, SessionClient, stateDir, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
 import { VERSION } from "../../version.ts";
 import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, workspaceArg } from "../../../../shared/workspace.ts";
 import { PRESENCE_EVERY_MS, PRESENCE_TTL_MS, SLIRC_RPC, unsupported, type Notice, type Presence } from "./shared.ts";
@@ -209,7 +209,7 @@ async function connect(host: Host, sessionId: string, workspace: string, ticket?
   try { target = workspace ? expandWorkspace(workspace) : readLastWorkspace() ?? ""; }
   catch (error) { notify(errorText(error), "error"); return; }
   if (!target) { notify("Type /slirc <workspace>, using the workspace name shown on your Agents page in Slirc.", "error"); return; }
-  const linkText = (link: PairLink) => `Open ${link.url} to connect this session, or enter ${link.code} under Agents in Slirc.`;
+  const linkText = (link: PairLink) => pairText(link);
   // Asked again for the same workspace with no new connect code: show the waiting code again.
   const waiting = registry.pairing.get(sessionId);
   if (waiting?.epoch === epoch(sessionId) && waiting.host === target && (!ticket || ticket === waiting.ticket)) {

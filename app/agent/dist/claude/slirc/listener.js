@@ -74,7 +74,14 @@ var retryMs = () => Number(process.env.SLIRC_RETRY_MS) || 5000;
 var lostWarningMs = () => Number(process.env.SLIRC_LOST_WARNING_MS) || 30000;
 var CONFIRM_WAIT_MS = 10 * 60000;
 var CONFIRM_POLL_MS = 2000;
-var CODE_EXPIRED = "That connect code expired. Copy the command again.";
+var CODE_EXPIRED = "That connect code expired, so your Agents page didn't get this request.";
+var pairTiming = { onPageMs: 30000 };
+function pairText(link, noun = "this session") {
+  if (link.onPage)
+    return `Choose Allow on your Agents page in Slirc. Code ${link.code}.`;
+  const open = `open ${link.url} to connect ${noun}, or enter ${link.code} under Agents in Slirc.`;
+  return link.expired ? `${CODE_EXPIRED} To connect, ${open}` : `O${open.slice(1)}`;
+}
 
 class HttpError extends Error {
   status;
@@ -343,11 +350,22 @@ class SessionClient {
     if (!current())
       return;
     const deadline = typeof asked.expiresAt === "number" ? asked.expiresAt : Date.now() + CONFIRM_WAIT_MS;
-    if (ticket && asked.connectCode === "expired")
-      adapter.notify(CODE_EXPIRED, "warning");
+    const link = {
+      url: String(asked.url),
+      code: String(asked.code),
+      expiresAt: deadline,
+      ...asked.onPage === true ? { onPage: true } : {},
+      ...ticket && asked.connectCode === "expired" ? { expired: true } : {}
+    };
     if (!asked.bound)
-      show({ url: String(asked.url), code: String(asked.code), expiresAt: deadline });
+      show(link);
+    let fullAt = link.onPage ? Date.now() + pairTiming.onPageMs : Infinity;
     for (;; ) {
+      if (Date.now() >= fullAt) {
+        fullAt = Infinity;
+        if (!asked.bound)
+          show({ url: link.url, code: link.code, expiresAt: link.expiresAt });
+      }
       try {
         stored.binding = await requestJson(`${origin}${API}/connect`, stored.secret, undefined, body);
         break;
@@ -356,7 +374,7 @@ class SessionClient {
           throw friendly(error, origin);
         if (Date.now() > deadline)
           throw new Error("The link expired before anyone allowed it. Type /slirc again for a new one.");
-        await new Promise((done) => setTimeout(done, CONFIRM_POLL_MS));
+        await new Promise((done) => setTimeout(done, Math.min(CONFIRM_POLL_MS, Math.max(10, fullAt - Date.now()))));
         if (!current())
           return;
       }
@@ -1091,7 +1109,7 @@ async function main(config, env = process.env) {
   let asking;
   let pending;
   let linked;
-  const linkText = (link) => `Open ${link.url} to connect this session, or enter ${link.code} under Agents in Slirc.`;
+  const linkText = (link) => pairText(link);
   const adapter = {
     harness: "claude",
     version: VERSION,

@@ -177,7 +177,7 @@ test("capability and card parsing keep only what the server named, and fail clos
   expect(normalizeExpiry(-1)).toBeNull();
 });
 
-test("copy mints one connect code, copies the command with it and waits; the runner choice is remembered", async () => {
+test("each copy mints a fresh connect code, copies the command with it and waits; the runner choice is remembered", async () => {
   localStorage.removeItem("slirc.agentRunner");
   let minted = 0;
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -189,7 +189,7 @@ test("copy mints one connect code, copies the command with it and waits; the run
       expect(new Headers(init.headers).get("X-Slirc-Connect")).toBe("1");
       expect(new Headers(init.headers).get("Content-Type")).toBe("application/json");
       minted++;
-      return json({ ticket: "k7f2q9xdpa3m", expiresAt: Date.now() + 120_000 });
+      return json({ ticket: ["k7f2q9xdpa3m", "n3w2q9xdpa3m"][minted - 1], expiresAt: Date.now() + 120_000 });
     }
     throw new Error(`unexpected ${url}`);
   }) as typeof fetch;
@@ -207,9 +207,11 @@ test("copy mints one connect code, copies the command with it and waits; the run
   expect(agents.firstLine()).toBe("bunx slirc-agent@latest calango k7f2q9xdpa3m");
   agents.toggleRunner();
   expect(agents.firstLine()).toBe("npx slirc-agent@latest calango k7f2q9xdpa3m");
+  // Copied again: a new code, never the earlier one, which a restart may have dropped or another
+  // session may already hold.
   await agents.copy();
-  expect(minted).toBe(1);
-  expect(written).toEqual(["bunx slirc-agent@latest calango k7f2q9xdpa3m", "npx slirc-agent@latest calango k7f2q9xdpa3m"]);
+  expect(minted).toBe(2);
+  expect(written).toEqual(["bunx slirc-agent@latest calango k7f2q9xdpa3m", "npx slirc-agent@latest calango n3w2q9xdpa3m"]);
   expect(page().runner).toBe("npx");
   // The session's request arrives on the event stream: the card replaces the waiting row and the
   // ticket is spent, so the next copy mints a fresh one.

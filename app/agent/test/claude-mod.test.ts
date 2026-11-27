@@ -158,3 +158,13 @@ test("the link and code stay in the transcript as a display-only row until conne
   // Nothing of it reaches the model.
   expect(session.submitted).toEqual([]);
 });
+
+test("when the Agents page shows the request, the session says only to choose Allow", async () => {
+  const link = { type: "link", url: "https://core.slirc.app/agents#connect=abc", code: "RFYK-X321", expiresAt: Date.now() + 600_000, onPage: true };
+  const session = await mod("cc-onpage", [link]);
+  await session.submit("bunx slirc-agent@latest core k7f2q9xdpa3m");
+  await new Promise((done) => setTimeout(done, 20));
+  const allow = "Choose Allow on your Agents page in Slirc. Code RFYK-X321.";
+  expect(session.ui).toEqual([["log", allow], ["status", allow], ["toast", allow]]);
+  expect(session.submitted).toEqual([]);
+});
