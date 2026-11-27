@@ -527,7 +527,7 @@ describe("iOS load watch", () => {
 
   test("the picker shows the mark alone while a workspace opens", async () => {
     const html = await Bun.file(new URL("../www/index.html", import.meta.url)).text();
-    expect(html).toContain('<div class="opening" role="status">');
+    expect(html).toContain('<div class="opening" role="status" aria-label="Opening Slirc">');
     expect(html).toContain("main.ready ~ .opening { display: none; }");
     expect(html.indexOf("opening();")).toBeGreaterThan(html.indexOf("async function navigateToWorkspace(url) {"));
   });
