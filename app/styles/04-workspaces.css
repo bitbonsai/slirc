@@ -30,6 +30,8 @@
 .instance-rail-item:hover .instance-rail-pill, .instance-rail-item:focus-visible .instance-rail-pill { opacity: .75; height: 1rem; }
 .instance-rail-item.active .instance-rail-pill { opacity: 1; height: 1.75rem; }
 .instance-rail-item:only-of-type .instance-rail-pill { display: none; }
+.instance-rail-more .instance-rail-count { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: .65rem; background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--muted); font-size: .8125rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.instance-rail-more:hover .instance-rail-count, .instance-rail-more:focus-visible .instance-rail-count { background: color-mix(in srgb, var(--brand) 18%, transparent); color: var(--text); }
 .instance-rail-add { margin-top: auto; }
 .instance-rail-add .menu-icon { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: .65rem; background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--brand); }
 .instance-rail-add:hover .menu-icon, .instance-rail-add:focus-visible .menu-icon { background: color-mix(in srgb, var(--brand) 18%, transparent); }

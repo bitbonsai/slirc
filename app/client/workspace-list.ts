@@ -130,6 +130,15 @@ export function workspaceLink(target: string, here: string = location.origin, st
   return target + "/" + (carried ? PREFIX + carried : "");
 }
 
+// Whether the instance rail shows every workspace, kept per device.
+export const RAIL_EXPANDED_KEY = "slirc.railExpanded";
+export function readRailExpanded(store: Pick<Storage, "getItem"> | null = storage()): boolean {
+  try { return store?.getItem(RAIL_EXPANDED_KEY) === "1"; } catch { return false; }
+}
+export function writeRailExpanded(open: boolean, store: Pick<Storage, "setItem"> | null = storage()): void {
+  try { store?.setItem(RAIL_EXPANDED_KEY, open ? "1" : "0"); } catch { /* blocked: it lasts for this page */ }
+}
+
 // Takes a workspace off this origin's list and keeps it off when a carried list names it again.
 export function forgetWorkspace(origin: string, store: Store | null = storage(), now = Date.now()): void {
   const list = readWorkspaceList(store, now);

@@ -1,8 +1,9 @@
   <nav class="instance-rail" x-cloak x-show="railVisible()" aria-label="Workspaces">
     <div class="instance-rail-list">
-      <template x-for="item in workspaceChoices" :key="item.origin">
+      <template x-for="item in railRows().shown" :key="item.origin">
         <button type="button" class="instance-rail-item" :class="item.current && 'active'" :aria-current="item.current ? 'true' : null" :aria-label="item.current ? item.name + ', current workspace' : 'Switch to ' + item.name" :data-tooltip="item.name" x-tooltip :disabled="workspaceBusy" x-on:click="pickWorkspace(item.origin)"><span class="instance-rail-pill" aria-hidden="true"></span><span class="workspace-badge" aria-hidden="true" :class="item.logo ? 'logo' : item.iconReady ? 'logo icon' : ''" :style="item.logo || item.iconReady ? '' : 'background:' + item.color"><img x-show="item.logo || item.iconReady" :src="item.logo || item.icon || null" alt="" x-on:load="if (!item.logo) item.iconReady = true" x-on:error="item.iconReady = false" /><span x-show="!item.logo && !item.iconReady" x-text="item.letter"></span></span></button>
       </template>
+      <button type="button" class="instance-rail-item instance-rail-more" x-show="railRows().hidden || railExpanded" :aria-expanded="String(railExpanded)" :aria-label="railExpanded ? 'Show fewer workspaces' : 'Show ' + railRows().hidden + ' more workspaces'" :data-tooltip="railExpanded ? 'Show fewer' : 'Show all workspaces'" x-tooltip x-on:click="toggleRail()"><span class="instance-rail-count" aria-hidden="true" x-text="railExpanded ? '−' : '+' + railRows().hidden"></span></button>
     </div>
     <button type="button" class="instance-rail-item instance-rail-add" aria-haspopup="dialog" aria-label="Add or manage workspaces" data-tooltip="Add a workspace" x-tooltip :aria-expanded="String(workspaceDialog)" x-on:click="openWorkspaces()"><span class="menu-icon" aria-hidden="true" x-html="lucideIcon('plus')"></span></button>
   </nav>

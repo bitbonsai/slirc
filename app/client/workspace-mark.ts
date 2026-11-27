@@ -88,6 +88,21 @@ export function workspaceChoices(here: string, saved: string[]): WorkspaceChoice
   return rows;
 }
 
+// The instance rail shows this workspace and the workspaces with activity (unread or a mention),
+// then fills up to RAIL_MAX icons with the rest in their usual order. Everything else folds behind
+// one "+n" control. Activity is never hidden, so more than RAIL_MAX can show. The rail has no
+// unread state for other workspaces yet (each is its own origin), so callers pass none and the
+// rail keeps the most recently used ones: the rows arrive newest first. With RAIL_MAX or fewer
+// rows, or when expanded, every row shows.
+export const RAIL_MAX = 4;
+export function railWorkspaces<T extends { origin: string; current: boolean }>(rows: T[], expanded: boolean, active: ReadonlySet<string> = new Set(), max = RAIL_MAX): { shown: T[]; hidden: number } {
+  if (expanded || rows.length <= max) return { shown: rows, hidden: 0 };
+  const keep = new Set(rows.filter((row) => row.current || active.has(row.origin)).map((row) => row.origin));
+  for (const row of rows) { if (keep.size >= max) break; keep.add(row.origin); }
+  const shown = rows.filter((row) => keep.has(row.origin));
+  return { shown, hidden: rows.length - shown.length };
+}
+
 // The count beside the workspace row on the phone's More tab: the workspaces in the dialog,
 // leaving out the app.slirc.org row a hosted workspace offers but nobody saved.
 export function savedWorkspaceCount(rows: WorkspaceChoice[]): number {

@@ -1,7 +1,7 @@
 // The sidebar's workspace mark: a name from the host, the Slirc mark on app.slirc.org, and a
 // monogram whose colour comes from the name alone.
 import { expect, test } from "bun:test";
-import { OPEN_WORKSPACE, WORKSPACE_PALETTE, animateListHeight, filterWorkspaces, workspaceChoices, workspaceMark, workspaceName, workspaceOrigin, workspaceRows } from "../client/workspace-mark.ts";
+import { OPEN_WORKSPACE, WORKSPACE_PALETTE, animateListHeight, filterWorkspaces, railWorkspaces, workspaceChoices, workspaceMark, workspaceName, workspaceOrigin, workspaceRows } from "../client/workspace-mark.ts";
 
 test("the name comes from the workspace's address", () => {
   expect(workspaceName("ai-guild.slirc.app")).toBe("ai-guild");
@@ -129,4 +129,45 @@ test("the list animates its height between filter results, not on first render o
   height = 200;
   animateListHeight(el, false);
   expect(runs).toHaveLength(1);
+});
+
+// The instance rail folds all but a few workspaces behind one "+n" control.
+const rail = (names: string[], current = 0) => names.map((name, i) => ({ origin: "https://" + name + ".example.test", current: i === current }));
+
+test("the rail shows everything while there are four workspaces or fewer", () => {
+  const rows = rail(["a", "b", "c", "d"]);
+  expect(railWorkspaces(rows, false)).toEqual({ shown: rows, hidden: 0 });
+});
+
+test("the rail keeps this workspace and the first ones in order, and counts the rest", () => {
+  const rows = rail(["a", "b", "c", "d", "e", "f", "g", "h"]);
+  const { shown, hidden } = railWorkspaces(rows, false);
+  expect(shown.map((row) => row.origin)).toEqual(rows.slice(0, 4).map((row) => row.origin));
+  expect(hidden).toBe(4);
+});
+
+test("the rail never hides this workspace, even when it comes late in the list", () => {
+  const rows = rail(["a", "b", "c", "d", "e", "f"], 5);
+  const { shown, hidden } = railWorkspaces(rows, false);
+  expect(shown.map((row) => row.origin)).toEqual(["https://a.example.test", "https://b.example.test", "https://c.example.test", "https://f.example.test"]);
+  expect(hidden).toBe(2);
+});
+
+test("workspaces with activity come first in the cut, in their usual order", () => {
+  const rows = rail(["a", "b", "c", "d", "e", "f", "g"]);
+  const { shown } = railWorkspaces(rows, false, new Set(["https://f.example.test", "https://e.example.test"]));
+  expect(shown.map((row) => row.origin.slice(8, 9))).toEqual(["a", "b", "e", "f"]);
+});
+
+test("workspaces with activity are never hidden, so more than four can show", () => {
+  const rows = rail(["a", "b", "c", "d", "e", "f", "g"]);
+  const active = new Set(rows.slice(1, 6).map((row) => row.origin));
+  const { shown, hidden } = railWorkspaces(rows, false, active);
+  expect(shown.map((row) => row.origin.slice(8, 9))).toEqual(["a", "b", "c", "d", "e", "f"]);
+  expect(hidden).toBe(1);
+});
+
+test("expanded, the rail shows every workspace", () => {
+  const rows = rail(["a", "b", "c", "d", "e", "f"]);
+  expect(railWorkspaces(rows, true)).toEqual({ shown: rows, hidden: 0 });
 });

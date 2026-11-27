@@ -1,6 +1,6 @@
 // The browser's workspace list: carried between origins in the fragment, merged, and filtered.
 import { expect, test } from "bun:test";
-import { MAX_WORKSPACES, WORKSPACE_LIST_KEY, decodeWorkspaces, encodeWorkspaces, forgetWorkspace, mergeWorkspaces, readWorkspaceList, savedWorkspaces, takeCarriedWorkspaces, workspaceLink } from "../client/workspace-list.ts";
+import { MAX_WORKSPACES, RAIL_EXPANDED_KEY, WORKSPACE_LIST_KEY, decodeWorkspaces, encodeWorkspaces, forgetWorkspace, mergeWorkspaces, readRailExpanded, readWorkspaceList, savedWorkspaces, takeCarriedWorkspaces, workspaceLink, writeRailExpanded } from "../client/workspace-list.ts";
 
 const NOW = 1_763_900_000_000;
 const memory = () => { const map = new Map<string, string>(); return { getItem: (k: string) => map.get(k) ?? null, setItem: (k: string, v: string) => { map.set(k, v); }, map }; };
@@ -91,4 +91,15 @@ test("a broken or tampered stored list is cleaned on read", () => {
   expect(readWorkspaceList(store, NOW)).toEqual({ saved: {}, removed: {} });
   store.setItem(WORKSPACE_LIST_KEY, JSON.stringify({ saved: { "javascript:alert(1)": 1, "https://ok.slirc.app": 2, "https://x.slirc.app/path": 3 } }));
   expect(readWorkspaceList(store, NOW).saved).toEqual({ "https://ok.slirc.app": 2 });
+});
+
+test("the rail's expanded state is kept per device and starts folded", () => {
+  const store = memory();
+  expect(readRailExpanded(store)).toBe(false);
+  writeRailExpanded(true, store);
+  expect(store.map.get(RAIL_EXPANDED_KEY)).toBe("1");
+  expect(readRailExpanded(store)).toBe(true);
+  writeRailExpanded(false, store);
+  expect(readRailExpanded(store)).toBe(false);
+  expect(readRailExpanded(null)).toBe(false);
 });

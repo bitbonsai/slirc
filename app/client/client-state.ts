@@ -9,6 +9,7 @@ import { DEV_CHANNEL } from "@client/protocol.ts";
 import { type StickyNote } from "@client/reminder-notice.ts";
 import { type AgentProfiles } from "@client/agent-roster.ts";
 import { type WorkspaceChoice, type WorkspaceMark } from "@client/workspace-mark.ts";
+import { readRailExpanded } from "@client/workspace-list.ts";
 
 // One channel-members row as returned by GET /api/channels/:channel/members. Presence is separate.
 export interface ChannelMember {
@@ -60,6 +61,8 @@ export function createClientState(isDesktop: boolean, coarse: boolean) {
     // The workspace dialog, opened from the sidebar mark or the phone's More screen (workspace-mark.ts).
     workspaceDialog: false,
     workspaceChoices: [] as WorkspaceChoice[],
+    // The instance rail folds all but a few workspaces; remembered per device (workspace-mark.ts railWorkspaces).
+    railExpanded: readRailExpanded(),
     workspaceAddress: "",
     workspaceError: "",
     workspaceBusy: false,
