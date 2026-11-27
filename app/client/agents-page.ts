@@ -329,14 +329,11 @@ export function createAgentsPage(reactive: <T extends object>(value: T) => T, { 
     void openCard({ code });
   }
 
-  // "Pi wants to connect", then "slirc · MacBook": the folder and the machine it runs on.
+  // "Pi on MacBook wants to connect": what asks and from which computer. The code below it is
+  // what the person checks against the session.
   function cardTitle(card: ConnectCard): string {
-    return `${card.harnessName || "A coding session"} wants to connect`;
-  }
-
-  function cardSubtitle(card: ConnectCard): string {
-    // The model is left out: it is the one at pairing time, and the session can switch it before Allow.
-    return [card.repo || card.sessionName, card.machine && card.machine !== "unknown" ? card.machine : ""].filter(Boolean).join(" · ");
+    const machine = card.machine && card.machine !== "unknown" ? ` on ${card.machine}` : "";
+    return `${card.harnessName || "A coding session"}${machine} wants to connect`;
   }
 
   async function decide(allow: boolean): Promise<void> {
@@ -562,7 +559,7 @@ export function createAgentsPage(reactive: <T extends object>(value: T) => T, { 
 
   return Object.assign(local, {
     offCopy: agentsOffCopy,
-    load, openCard, submitCode, cardTitle, cardSubtitle, decide, dismissCard, harnessList, harnessJoin, pasteHarnesses, terminalHarnesses, firstLine, toggleRunner, showRequest, copy, openAgent, agentTitle, agentSubtitle, applyUpdate, setPresence, dropRow, askRename, closeRename, confirmRename, toggleReadDms, askRemove, closeRemove, confirmRemove, dialogKeydown, open, reset, destroy: reset,
+    load, openCard, submitCode, cardTitle, decide, dismissCard, harnessList, harnessJoin, pasteHarnesses, terminalHarnesses, firstLine, toggleRunner, showRequest, copy, openAgent, agentTitle, agentSubtitle, applyUpdate, setPresence, dropRow, askRename, closeRename, confirmRename, toggleReadDms, askRemove, closeRemove, confirmRemove, dialogKeydown, open, reset, destroy: reset,
     status: agentStatus,
   });
 }
