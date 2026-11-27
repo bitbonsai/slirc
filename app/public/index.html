@@ -1136,10 +1136,13 @@
     x-show="authenticated && !isDesktop && mobileNav === 'home'"
   >
     <div class="mobile-screen-head tab-screen-head">
-      <a class="home-brand" href="/" x-on:click.prevent="openHome()">
-        <img src="/logo.webp" alt="" />
-        <strong>Home</strong>
-      </a>
+      <span class="home-brand">
+        <button type="button" class="head-workspace" x-show="canSwitchWorkspace" aria-haspopup="dialog" :aria-label="'Workspaces, now ' + workspace.name" x-on:click="openWorkspaces()"><span class="workspace-badge" aria-hidden="true" :class="workspace.logo ? 'logo' : workspace.iconReady ? 'logo icon' : ''" :style="workspace.logo || workspace.iconReady ? '' : 'background:' + workspace.color"><img x-show="workspace.logo || workspace.iconReady" :src="workspace.logo || workspace.icon || null" alt="" x-on:load="if (!workspace.logo) workspace.iconReady = true" x-on:error="workspace.iconReady = false" /><span x-show="!workspace.logo && !workspace.iconReady" x-text="workspace.letter"></span></span></button>
+        <a class="home-brand" href="/" x-on:click.prevent="openHome()">
+          <img src="/logo.webp" alt="" x-show="!canSwitchWorkspace" />
+          <strong>Home</strong>
+        </a>
+      </span>
     </div>
     <div class="pull-indicator" x-data="pullRefresh('list')" :class="['is-' + pullState, pullArmed() && 'armed']" :style="pullStyle()"><img class="pull-logo" src="/logo.webp" alt="" /><span class="pull-label" role="status" x-text="pullLabel()"></span></div>
     <div class="mobile-screen-body">
@@ -1351,7 +1354,8 @@
   >
     <div class="mobile-screen-head tab-screen-head">
       <span class="home-brand">
-        <img src="/icons/ui/nav-dms.svg" alt="" />
+        <button type="button" class="head-workspace" x-show="canSwitchWorkspace" aria-haspopup="dialog" :aria-label="'Workspaces, now ' + workspace.name" x-on:click="openWorkspaces()"><span class="workspace-badge" aria-hidden="true" :class="workspace.logo ? 'logo' : workspace.iconReady ? 'logo icon' : ''" :style="workspace.logo || workspace.iconReady ? '' : 'background:' + workspace.color"><img x-show="workspace.logo || workspace.iconReady" :src="workspace.logo || workspace.icon || null" alt="" x-on:load="if (!workspace.logo) workspace.iconReady = true" x-on:error="workspace.iconReady = false" /><span x-show="!workspace.logo && !workspace.iconReady" x-text="workspace.letter"></span></span></button>
+        <img src="/icons/ui/nav-dms.svg" alt="" x-show="!canSwitchWorkspace" />
         <strong>Direct messages</strong>
       </span>
       <button
@@ -1524,7 +1528,8 @@
   >
     <div class="mobile-screen-head tab-screen-head">
       <span class="home-brand">
-        <img src="/icons/ui/nav-more.svg" alt="" />
+        <button type="button" class="head-workspace" x-show="canSwitchWorkspace" aria-haspopup="dialog" :aria-label="'Workspaces, now ' + workspace.name" x-on:click="openWorkspaces()"><span class="workspace-badge" aria-hidden="true" :class="workspace.logo ? 'logo' : workspace.iconReady ? 'logo icon' : ''" :style="workspace.logo || workspace.iconReady ? '' : 'background:' + workspace.color"><img x-show="workspace.logo || workspace.iconReady" :src="workspace.logo || workspace.icon || null" alt="" x-on:load="if (!workspace.logo) workspace.iconReady = true" x-on:error="workspace.iconReady = false" /><span x-show="!workspace.logo && !workspace.iconReady" x-text="workspace.letter"></span></span></button>
+        <img src="/icons/ui/nav-more.svg" alt="" x-show="!canSwitchWorkspace" />
         <strong>More</strong>
       </span>
     </div>

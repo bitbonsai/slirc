@@ -39,10 +39,13 @@
     x-show="authenticated && !isDesktop && mobileNav === 'home'"
   >
     <div class="mobile-screen-head tab-screen-head">
-      <a class="home-brand" href="/" x-on:click.prevent="openHome()">
-        <img src="/logo.webp" alt="" />
-        <strong>Home</strong>
-      </a>
+      <span class="home-brand">
+        <!-- include: head-workspace -->
+        <a class="home-brand" href="/" x-on:click.prevent="openHome()">
+          <img src="/logo.webp" alt="" x-show="!canSwitchWorkspace" />
+          <strong>Home</strong>
+        </a>
+      </span>
     </div>
     <div class="pull-indicator" x-data="pullRefresh('list')" :class="['is-' + pullState, pullArmed() && 'armed']" :style="pullStyle()"><img class="pull-logo" src="/logo.webp" alt="" /><span class="pull-label" role="status" x-text="pullLabel()"></span></div>
     <div class="mobile-screen-body">
@@ -254,7 +257,8 @@
   >
     <div class="mobile-screen-head tab-screen-head">
       <span class="home-brand">
-        <img src="/icons/ui/nav-dms.svg" alt="" />
+        <!-- include: head-workspace -->
+        <img src="/icons/ui/nav-dms.svg" alt="" x-show="!canSwitchWorkspace" />
         <strong>Direct messages</strong>
       </span>
       <button
@@ -427,7 +431,8 @@
   >
     <div class="mobile-screen-head tab-screen-head">
       <span class="home-brand">
-        <img src="/icons/ui/nav-more.svg" alt="" />
+        <!-- include: head-workspace -->
+        <img src="/icons/ui/nav-more.svg" alt="" x-show="!canSwitchWorkspace" />
         <strong>More</strong>
       </span>
     </div>
