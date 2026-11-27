@@ -1,6 +1,7 @@
 import { afterAll, expect, test } from "bun:test";
 import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { statePath } from "../src/adapter-core.ts";
 import { writeArm } from "../src/arm.ts";
 import { request } from "node:http";
 import { tmpdir } from "node:os";
@@ -22,16 +23,21 @@ const enc = new TextEncoder();
 const streams = new Set<ReadableStreamDefaultController<Uint8Array>>();
 // `hold`: the owner hasn't pressed Allow yet, so /connect keeps answering owner_confirmation.
 let hold = false;
-const log = { tickets: [] as unknown[], sessionFiles: [] as string[], connects: 0, attaches: 0, detaches: 0, started: [] as string[], replies: [] as { id: string; text: string }[], fails: [] as { id: string; reason: string }[] };
+// Secrets Slirc no longer knows: a revoked agent.
+const revoked = new Set<string>();
+const log = { attachFiles: [] as unknown[], tickets: [] as unknown[], sessionFiles: [] as string[], connects: 0, attaches: 0, detaches: 0, started: [] as string[], replies: [] as { id: string; text: string }[], fails: [] as { id: string; reason: string }[] };
 const server = Bun.serve({ port: 0, fetch: async (req) => {
   const url = new URL(req.url);
   const json = await req.json().catch(() => ({})) as any;
   const id = url.pathname.split("/").at(-2)!;
+  const secret = req.headers.get("Authorization")?.slice(7) ?? "";
+  if (revoked.has(secret) && (url.pathname.endsWith("/attach") || url.pathname.endsWith("/binding"))) return Response.json({ error: "session binding required" }, { status: 401 });
+  if (url.pathname === "/api/agent/session/binding") return Response.json({ status: "ready" });
   if (url.pathname === "/api/agent/session/request") log.tickets.push(json.ticket);
   if (url.pathname === "/api/agent/session/request") return Response.json({ url: `http://${url.host}/agents#connect=x`, code: "K7QX-M2PD", expiresAt: Date.now() + 600_000 });
   if (url.pathname === "/api/agent/session/connect" && hold) return Response.json({ error: "Waiting for Allow in Slirc.", code: "owner_confirmation" }, { status: 409 });
   if (url.pathname === "/api/agent/session/connect") { log.connects++; log.sessionFiles.push(json.sessionFile); return Response.json({ instanceId: "i", ownerAccountId: "o", bindingId: "b-1", nick: "claude-3f2a", dm: "#dm", status: "ready" }); }
-  if (url.pathname === "/api/agent/session/attach") { log.attaches++; return Response.json({ leaseId: `lease-${log.attaches}`, expiresAt: Date.now() + 45_000, connected: true }); }
+  if (url.pathname === "/api/agent/session/attach") { log.attaches++; log.attachFiles.push(json.sessionFile); return Response.json({ leaseId: `lease-${log.attaches}`, expiresAt: Date.now() + 45_000, connected: true }); }
   if (url.pathname === "/api/agent/session/heartbeat") return Response.json({ expiresAt: Date.now() + 45_000 });
   if (url.pathname === "/api/agent/session/detach") { log.detaches++; return new Response(null, { status: 204 }); }
   if (url.pathname === "/api/agent/session/events") {
@@ -275,4 +281,59 @@ test("a fresh connect code pasted while the session waits for Allow asks again w
     run.child.kill("SIGTERM");
     await run.exit;
   }
+});
+
+const claudeState = (sessionId: string) => statePath(join(root, "state", "slirc-agent", "claude"), sessionId);
+const stale = (sessionId: string) => readdirSync(join(root, "state", "slirc-agent", "claude")).filter((name) => name.startsWith(claudeState(sessionId).split("/").at(-1)!) && name.endsWith(".stale"));
+
+test("the same session in another folder reconnects as the same agent, and the folder follows", async () => {
+  const host = `127.0.0.1:${server.port}`;
+  const first = start({ sessionId: "cc-moved", cwd: "/Users/me/bit", model: "", armed: host });
+  try { await until(() => !!line(first, "connected")); } finally { first.child.kill("SIGTERM"); await first.exit; }
+  const connects = log.connects;
+  // cd, a worktree, a case-only rename: the same session id starts in another folder.
+  const moved = start({ sessionId: "cc-moved", cwd: "/Users/me/bit/Slirc", model: "" });
+  try {
+    await until(() => moved.lines.some((item) => item.type === "notify" && item.message === "Slirc connected."));
+    expect(log.connects).toBe(connects);
+    expect(line(moved, "link")).toBeUndefined();
+    expect(moved.lines.some((item) => item.level === "error")).toBe(false);
+    expect(log.attachFiles.at(-1)).toBe("/Users/me/bit/Slirc");
+    expect(JSON.parse(readFileSync(claudeState("cc-moved"), "utf8")).sessionFile).toBe("/Users/me/bit/Slirc");
+    // Pasting the Agents page's command again: already this agent, nothing new.
+    await call(moved, "/prompt", { text: `bunx slirc-agent@latest ${host} k7f2q9xdpa3m` });
+    await until(() => moved.lines.some((item) => item.type === "notify" && item.message === "Already connected as claude-3f2a."));
+  } finally { moved.child.kill("SIGTERM"); await moved.exit; }
+});
+
+test("a binding Slirc rejects is set aside and the session pairs fresh", async () => {
+  const host = `127.0.0.1:${server.port}`;
+  const first = start({ sessionId: "cc-revoked", cwd: "/tmp/repo", model: "", armed: host });
+  try { await until(() => !!line(first, "connected")); } finally { first.child.kill("SIGTERM"); await first.exit; }
+  revoked.add(JSON.parse(readFileSync(claudeState("cc-revoked"), "utf8")).secret);
+  const connects = log.connects;
+  const run = start({ sessionId: "cc-revoked", cwd: "/tmp/repo", model: "" });
+  try {
+    await until(() => !!line(run, "link"));
+    expect(line(run, "link").lines[0]).toBe(`Connecting to ${host}`);
+    await until(() => !!line(run, "connected"));
+    expect(log.connects).toBe(connects + 1);
+    expect(stale("cc-revoked")).toHaveLength(1);
+    expect(run.lines.some((item) => item.level === "error")).toBe(false);
+  } finally { run.child.kill("SIGTERM"); await run.exit; }
+});
+
+test("pasting the command into a session whose state file is corrupt pairs fresh", async () => {
+  const host = `127.0.0.1:${server.port}`;
+  mkdirSync(join(root, "state", "slirc-agent", "claude"), { recursive: true });
+  writeFileSync(claudeState("cc-corrupt"), "{not json");
+  const before = log.tickets.length;
+  const run = start({ sessionId: "cc-corrupt", cwd: "/tmp/repo", model: "", prompted: `bunx slirc-agent@latest ${host} k7f2q9xdpa3m` });
+  try {
+    await until(() => !!line(run, "connected"));
+    expect(line(run, "link").lines[0]).toBe(`Connecting to ${host}`);
+    expect(log.tickets.slice(before)).toEqual(["k7f2q9xdpa3m"]);
+    expect(stale("cc-corrupt")).toHaveLength(1);
+    expect(run.lines.some((item) => item.level === "error")).toBe(false);
+  } finally { run.child.kill("SIGTERM"); await run.exit; }
 });

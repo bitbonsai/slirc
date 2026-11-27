@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { chmod, mkdir, mkdtemp, open, readFile, rename, rmdir, unlink } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, open, readdir, readFile, rename, rmdir, unlink } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
@@ -32,7 +32,8 @@ export type Metadata = { name: string; repo: string; model: string; provider: st
 // `replying`/`failing` are unproven outcomes, and the rest are terminal.
 type JournalStatus = "offered" | "accepting" | "accepted" | "injected" | "replying" | "failing" | "replied" | "failed" | "uncertain" | "stale";
 type JournalEntry = { revision: number; status: JournalStatus; destination?: string; text?: string; replyKind?: "reply" | "fail"; replyText?: string };
-export type State = Identity & { origin: string; secret: string; binding?: Binding; lease?: string; requests: Record<string, JournalEntry> };
+// `moved`: the session file or folder changed since Slirc last heard it; the next attach tells it.
+export type State = Identity & { origin: string; secret: string; binding?: Binding; lease?: string; moved?: boolean; requests: Record<string, JournalEntry> };
 
 export type Adapter = {
   harness: string;
@@ -43,6 +44,9 @@ export type Adapter = {
   deliver(prompt: string, request: Request): Promise<void>;
   notify(message: string, level: "info" | "warning" | "error"): void;
   rename?(name: string): Promise<void>;
+  // Slirc no longer knows this session's binding (revoked, or unknown on the server). The state
+  // file is already set aside; pair fresh with `host`. Without it the session says what to paste.
+  unbound?(host: string): void;
 };
 
 // How long pairing waits for the owner's Allow when the server does not say: the life of a request.
@@ -88,17 +92,52 @@ export const stateDir = (harness: string, env: NodeJS.ProcessEnv = process.env) 
 // One private file per session, named by a hash of the identity parts.
 export const statePath = (dir: string, ...parts: string[]) => join(dir, `${createHash("sha256").update(parts.join("\0")).digest("hex")}.json`);
 
+// A state file this session can't use moves aside, never deleted, so the session pairs fresh.
+export async function setAside(path: string): Promise<void> {
+  await rename(path, `${path}.${Date.now()}.stale`).catch(() => {});
+}
+
+// The saved state of this session, or undefined when there is none it can use. A session is its
+// id: a session file or folder that moved since (cd, a worktree, a rename, a resume elsewhere) is
+// adopted and saved. A file that is unreadable or names another session is set aside.
 export async function readState(path: string, identity: Identity): Promise<State | undefined> {
-  try {
-    const saved = JSON.parse(await readFile(path, "utf8")) as State;
-    if (new URL(saved.origin).origin !== saved.origin || saved.sessionId !== identity.sessionId || saved.sessionFile !== identity.sessionFile || !/^[A-Za-z0-9_-]{43}$/.test(saved.secret)) {
-      throw new Error("Saved Slirc binding belongs to a different session.");
-    }
-    if (!saved.requests || typeof saved.requests !== "object") saved.requests = {};
-    return saved;
-  } catch (error) {
+  let text: string;
+  try { text = await readFile(path, "utf8"); }
+  catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
     throw error;
+  }
+  // Another process created it and is still writing its first line.
+  if (!text.trim()) return undefined;
+  let saved: State;
+  try {
+    saved = JSON.parse(text) as State;
+    if (new URL(saved.origin).origin !== saved.origin || saved.sessionId !== identity.sessionId || !/^[A-Za-z0-9_-]{43}$/.test(saved.secret)) throw new Error("unusable");
+  } catch {
+    await setAside(path);
+    return undefined;
+  }
+  if (!saved.requests || typeof saved.requests !== "object") saved.requests = {};
+  let moved = false;
+  for (const key of ["sessionFile", "directory"] as const) {
+    if (identity[key] !== undefined && saved[key] !== identity[key]) { saved[key] = identity[key]; moved = true; }
+  }
+  if (moved) { saved.moved = true; await saveState(path, saved); }
+  return saved;
+}
+
+// State saved for this session id under another name in `dir`, such as Pi's older files keyed by
+// id and session file, takes `path`, so a moved or renamed session keeps its agent.
+export async function adoptState(dir: string, path: string, sessionId: string): Promise<void> {
+  if (existsSync(path)) return;
+  let names: string[];
+  try { names = await readdir(dir); } catch { return; }
+  for (const name of names) {
+    const other = join(dir, name);
+    if (!/^[0-9a-f]{64}\.json$/.test(name) || other === path) continue;
+    try {
+      if ((JSON.parse(await readFile(other, "utf8")) as State).sessionId === sessionId) { await rename(other, path); return; }
+    } catch { /* not this session's */ }
   }
 }
 
@@ -289,7 +328,13 @@ export class SessionClient {
     if (!current()) return;
     if (stored?.binding) {
       if (stored.origin !== origin) throw new Error(`This ${adapter.noun} is already connected to ${new URL(stored.origin).host}.`);
-      return { client: new SessionClient(path, stored, metadata, adapter), already: true };
+      // A binding Slirc no longer knows (revoked, say) is set aside and this pairs fresh. Any other
+      // failure, such as being offline, keeps it.
+      const known = await requestJson(`${origin}${API}/binding`, stored.secret, undefined).then(() => true, (error) => !(error instanceof HttpError && error.status === 401));
+      if (!current()) return;
+      if (known) return { client: new SessionClient(path, stored, metadata, adapter), already: true };
+      await setAside(path);
+      stored = undefined;
     }
     if (stored && stored.origin !== origin) {
       // An unfinished attempt against another workspace: nothing was bound, so start over.
@@ -696,9 +741,11 @@ export class SessionClient {
     const run = (async () => {
       let attached: any;
       try {
-        attached = await requestJson(`${this.state.origin}${API}/attach`, this.state.secret, undefined, { nonce: this.incarnation, metadata: this.metadata });
+        attached = await requestJson(`${this.state.origin}${API}/attach`, this.state.secret, undefined,
+          { nonce: this.incarnation, metadata: this.metadata, ...(this.state.moved && this.state.sessionFile ? { sessionFile: this.state.sessionFile } : {}) });
       } catch (error) {
         if (this.retired) return;
+        if (error instanceof HttpError && error.status === 401) { await this.unbound(); return; }
         if (error instanceof HttpError && error.status === 409) {
           // Another incarnation holds the lease: a conflict, not a silent takeover. A live one keeps
           // heartbeating, so retries keep failing; a crashed one's lease expires (45s) and the
@@ -715,6 +762,7 @@ export class SessionClient {
       if (this.retired) return;
       this.conflictAttempts = 0;
       this.state.lease = attached.leaseId;
+      this.state.moved = undefined;
       // Readiness is the server's word, not a socket or a JOIN write.
       this.connected = attached.connected === true;
       await this.persist();
@@ -745,6 +793,15 @@ export class SessionClient {
     })().finally(() => { this.attaching = undefined; });
     this.attaching = run;
     return run;
+  }
+
+  // Slirc refused the binding: retire, set the state aside and pair fresh, or say how to.
+  private async unbound(): Promise<void> {
+    const host = new URL(this.state.origin).host;
+    this.retire(false);
+    await setAside(this.path);
+    if (this.adapter.unbound) this.adapter.unbound(host);
+    else this.adapter.notify(`Slirc no longer knows this ${this.adapter.noun}. Paste the command from the Agents page to connect it again.`, "warning");
   }
 
   private releaseDownloads(id: string): void {

@@ -59,8 +59,9 @@ async function body(req: IncomingMessage): Promise<any> {
 export async function main(config: Config, env: NodeJS.ProcessEnv = process.env): Promise<void> {
   const dir = stateDir("claude", env);
   mkdirSync(dir, { recursive: true, mode: 0o700 });
-  // Claude Code keys a session by its folder and id (`claude --resume <id>` runs in that folder),
-  // so the folder is the session file Slirc keeps, and the away notice can name it.
+  // A Claude Code session is its id; its folder moves (cd, worktrees, renames, resume elsewhere).
+  // The current folder rides along as the session file, so the away notice can name it, and a
+  // saved state from another folder is adopted, keeping the same agent.
   const identity: Identity = { sessionId: config.sessionId, ...(config.cwd.startsWith("/") ? { sessionFile: config.cwd } : {}) };
   const path = statePath(dir, config.sessionId);
   const lock = join(dir, `${short(config.sessionId)}.lock`);
@@ -100,6 +101,7 @@ export async function main(config: Config, env: NodeJS.ProcessEnv = process.env)
     },
     notify: (message, level) => emit({ type: "notify", message, level }),
     rename: async (name) => emit({ type: "rename", name }),
+    unbound: (host) => { client = undefined; void connect(host); },
   };
 
   // A pairing still waiting for Allow gives way to one that brings a new connect code: the person

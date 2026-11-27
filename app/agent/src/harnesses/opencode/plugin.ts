@@ -85,6 +85,7 @@ function adapter(sessionId: string, host: Host): Adapter {
     },
     notify: (message, level) => host.emit({ sessionID: sessionId, message, variant: level }),
     rename: async (title) => { await host.ctx.session.update({ sessionID: sessionId, title }); },
+    unbound: (workspace) => { void retire(sessionId); void connect(host, sessionId, workspace); },
   };
 }
 

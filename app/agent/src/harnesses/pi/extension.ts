@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { homedir, hostname } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { Type } from "typebox";
-import { connectedLines, errorText, pairLines, repoName, SessionClient, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
+import { adoptState, connectedLines, errorText, pairLines, repoName, SessionClient, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
 import { connectCommand, isDelivery, takeArm, writeArm } from "../../arm.ts";
 import { compareVersions, VERSION } from "../../version.ts";
 import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, workspaceArg } from "../../../../shared/workspace.ts";
@@ -99,8 +99,14 @@ function context(ctx: any): Identity & { sessionFile: string } {
   return { sessionId, sessionFile: canonicalFile };
 }
 
-const piStatePath = (identity: Identity & { sessionFile: string }) =>
-  statePath(join(process.env.PI_CODING_AGENT_DIR || join(homedir(), ".pi", "agent"), "slirc"), identity.sessionId, identity.sessionFile);
+// One state file per session id. A session file that moved or was renamed keeps its agent: the
+// older file, keyed by id and session file, is adopted.
+async function piStatePath(identity: Identity): Promise<string> {
+  const dir = join(process.env.PI_CODING_AGENT_DIR || join(homedir(), ".pi", "agent"), "slirc");
+  const path = statePath(dir, identity.sessionId);
+  await adoptState(dir, path, identity.sessionId);
+  return path;
+}
 
 const modelName = (model: any) => typeof model?.id === "string" ? model.id : "";
 const providerName = (model: any) => typeof model?.provider === "string" ? model.provider : "";
@@ -139,6 +145,7 @@ export default function slirc(pi: PiApi): void {
     },
     notify: (message, level) => ctx?.ui?.notify?.(message, level),
     rename: async (name) => pi.setSessionName?.(name),
+    unbound: (host) => { void connect(ctx, host); },
   });
 
   // Invalidate the current epoch and retire any activation. Called before every transition and at
@@ -240,7 +247,7 @@ export default function slirc(pi: PiApi): void {
     let identity: Identity & { sessionFile: string };
     try { identity = context(ctx); } catch { return; }
     const { epoch } = beginEpoch();
-    const client = await SessionClient.resume(adapter(ctx), piStatePath(identity), identity, readMetadata(ctx));
+    const client = await SessionClient.resume(adapter(ctx), await piStatePath(identity), identity, readMetadata(ctx));
     if (client && epoch === sessionEpoch) await activate(client);
   }
 
@@ -289,7 +296,7 @@ export default function slirc(pi: PiApi): void {
     const show = (link: PairLink) => { if (pairing === mine) mine.link = link; say(ctx, pairLines(link, host)); };
     try {
       // A session change mid-pair keeps any binding on the captured identity only.
-      const paired = await SessionClient.pair(adapter(ctx), piStatePath(identity), identity, originFor(host), readMetadata(ctx),
+      const paired = await SessionClient.pair(adapter(ctx), await piStatePath(identity), identity, originFor(host), readMetadata(ctx),
         process.env.HOSTNAME || hostname() || "unknown", show, () => epoch === sessionEpoch, ticket);
       if (!paired || epoch !== sessionEpoch) return;
       saveLastWorkspace(host);

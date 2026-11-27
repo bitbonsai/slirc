@@ -3,7 +3,7 @@ import { readFileSync as readFileSync5 } from "node:fs";
 
 // src/adapter-core.ts
 import { createHash, randomBytes } from "node:crypto";
-import { chmod, mkdir, mkdtemp, open, readFile, rename, rmdir, unlink } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, open, readdir, readFile, rename, rmdir, unlink } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { homedir as homedir2, tmpdir } from "node:os";
 import { basename, dirname as dirname2, join as join2, resolve } from "node:path";
@@ -97,20 +97,43 @@ var nonce = () => randomBytes(24).toString("base64url");
 var errorText = (error) => error instanceof Error ? error.message : String(error);
 var stateDir = (harness, env = process.env) => join2(env.XDG_STATE_HOME || join2(env.HOME || homedir2(), ".local", "state"), "slirc-agent", harness);
 var statePath = (dir, ...parts) => join2(dir, `${createHash("sha256").update(parts.join("\x00")).digest("hex")}.json`);
+async function setAside(path) {
+  await rename(path, `${path}.${Date.now()}.stale`).catch(() => {});
+}
 async function readState(path, identity) {
+  let text;
   try {
-    const saved = JSON.parse(await readFile(path, "utf8"));
-    if (new URL(saved.origin).origin !== saved.origin || saved.sessionId !== identity.sessionId || saved.sessionFile !== identity.sessionFile || !/^[A-Za-z0-9_-]{43}$/.test(saved.secret)) {
-      throw new Error("Saved Slirc binding belongs to a different session.");
-    }
-    if (!saved.requests || typeof saved.requests !== "object")
-      saved.requests = {};
-    return saved;
+    text = await readFile(path, "utf8");
   } catch (error) {
     if (error.code === "ENOENT")
       return;
     throw error;
   }
+  if (!text.trim())
+    return;
+  let saved;
+  try {
+    saved = JSON.parse(text);
+    if (new URL(saved.origin).origin !== saved.origin || saved.sessionId !== identity.sessionId || !/^[A-Za-z0-9_-]{43}$/.test(saved.secret))
+      throw new Error("unusable");
+  } catch {
+    await setAside(path);
+    return;
+  }
+  if (!saved.requests || typeof saved.requests !== "object")
+    saved.requests = {};
+  let moved = false;
+  for (const key of ["sessionFile", "directory"]) {
+    if (identity[key] !== undefined && saved[key] !== identity[key]) {
+      saved[key] = identity[key];
+      moved = true;
+    }
+  }
+  if (moved) {
+    saved.moved = true;
+    await saveState(path, saved);
+  }
+  return saved;
 }
 async function saveState(path, state) {
   await mkdir(dirname2(path), { recursive: true, mode: 448 });
@@ -314,7 +337,13 @@ class SessionClient {
     if (stored?.binding) {
       if (stored.origin !== origin)
         throw new Error(`This ${adapter.noun} is already connected to ${new URL(stored.origin).host}.`);
-      return { client: new SessionClient(path, stored, metadata, adapter), already: true };
+      const known = await requestJson(`${origin}${API}/binding`, stored.secret, undefined).then(() => true, (error) => !(error instanceof HttpError && error.status === 401));
+      if (!current())
+        return;
+      if (known)
+        return { client: new SessionClient(path, stored, metadata, adapter), already: true };
+      await setAside(path);
+      stored = undefined;
     }
     if (stored && stored.origin !== origin) {
       stored.origin = origin;
@@ -793,10 +822,14 @@ class SessionClient {
     const run = (async () => {
       let attached;
       try {
-        attached = await requestJson(`${this.state.origin}${API}/attach`, this.state.secret, undefined, { nonce: this.incarnation, metadata: this.metadata });
+        attached = await requestJson(`${this.state.origin}${API}/attach`, this.state.secret, undefined, { nonce: this.incarnation, metadata: this.metadata, ...this.state.moved && this.state.sessionFile ? { sessionFile: this.state.sessionFile } : {} });
       } catch (error) {
         if (this.retired)
           return;
+        if (error instanceof HttpError && error.status === 401) {
+          await this.unbound();
+          return;
+        }
         if (error instanceof HttpError && error.status === 409) {
           if (this.conflictAttempts === 0)
             this.notify(`Slirc rejected attach: this ${this.adapter.noun} is already attached in another runtime.`, "warning");
@@ -813,6 +846,7 @@ class SessionClient {
         return;
       this.conflictAttempts = 0;
       this.state.lease = attached.leaseId;
+      this.state.moved = undefined;
       this.connected = attached.connected === true;
       await this.persist();
       if (this.retired)
@@ -843,6 +877,15 @@ class SessionClient {
     });
     this.attaching = run;
     return run;
+  }
+  async unbound() {
+    const host = new URL(this.state.origin).host;
+    this.retire(false);
+    await setAside(this.path);
+    if (this.adapter.unbound)
+      this.adapter.unbound(host);
+    else
+      this.adapter.notify(`Slirc no longer knows this ${this.adapter.noun}. Paste the command from the Agents page to connect it again.`, "warning");
   }
   releaseDownloads(id) {
     const downloaded = this.downloads.get(id);
@@ -1006,7 +1049,7 @@ import { join as join4 } from "node:path";
 // package.json
 var package_default = {
   name: "slirc-agent",
-  version: "3.5.1",
+  version: "3.5.2",
   description: "Connect coding agents to Slirc rooms",
   keywords: [
     "slirc",
@@ -1498,7 +1541,11 @@ async function main(config, env = process.env) {
 
 Slirc delivery receipt: ${receipt}`, env);
     },
-    notify: (message) => note(message)
+    notify: (message) => note(message),
+    unbound: (host) => {
+      client = undefined;
+      connect(host);
+    }
   };
   async function connect(host, ticket) {
     pairing = true;

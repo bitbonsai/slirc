@@ -100,6 +100,7 @@ export async function main(config: Config, env: NodeJS.ProcessEnv = process.env)
       await queue(codex, config.sessionId, `${prompt}\n\nSlirc delivery receipt: ${receipt}`, env);
     },
     notify: (message) => note(message),
+    unbound: (host) => { client = undefined; void connect(host); },
   };
 
   async function connect(host: string, ticket?: string): Promise<void> {

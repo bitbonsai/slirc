@@ -145,6 +145,10 @@ agents.post("/api/agent/session/attach", async (c) => {
   const lease = body && typeof body.nonce === "string" ? bindLease(binding, body.nonce) : null;
   if (!lease) return c.json({ error: "session already attached or invalid nonce" }, 409);
   if (body.metadata && typeof body.metadata === "object" && !Array.isArray(body.metadata)) updateBindingMetadata(binding, body.metadata);
+  // The session's current file or folder: it moves (cd, worktrees, renames), and the away notice names it.
+  if (typeof body.sessionFile === "string" && body.sessionFile && body.sessionFile.length <= 2048 && body.sessionFile !== binding.session_file) {
+    db.query("UPDATE agent_session_bindings SET session_file = ? WHERE id = ?").run(body.sessionFile, binding.id);
+  }
   try {
     await connectAgentTransport(binding);
     const connected = agentRuntimeConnected(binding.id);
