@@ -106,6 +106,9 @@
    while the picture loads, and the picture fades in over it. The class is added on load, so an
    image that never loads shows its reserved box instead of nothing, and a broken script never
    hides a photo. */
+/* A right-click on a photo must select nothing. WebKit selects the word under the pointer, and with no text
+   there it runs the selection on into the messages below. The native image menu is unaffected. */
+.message-media, .message-media img { user-select: none; -webkit-user-select: none; }
 .thumb-img { background: color-mix(in srgb, var(--panel) 82%, transparent); }
 .thumb-img.thumb-loaded { animation: thumb-in var(--dur-fast) var(--ease-standard); }
 @keyframes thumb-in { from { opacity: 0; } to { opacity: 1; } }
