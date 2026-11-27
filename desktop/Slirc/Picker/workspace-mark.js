@@ -61,6 +61,19 @@ function workspaceChoices(here, saved) {
     rows.push(row(OPEN_WORKSPACE, false, "Slirc's own workspace"));
   return rows;
 }
+const RAIL_MAX = 4;
+function railWorkspaces(rows, expanded, active = new Set, max = RAIL_MAX) {
+  if (expanded || rows.length <= max)
+    return { shown: rows, hidden: 0 };
+  const keep = new Set(rows.filter((row) => row.current || active.has(row.origin)).map((row) => row.origin));
+  for (const row of rows) {
+    if (keep.size >= max)
+      break;
+    keep.add(row.origin);
+  }
+  const shown = rows.filter((row) => keep.has(row.origin));
+  return { shown, hidden: rows.length - shown.length };
+}
 function savedWorkspaceCount(rows) {
   return rows.filter((row) => !row.note).length;
 }
@@ -159,5 +172,5 @@ function installWorkspaceKeys(root, field) {
     }
   });
 }
-globalThis.slircWorkspaceMark = { WORKSPACE_PALETTE, workspaceName, WORKSPACE_ICON_PATH, workspaceIconUrl, workspaceMark, OPEN_WORKSPACE, workspaceOrigin, workspaceChoices, savedWorkspaceCount, workspaceRows, filterWorkspaces, animateListHeight, rowAfterKey, installWorkspaceKeys };
+globalThis.slircWorkspaceMark = { WORKSPACE_PALETTE, workspaceName, WORKSPACE_ICON_PATH, workspaceIconUrl, workspaceMark, OPEN_WORKSPACE, workspaceOrigin, workspaceChoices, RAIL_MAX, railWorkspaces, savedWorkspaceCount, workspaceRows, filterWorkspaces, animateListHeight, rowAfterKey, installWorkspaceKeys };
 })();
