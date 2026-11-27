@@ -90,6 +90,62 @@ describe("workspaceOrigin", () => {
   });
 });
 
+// Dev mode is a sync with SLIRC_DEV_HOST set: hosts.js then writes window.SLIRC_DEV_HOST.
+const inDevMode = (run: () => void | Promise<void>) => async () => {
+  (globalThis as { SLIRC_DEV_HOST?: string }).SLIRC_DEV_HOST = "dev.example.test";
+  try { await run(); } finally { delete (globalThis as { SLIRC_DEV_HOST?: string }).SLIRC_DEV_HOST; }
+};
+
+describe("ports in dev mode", () => {
+  const DEV = "https://dev.example.test:8443";
+
+  test("a release build refuses every port, even :443", () => {
+    for (const value of ["dev.example.test:8443", "https://dev.example.test:8443/", "ai-guild.slirc.app:443", "chat.example.com:65535"]) {
+      expect(picker.workspaceOrigin(value)).toBeNull();
+    }
+    expect(picker.linkTarget("https://dev.example.test:8443/j/abc", HOSTS)).toBeNull();
+    expect(picker.readStore(raw([AI, DEV], DEV), HOSTS)).toEqual({ store: { workspaces: [AI], last: null }, changed: true });
+  });
+
+  test("a port stays in the origin, and :443 folds to none", inDevMode(() => {
+    for (const value of ["dev.example.test:8443", "https://dev.example.test:8443", "HTTPS://DEV.example.test:8443/x?y#z", "dev.example.test.:8443/dm/ada", "dev.example.test:08443"]) {
+      expect(picker.workspaceOrigin(value)).toBe(DEV);
+    }
+    expect(picker.workspaceOrigin("ai-guild:8443")).toBe("https://ai-guild.slirc.app:8443");
+    expect(picker.workspaceOrigin("chat.example.com:65535")).toBe("https://chat.example.com:65535");
+    expect(picker.workspaceOrigin("ai-guild.slirc.app:443")).toBe("https://ai-guild.slirc.app");
+    expect(picker.workspaceOrigin("https://chat.example.com:443/x")).toBe(SELF_HOSTED);
+  }));
+
+  test("a bad port, userinfo and other schemes are still refused", inDevMode(() => {
+    for (const value of ["dev.example.test:0", "dev.example.test:65536", "dev.example.test:999999", "dev.example.test:", "dev.example.test:80a", "dev.example.test:-1", "dev.example.test:8443:1", "dev.example.test: 8443", "http://dev.example.test:8443", "https://me@dev.example.test:8443"]) {
+      expect(picker.workspaceOrigin(value)).toBeNull();
+    }
+  }));
+
+  test("host patterns match the hostname, never the port", inDevMode(() => {
+    expect(picker.opens(DEV, HOSTS)).toBe(true);
+    expect(picker.opens("https://ai-guild.slirc.app:8443", ["*.slirc.app"])).toBe(true);
+    expect(picker.opens(DEV, ["dev.example.test"])).toBe(true);
+    expect(picker.opens(DEV, ["dev.example.test:8443"])).toBe(false);
+    expect(picker.opens(DEV, ["*.slirc.app"])).toBe(false);
+  }));
+
+  test("saved origins and links keep their port", inDevMode(() => {
+    expect(picker.readStore(raw([AI, DEV], DEV), HOSTS)).toEqual({ store: { workspaces: [AI, DEV], last: DEV }, changed: false });
+    expect(picker.readStore(raw([SELF_HOSTED + ":443", DEV]), HOSTS).store.workspaces).toEqual([SELF_HOSTED, DEV]);
+    expect(picker.linkTarget("https://dev.example.test:8443/j/abc?x=1#y", HOSTS)).toEqual({ origin: DEV, url: DEV + "/j/abc?x=1#y" });
+    expect(picker.linkTarget("slirc://dev.example.test:8443/channels", HOSTS)?.url).toBe(DEV + "/channels");
+    expect(picker.linkTarget("https://chat.example.com:8443/", RESTRICTED)).toBeNull();
+    expect(picker.unreachableOrigin(DEV, HOSTS)).toBe(DEV);
+  }));
+
+  test("the filter offers a typed host:port and matches a saved port", inDevMode(() => {
+    expect(picker.filterWorkspaces([AI], "dev.example.test:8443").open).toEqual({ origin: DEV, label: "dev.example.test:8443" });
+    expect(picker.filterWorkspaces([AI, DEV], "8443").matches).toEqual([DEV]);
+  }));
+});
+
 describe("opens", () => {
   test("default hosts allows any valid https origin", () => {
     expect(DEFAULT_HOSTS).toEqual(["*"]);

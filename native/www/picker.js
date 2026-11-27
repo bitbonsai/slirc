@@ -8,25 +8,36 @@
   const couldntReach = (origin) => "We couldn't reach " + hostOf(origin) + ". Try again, or pick another workspace.";
 
   // "ai-guild", "ai-guild.slirc.app" and "https://ai-guild.slirc.app/x" all mean one origin. The
-  // answer is always https://<host>: any other scheme, a port, or userinfo is refused.
+  // answer is always https://<host>: any other scheme or userinfo is refused. A port is refused too,
+  // except in dev mode (see devMode), where https://<host>:<port> is kept and :443 folds to none.
+  const devMode = () => Boolean(globalThis.SLIRC_DEV_HOST);
+
   function workspaceOrigin(value) {
     let text = String(value || "").trim().toLowerCase();
     if (text.includes("://")) {
       if (!text.startsWith("https://")) return null;
       text = text.slice("https://".length);
     }
-    let host = text.split(/[/?#]/, 1)[0].replace(/\.$/, "");
+    const authority = text.split(/[/?#]/, 1)[0];
+    const colon = authority.indexOf(":");
+    let host = (colon < 0 ? authority : authority.slice(0, colon)).replace(/\.$/, "");
+    let port = "";
+    if (colon >= 0) {
+      const digits = authority.slice(colon + 1);
+      if (!devMode() || !/^\d{1,5}$/.test(digits) || Number(digits) < 1 || Number(digits) > 65535) return null;
+      if (Number(digits) !== 443) port = ":" + Number(digits);
+    }
     if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(host)) return null;
     if (!host.includes(".")) host += ".slirc.app";
-    return "https://" + host;
+    return "https://" + host + port;
   }
 
   // hosts is window.SLIRC_HOSTS, written by write-hosts.ts. "*" allows any valid https origin
-  // (still verified via /api/version before opening). Specific patterns match equal label counts
-  // with "*" standing for one label, e.g. "*.slirc.app".
+  // (still verified via /api/version before opening). Specific patterns match the hostname only,
+  // never a dev-mode port, with equal label counts and "*" standing for one label, e.g. "*.slirc.app".
   function opens(origin, hosts) {
     if (typeof origin !== "string" || !origin.startsWith("https://")) return false;
-    const host = origin.slice("https://".length).split(".");
+    const host = origin.slice("https://".length).replace(/:\d+$/, "").split(".");
     return hosts.some((pattern) => {
       if (pattern === "*") return true;
       const parts = pattern.split(".");
@@ -78,8 +89,8 @@
     if (url.protocol === "slirc:") {
       if (url.search || !SCHEME_PATHS.test(path)) return null;
     } else if (url.protocol !== "https:") return null;
-    if (url.username || url.password || url.port) return null;
-    const origin = workspaceOrigin(url.hostname);
+    if (url.username || url.password) return null;
+    const origin = workspaceOrigin(url.host);
     if (!origin || !opens(origin, hosts)) return null;
     return { origin, url: origin + path + (url.protocol === "https:" ? url.search : "") + url.hash };
   }

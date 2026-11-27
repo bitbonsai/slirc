@@ -452,7 +452,8 @@ enum Workspace {
     }
 
     /// "ai-guild", "ai-guild.slirc.app" and "https://ai-guild.slirc.app/x" all mean one origin, and
-    /// the answer is always https://<host>. Any other scheme, a port, or userinfo is refused.
+    /// the answer is always https://<host>. Any other scheme or userinfo is refused. A port is refused
+    /// too, except in a Debug build, where https://<host>:<port> is kept and :443 folds to none.
     static func origin(_ value: String) -> URL? {
         var text = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         // An explicit dev stack set in SLIRC_DEV_ORIGIN is the one address allowed a port.
@@ -461,12 +462,24 @@ enum Workspace {
             guard text.hasPrefix("https://") else { return nil }
             text = String(text.dropFirst("https://".count))
         }
-        var host = String(text.split(whereSeparator: { "/?#".contains($0) }).first ?? "")
+        let authority = String(text.split(whereSeparator: { "/?#".contains($0) }).first ?? "")
+        var host = String(authority.prefix { $0 != ":" })
+        var port = ""
+        if host.count < authority.count {
+            #if DEBUG
+            let digits = authority.dropFirst(host.count + 1)
+            guard digits.count <= 5, digits.allSatisfy({ $0.isASCII && $0.isNumber }),
+                  let number = Int(digits), (1...65535).contains(number) else { return nil }
+            if number != 443 { port = ":\(number)" }
+            #else
+            return nil
+            #endif
+        }
         if host.hasSuffix(".") { host.removeLast() }
         let label = "[a-z0-9]([a-z0-9-]*[a-z0-9])?"
         guard host.range(of: "^\(label)(\\.\(label))*$", options: .regularExpression) != nil else { return nil }
         if !host.contains(".") { host += ".slirc.app" }
-        return URL(string: "https://" + host)
+        return URL(string: "https://" + host + port)
     }
 
     /// The route a typed address points at, such as a channel, relative to its workspace's origin.

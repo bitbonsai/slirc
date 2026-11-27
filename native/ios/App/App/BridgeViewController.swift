@@ -35,7 +35,14 @@ final class WorkspaceNavigationState {
               url.password == nil,
               let host = url.host?.lowercased(),
               !host.isEmpty else { return false }
-        if let port = url.port, port != 443 { return false }
+        // A port is allowed only in a Debug build, for a dev stack. A release build opens 443 only.
+        if let port = url.port {
+            #if DEBUG
+            if !(1...65535).contains(port) { return false }
+            #else
+            if port != 443 { return false }
+            #endif
+        }
         return true
     }
 
@@ -179,7 +186,9 @@ final class WorkspaceLoadWatch {
 
     static func origin(of url: URL) -> String? {
         guard WorkspaceNavigationState.isValidWorkspaceURL(url), let host = url.host?.lowercased() else { return nil }
-        return "https://" + host
+        // The same form the picker saves: a port shows unless it is 443.
+        let port = url.port.flatMap { $0 == 443 ? nil : ":\($0)" } ?? ""
+        return "https://" + host + port
     }
 
     func start(_ url: URL, in webView: WKWebView?) {

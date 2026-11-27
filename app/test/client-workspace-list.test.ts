@@ -68,6 +68,30 @@ test("a load without the fragment leaves the address alone", () => {
   expect(readWorkspaceList(store, NOW).saved).toEqual({ "https://calango.slirc.app": NOW });
 });
 
+test("a page served from a port keeps ported origins in its list", () => {
+  const g = globalThis as { location?: unknown };
+  const before = g.location;
+  g.location = { port: "8443" };
+  try {
+    const here = "https://dev.example.test:8443";
+    const store = memory();
+    takeCarriedWorkspaces(page(here), hist(), store, NOW);
+    expect(readWorkspaceList(store, NOW).saved).toEqual({ [here]: NOW });
+    expect(workspaceLink("https://xmiro.slirc.app", here, store, NOW + 1)).toBe(`https://xmiro.slirc.app/#workspaces=dev.example.test:8443:${NOW + 1}`);
+    expect(decodeWorkspaces("dev.example.test:8443:1,a.slirc.app:443:2,a.slirc.app:0:3", NOW)).toEqual({ [here]: 1 });
+    expect(savedWorkspaces("https://xmiro.slirc.app", store, NOW + 1)).toEqual([here]);
+  } finally {
+    g.location = before;
+  }
+});
+
+test("without a port on the page, a ported origin never gets in", () => {
+  expect(decodeWorkspaces("dev.example.test:8443:1", NOW)).toEqual({});
+  const store = memory();
+  store.setItem(WORKSPACE_LIST_KEY, JSON.stringify({ saved: { "https://dev.example.test:8443": 1, "https://ok.slirc.app": 2 } }));
+  expect(readWorkspaceList(store, NOW).saved).toEqual({ "https://ok.slirc.app": 2 });
+});
+
 test("a dev origin on a port or http is never saved", () => {
   const store = memory();
   takeCarriedWorkspaces(page("http://localhost:8080"), hist(), store, NOW);

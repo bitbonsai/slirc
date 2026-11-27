@@ -60,19 +60,30 @@ function workspaceMark(host, origin = "https://" + host, iconVersion) {
   return { name, letter, color: WORKSPACE_PALETTE[hash(name.toLowerCase()) % WORKSPACE_PALETTE.length], logo, icon, iconReady: false };
 }
 const OPEN_WORKSPACE = "https://app.slirc.org";
-function workspaceOrigin(value) {
+const pagePort = () => Boolean(globalThis.location?.port);
+function workspaceOrigin(value, ports = pagePort()) {
   let text = String(value || "").trim().toLowerCase();
   if (text.includes("://")) {
     if (!text.startsWith("https://"))
       return null;
     text = text.slice("https://".length);
   }
-  let host = text.split(/[/?#]/, 1)[0].replace(/\.$/, "");
+  const authority = text.split(/[/?#]/, 1)[0];
+  const colon = authority.indexOf(":");
+  let host = (colon < 0 ? authority : authority.slice(0, colon)).replace(/\.$/, "");
+  let port = "";
+  if (colon >= 0) {
+    const digits = authority.slice(colon + 1);
+    if (!ports || !/^\d{1,5}$/.test(digits) || Number(digits) < 1 || Number(digits) > 65535)
+      return null;
+    if (Number(digits) !== 443)
+      port = ":" + Number(digits);
+  }
   if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(host))
     return null;
   if (!host.includes("."))
     host += ".slirc.app";
-  return "https://" + host;
+  return "https://" + host + port;
 }
 const isHostedOrigin = (origin) => origin === OPEN_WORKSPACE || origin.endsWith(TENANT_SUFFIX);
 function workspaceChoices(here, saved) {

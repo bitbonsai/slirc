@@ -58,6 +58,16 @@ test("a typed address means one https origin, as in the iOS picker", () => {
   expect(workspaceOrigin("")).toBeNull();
 });
 
+test("a port is refused unless asked for, and then kept without :443", () => {
+  expect(workspaceOrigin("dev.example.test:8443")).toBeNull();
+  expect(workspaceOrigin("ai-guild.slirc.app:443")).toBeNull();
+  expect(workspaceOrigin("dev.example.test:8443", true)).toBe("https://dev.example.test:8443");
+  expect(workspaceOrigin("https://dev.example.test:8443/x?y", true)).toBe("https://dev.example.test:8443");
+  expect(workspaceOrigin("ai-guild:8443", true)).toBe("https://ai-guild.slirc.app:8443");
+  expect(workspaceOrigin("ai-guild.slirc.app:443", true)).toBe("https://ai-guild.slirc.app");
+  for (const bad of ["a.example.com:0", "a.example.com:65536", "a.example.com:80x", "a.example.com:", "http://a.example.com:8443", "me@a.example.com:8443"]) expect(workspaceOrigin(bad, true)).toBeNull();
+});
+
 test("the dialog lists this workspace first, then the app's saved ones, then app.slirc.org", () => {
   const rows = workspaceChoices("https://ai-guild.slirc.app", ["https://xmiro.slirc.app", "https://ai-guild.slirc.app", "not a host", "xmiro"]);
   expect(rows.map((row) => [row.origin, row.current])).toEqual([

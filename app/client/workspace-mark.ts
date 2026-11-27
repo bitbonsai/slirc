@@ -56,18 +56,30 @@ export function workspaceMark(host: string, origin = "https://" + host, iconVers
 export const OPEN_WORKSPACE = "https://app.slirc.org";
 
 // "ai-guild", "ai-guild.slirc.app" and "https://ai-guild.slirc.app/x" all mean one origin, as in
-// the iOS picker (native/www/picker.js). The answer is always https://<host>: any other scheme, a
-// port, or userinfo is refused.
-export function workspaceOrigin(value: string): string | null {
+// the iOS picker (native/www/picker.js). The answer is always https://<host>: any other scheme or
+// userinfo is refused. A port is refused too, unless `ports` is set: it defaults to whether this
+// page is itself served from a port, which only a dev stack is. Then https://<host>:<port> is kept
+// (port 1 to 65535) and :443 folds to none.
+const pagePort = () => Boolean((globalThis as { location?: { port?: string } }).location?.port);
+
+export function workspaceOrigin(value: string, ports = pagePort()): string | null {
   let text = String(value || "").trim().toLowerCase();
   if (text.includes("://")) {
     if (!text.startsWith("https://")) return null;
     text = text.slice("https://".length);
   }
-  let host = text.split(/[/?#]/, 1)[0]!.replace(/\.$/, "");
+  const authority = text.split(/[/?#]/, 1)[0]!;
+  const colon = authority.indexOf(":");
+  let host = (colon < 0 ? authority : authority.slice(0, colon)).replace(/\.$/, "");
+  let port = "";
+  if (colon >= 0) {
+    const digits = authority.slice(colon + 1);
+    if (!ports || !/^\d{1,5}$/.test(digits) || Number(digits) < 1 || Number(digits) > 65535) return null;
+    if (Number(digits) !== 443) port = ":" + Number(digits);
+  }
   if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(host)) return null;
   if (!host.includes(".")) host += ".slirc.app";
-  return "https://" + host;
+  return "https://" + host + port;
 }
 
 export type WorkspaceChoice = WorkspaceMark & { origin: string; host: string; current: boolean; note: string };
