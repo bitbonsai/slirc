@@ -528,7 +528,9 @@ run("bearer secret cannot SASL to IRC and no route offers raw IRC or JOIN", asyn
     "/api/agent/session/*", "/api/agent/session/attach", "/api/agent/session/binding", "/api/agent/session/connect",
     "/api/agent/session/detach", "/api/agent/session/events", "/api/agent/session/events/poll", "/api/agent/session/heartbeat",
     // Read-only room history behind the delivery checks, and display metadata.
-    "/api/agent/session/history", "/api/agent/session/metadata", "/api/agent/session/request", "/api/agent/session/requests/:id",
+    // Owner DMs are read-only and gated by the owner's per-agent switch.
+    "/api/agent/session/history", "/api/agent/session/metadata", "/api/agent/session/owner-dms", "/api/agent/session/owner-dms/:nick",
+    "/api/agent/session/request", "/api/agent/session/requests/:id",
     "/api/agent/session/requests/:id/accept", "/api/agent/session/requests/:id/confirm",
     // Extra messages and own-message deletes go only to the request's fixed room.
     "/api/agent/session/requests/:id/delete", "/api/agent/session/requests/:id/fail", "/api/agent/session/requests/:id/reply",
