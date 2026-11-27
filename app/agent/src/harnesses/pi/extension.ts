@@ -4,8 +4,8 @@ import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { Type } from "typebox";
 import { errorText, repoName, SessionClient, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
-import { consents, isDelivery, takeArm } from "../../arm.ts";
-import { VERSION } from "../../version.ts";
+import { connectCommand, isDelivery, takeArm } from "../../arm.ts";
+import { compareVersions, VERSION } from "../../version.ts";
 import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, workspaceArg } from "../../../../shared/workspace.ts";
 
 type PiApi = {
@@ -181,12 +181,23 @@ export default function slirc(pi: PiApi): void {
     if (client && epoch === sessionEpoch) await activate(client);
   }
 
+  // The pairing waiting for Allow. Asked again for the same workspace with no new connect code,
+  // it shows its code again instead of starting over, so a second run of the command is harmless.
+  let pairing: { host: string; ticket?: string; link?: PairLink; epoch: number } | undefined;
+  const linkText = (link: PairLink) => `Slirc: open ${link.url} to connect this session, or enter ${link.code} under Agents in Slirc.`;
+
   async function connect(ctx: any, host: string, ticket?: string): Promise<void> {
+    if (pairing?.epoch === sessionEpoch && pairing.host === host && (!ticket || ticket === pairing.ticket)) {
+      if (pairing.link) ctx?.ui?.notify?.(linkText(pairing.link), "info");
+      return;
+    }
     let identity: Identity & { sessionFile: string };
     try { identity = context(ctx); }
     catch (error) { ctx?.ui?.notify?.(errorText(error), "error"); return; }
     const { epoch } = beginEpoch();
-    const show = (link: PairLink) => ctx?.ui?.notify?.(`Slirc: open ${link.url} to connect this session, or enter ${link.code} under Agents in Slirc.`, "info");
+    const mine = { host, ...(ticket ? { ticket } : {}), epoch };
+    pairing = mine;
+    const show = (link: PairLink) => { if (pairing === mine) mine.link = link; ctx?.ui?.notify?.(linkText(link), "info"); };
     try {
       // A session change mid-pair keeps any binding on the captured identity only.
       const paired = await SessionClient.pair(adapter(ctx), piStatePath(identity), identity, originFor(host), readMetadata(ctx),
@@ -197,7 +208,7 @@ export default function slirc(pi: PiApi): void {
       paired.client.notify(`${paired.already ? "Already connected" : "Connected"} to ${host} as ${paired.client.state.binding?.nick}.`, "info");
     } catch (error) {
       if (epoch === sessionEpoch) ctx?.ui?.notify?.(`Slirc: ${errorText(error)}`, "error");
-    }
+    } finally { if (pairing === mine) pairing = undefined; }
   }
 
   const slircCommand = {
@@ -248,11 +259,36 @@ export default function slirc(pi: PiApi): void {
   // Only the first counts, and any other input replaces it, so a delivery never leaves the
   // person's earlier prompt standing as consent.
   let lastInput: { sessionId: string; text?: string } | undefined;
-  pi.on("input", (event: any, ctx: any) => {
+  pi.on("input", async (event: any, ctx: any) => {
     let sessionId = "";
     try { sessionId = ctx?.sessionManager?.getSessionId?.() ?? ""; } catch {}
-    lastInput = { sessionId, ...(event?.source === "interactive" && typeof event.text === "string" ? { text: event.text } : {}) };
+    const text = event?.source === "interactive" && typeof event.text === "string" ? event.text : undefined;
+    lastInput = { sessionId, ...(text !== undefined ? { text } : {}) };
+    // The person pasted the Agents page's command: this runtime connects the session from it
+    // right away and the model never gets it, so how a model would run it doesn't matter. Only
+    // when the workspace wants a newer slirc-agent does it go on to the model, whose run of the
+    // command updates this extension.
+    const asked = connectCommand(text);
+    if (!asked || !sessionId || !(await takesWorkspace(asked.host))) return;
+    lastInput = { sessionId };
+    if (active?.active && active.state.origin === originFor(asked.host)) ctx?.ui?.notify?.(`Slirc: already connected as ${active.state.binding?.nick}.`, "info");
+    else {
+      ctx?.ui?.notify?.(`Slirc: connecting this session to ${asked.host}. The code shows here in a moment.`, "info");
+      slircCommand.settled = connect(ctx, asked.host, asked.ticket);
+    }
+    return { action: "handled" };
   });
+
+  // Whether this extension is new enough for the workspace, the same check the CLI does. A
+  // workspace that can't be reached goes to the model too, so the CLI says what's wrong.
+  async function takesWorkspace(host: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${originFor(host)}/api/agent/version`, { signal: AbortSignal.timeout(8_000) });
+      const body = await response.json() as { version?: unknown; enabled?: unknown };
+      if (!response.ok || typeof body?.version !== "string" || body.enabled === false) return false;
+      return VERSION.split(".")[0] === body.version.split(".")[0] && compareVersions(VERSION, body.version) >= 0;
+    } catch { return false; }
+  }
 
   // The person's latest prompt in this session. After /reload this runtime saw no input yet, so
   // it reads the newest user message on the branch that Slirc didn't deliver.
@@ -273,21 +309,24 @@ export default function slirc(pi: PiApi): void {
     let sessionId = "";
     try { sessionId = ctx?.sessionManager?.getSessionId?.() ?? ""; } catch {}
     if (!sessionId) return;
-    const arm = takeArm("pi", sessionId, process.env, Date.now(), process.pid, starting);
+    const arm = takeArm("pi", sessionId, process.env, Date.now(), starting);
     if (!arm) return;
-    const typed = `/slirc ${workspaceArg(arm.host)}`.trim();
-    const prompt = humanPrompt(ctx, sessionId);
-    // One prompt, one pairing: a later run in the same turn or after it needs the person again.
-    lastInput = { sessionId };
-    if (!consents(prompt, arm.host)) {
-      ctx?.ui?.notify?.(`Slirc: something ran slirc-agent for ${arm.host}. To connect, type ${typed}.`, "warning");
-      return;
-    }
     if (active?.active && active.state.origin === originFor(arm.host)) {
       ctx?.ui?.notify?.(`Slirc: already connected as ${active.state.binding?.nick}.`, "info");
       return;
     }
-    slircCommand.settled = connect(ctx, arm.host, arm.ticket);
+    const typed = `/slirc ${workspaceArg(arm.host)}`.trim();
+    const asked = connectCommand(humanPrompt(ctx, sessionId));
+    // One prompt, one pairing: a later run in the same turn or after it needs the person again.
+    lastInput = { sessionId };
+    // Already on it from the person's prompt: a second run changes nothing.
+    if (pairing?.epoch === sessionEpoch && pairing.host === arm.host && asked?.host !== arm.host) return;
+    if (asked?.host !== arm.host) {
+      ctx?.ui?.notify?.(`Slirc: something ran slirc-agent for ${arm.host}. To connect, type ${typed}.`, "warning");
+      return;
+    }
+    // The workspace and code are the person's, not the file's.
+    slircCommand.settled = connect(ctx, asked.host, asked.ticket);
   }
 
   pi.on("tool_execution_end", (event: any, ctx: any) => { if (event?.toolName === "bash") pickUp(ctx); });

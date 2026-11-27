@@ -2,7 +2,7 @@ import { afterAll, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ancestors, ARM_TTL_MS, armDir, armPath, consents, takeArm, writeArm } from "../src/arm.ts";
+import { ARM_TTL_MS, armDir, armPath, consents, takeArm, writeArm } from "../src/arm.ts";
 import { harnessById } from "../src/harnesses/index.ts";
 import slirc from "../src/harnesses/pi/extension.ts";
 
@@ -11,16 +11,13 @@ const root = mkdtempSync(join(tmpdir(), "slirc-arm-"));
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 const env = { HOME: join(root, "home"), XDG_STATE_HOME: join(root, "state") };
 
-// The test process stands in for the harness: an arm lists it as the CLI's ancestor would.
-const self = [process.pid];
-const gone = 2 ** 22 + 7; // no such process
 
 test("an arm file is private, taken once, and ignored when stale", () => {
-  const path = writeArm("pi", "s-1", { host: "calango.slirc.app", ticket: "k7f2q9xdpa3m" }, env, 1_000, self);
+  const path = writeArm("pi", "s-1", { host: "calango.slirc.app", ticket: "k7f2q9xdpa3m" }, env, 1_000);
   expect(statSync(path).mode & 0o777).toBe(0o600);
   expect(takeArm("pi", "s-1", env, 2_000)).toEqual({ host: "calango.slirc.app", ticket: "k7f2q9xdpa3m", at: 1_000 });
   expect(takeArm("pi", "s-1", env, 2_000)).toBeUndefined();
-  writeArm("pi", "s-1", { host: "calango.slirc.app" }, env, 1_000, self);
+  writeArm("pi", "s-1", { host: "calango.slirc.app" }, env, 1_000);
   expect(takeArm("pi", "s-1", env, 1_000 + ARM_TTL_MS + 1)).toBeUndefined();
   expect(existsSync(path)).toBe(false);
   writeFileSync(armPath("pi", "s-2", env), "not json");
@@ -29,38 +26,22 @@ test("an arm file is private, taken once, and ignored when stale", () => {
   expect(() => writeArm("pi", "../x", { host: "calango.slirc.app" }, env)).toThrow();
   expect(takeArm("pi", "../x", env)).toBeUndefined();
   // An arm for after a reload is taken only by a runtime that is starting.
-  const later = writeArm("pi", "s-3", { host: "calango.slirc.app", reload: true }, env, 1_000, self);
+  const later = writeArm("pi", "s-3", { host: "calango.slirc.app", reload: true }, env, 1_000);
   expect(later).toBe(armPath("pi", "s-3", env, true));
   expect(JSON.parse(readFileSync(later, "utf8")).reload).toBeUndefined();
   expect(takeArm("pi", "s-3", env, 2_000)).toBeUndefined();
   expect(existsSync(later)).toBe(true);
-  expect(takeArm("pi", "s-3", env, 2_000, process.pid, true)).toEqual({ host: "calango.slirc.app", at: 1_000 });
+  expect(takeArm("pi", "s-3", env, 2_000, true)).toEqual({ host: "calango.slirc.app", at: 1_000 });
   expect(existsSync(later)).toBe(false);
   expect(readdirSync(armDir("pi", env))).toEqual([]);
 });
 
 test("two runtimes racing for one arm: only one gets it", async () => {
-  writeArm("pi", "race", { host: "calango.slirc.app" }, env, Date.now(), self);
-  const script = `const { takeArm } = await import(${JSON.stringify(join(import.meta.dir, "../src/arm.ts"))}); await Bun.sleep(${200}); console.log(JSON.stringify(takeArm("pi", "race", ${JSON.stringify(env)}, Date.now(), ${process.pid}) ?? null));`;
+  writeArm("pi", "race", { host: "calango.slirc.app" }, env, Date.now());
+  const script = `const { takeArm } = await import(${JSON.stringify(join(import.meta.dir, "../src/arm.ts"))}); await Bun.sleep(${200}); console.log(JSON.stringify(takeArm("pi", "race", ${JSON.stringify(env)}, Date.now()) ?? null));`;
   const runs = Array.from({ length: 6 }, () => Bun.spawn([process.execPath, "-e", script], { stdout: "pipe" }));
   const results = await Promise.all(runs.map(async (run) => JSON.parse((await new Response(run.stdout).text()).trim())));
   expect(results.filter(Boolean)).toHaveLength(1);
-});
-
-test("an arm is bound to the harness above the CLI", () => {
-  // Written from another session's shell under this session's key: this runtime drops it.
-  writeArm("pi", "spoofed", { host: "calango.slirc.app" }, env, Date.now(), [gone, 1]);
-  expect(takeArm("pi", "spoofed", env)).toBeUndefined();
-  // A live arm whose harness isn't above this CLI is kept, not replaced.
-  writeArm("pi", "held", { host: "calango.slirc.app" }, env, Date.now(), [gone, process.pid, 1]);
-  expect(() => writeArm("pi", "held", { host: "evil.example" }, env, Date.now(), [gone + 1, 1])).toThrow("another session");
-  // The same session runs it again from a new shell: its harness is above both, so it's replaced.
-  writeArm("pi", "held", { host: "chat.example.com" }, env, Date.now(), [gone + 2, process.pid, 1]);
-  expect(takeArm("pi", "held", env)?.host).toBe("chat.example.com");
-  // A stale one never blocks.
-  writeArm("pi", "old", { host: "calango.slirc.app" }, env, 1_000, [process.pid]);
-  writeArm("pi", "old", { host: "chat.example.com" }, env, Date.now(), [gone]);
-  expect(ancestors()).toContain(process.ppid);
 });
 
 test("consent needs the person's whole prompt to be the command for that workspace", () => {
@@ -145,7 +126,7 @@ test("Pi pairs from an arm file after the bash tool only when the person typed t
     // The model ran it on its own: the latest prompt was something else.
     const refused = session("pi-refused");
     refused.events.get("input")({ source: "interactive", text: "tidy the README" }, refused.ctx);
-    writeArm("pi", "pi-refused", { host }, env, Date.now(), self);
+    writeArm("pi", "pi-refused", { host }, env, Date.now());
     refused.bash();
     expect(refused.notices).toEqual([`Slirc: something ran slirc-agent for ${host}. To connect, type /slirc ${host}.`]);
     expect(asked).toHaveLength(0);
@@ -153,7 +134,7 @@ test("Pi pairs from an arm file after the bash tool only when the person typed t
     // A Slirc request delivered into the session isn't the person either.
     const delivered = session("pi-delivered");
     delivered.events.get("input")({ source: "extension", text: `slirc-agent ${host}` }, delivered.ctx);
-    writeArm("pi", "pi-delivered", { host }, env, Date.now(), self);
+    writeArm("pi", "pi-delivered", { host }, env, Date.now());
     delivered.bash();
     expect(delivered.notices[0]).toContain("something ran slirc-agent");
 
@@ -162,14 +143,14 @@ test("Pi pairs from an arm file after the bash tool only when the person typed t
     const stale = session("pi-stale");
     stale.events.get("input")({ source: "interactive", text: `bunx slirc-agent ${host}` }, stale.ctx);
     stale.events.get("input")({ source: "extension", text: "Slirc delivery receipt: 0b1f2c3d-0000-4000-8000-000000000000" }, stale.ctx);
-    writeArm("pi", "pi-stale", { host }, env, Date.now(), self);
+    writeArm("pi", "pi-stale", { host }, env, Date.now());
     stale.bash();
     expect(stale.notices[0]).toContain("something ran slirc-agent");
 
     // A mention that isn't the whole prompt doesn't count either.
     const mention = session("pi-mention");
     mention.events.get("input")({ source: "interactive", text: `don't run bunx slirc-agent ${host}` }, mention.ctx);
-    writeArm("pi", "pi-mention", { host }, env, Date.now(), self);
+    writeArm("pi", "pi-mention", { host }, env, Date.now());
     mention.bash();
     expect(mention.notices[0]).toContain("something ran slirc-agent");
     expect(asked).toHaveLength(0);
@@ -179,7 +160,7 @@ test("Pi pairs from an arm file after the bash tool only when the person typed t
     typed.events.get("input")({ source: "interactive", text: `bunx slirc-agent@latest ${host} k7f2q9xdpa3m` }, typed.ctx);
     typed.bash();
     expect(asked).toHaveLength(0); // no arm file yet: nothing happens
-    writeArm("pi", "pi-typed", { host, ticket: "k7f2q9xdpa3m" }, env, Date.now(), self);
+    writeArm("pi", "pi-typed", { host, ticket: "k7f2q9xdpa3m" }, env, Date.now());
     typed.events.get("tool_execution_end")({ toolName: "read" }, typed.ctx);
     expect(asked).toHaveLength(0); // only the bash tool picks it up
     typed.bash();
@@ -187,15 +168,15 @@ test("Pi pairs from an arm file after the bash tool only when the person typed t
     expect(asked.at(-1)).toMatchObject({ harness: "pi", sessionId: "pi-typed", ticket: "k7f2q9xdpa3m" });
     expect(typed.notices).toContain(`Slirc: open http://${host}/agents#connect=${"t".repeat(43)} to connect this session, or enter K7QX-M2PD under Agents in Slirc.`);
     expect(typed.notices.at(-1)).toBe(`Connected to ${host} as pi-3f2a.`);
-    // One prompt, one pairing: armed again without a new prompt, it's refused.
-    writeArm("pi", "pi-typed", { host }, env, Date.now(), self);
+    // Armed again once connected: said so, nothing new.
+    writeArm("pi", "pi-typed", { host }, env, Date.now());
     typed.bash();
-    expect(typed.notices.at(-1)).toContain("something ran slirc-agent");
+    expect(typed.notices.at(-1)).toBe("Slirc: already connected as pi-3f2a.");
 
     // A connect code Slirc no longer takes: the session says so, and the link still works.
     const late = session("pi-late");
     late.events.get("input")({ source: "interactive", text: `bunx slirc-agent@latest ${host} oldcode12345` }, late.ctx);
-    writeArm("pi", "pi-late", { host, ticket: "oldcode12345" }, env, Date.now(), self);
+    writeArm("pi", "pi-late", { host, ticket: "oldcode12345" }, env, Date.now());
     late.bash();
     await late.commands.get("slirc").settled;
     expect(late.notices).toContain("That connect code expired. Copy the command again.");
@@ -208,7 +189,7 @@ test("Pi pairs from an arm file after the bash tool only when the person typed t
       { type: "message", message: { role: "user", content: [{ type: "text", text: `bunx slirc-agent@latest ${host} k7f2q9xdpa3m` }] } },
     ]);
     updated.events.get("input")({ source: "interactive", text: `bunx slirc-agent@latest ${host} k7f2q9xdpa3m` }, updated.ctx);
-    writeArm("pi", "pi-updated", { host, ticket: "k7f2q9xdpa3m", reload: true }, env, Date.now(), self);
+    writeArm("pi", "pi-updated", { host, ticket: "k7f2q9xdpa3m", reload: true }, env, Date.now());
     updated.bash();
     expect(asked.some((body) => body.sessionId === "pi-updated")).toBe(false);
     expect(updated.notices).toEqual([]);
@@ -220,7 +201,7 @@ test("Pi pairs from an arm file after the bash tool only when the person typed t
       { type: "message", message: { role: "user", content: [{ type: "text", text: `npx slirc-agent ${host}` }] } },
       { type: "message", message: { role: "assistant", content: [{ type: "text", text: "Type /reload." }] } },
     ]);
-    writeArm("pi", "pi-reloaded", { host }, env, Date.now(), self);
+    writeArm("pi", "pi-reloaded", { host }, env, Date.now());
     reloaded.events.get("session_start")({ reason: "reload" }, reloaded.ctx);
     await until(() => asked.some((body) => body.sessionId === "pi-reloaded"));
   } finally {

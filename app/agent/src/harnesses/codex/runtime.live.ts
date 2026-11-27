@@ -181,14 +181,14 @@ test("slirc-agent pasted by the person and run in the thread's shell pairs it wh
   const record = (...prompts: string[]) => writeFileSync(transcript, [...prompts, "<environment_context>cwd</environment_context>"].map((text) =>
     JSON.stringify({ type: "response_item", payload: { type: "message", role: "user", content: [{ type: "input_text", text }] } })).join("\n") + "\n");
   // The model ran it on its own: the arm is dropped and the person is told what to type.
-  writeArm("codex", other, { host }, env, Date.now(), [process.pid, daemon.pid!]);
+  writeArm("codex", other, { host }, env, Date.now());
   record("set things up for me");
   expect((await hook("Stop", { session_id: other, turn_id: "a1", transcript_path: transcript })).systemMessage).toContain(`To connect, type slirc ${host}`);
   expect(readLive(env, other)).toBeUndefined();
   // The person's own prompt was the command: it pairs, with the connect code. No hook of ours saw
   // it typed, as when that same turn installed the plugin.
   record("set things up for me", `bunx slirc-agent@latest ${host} K7code1234`);
-  writeArm("codex", other, { host, ticket: "K7code1234" }, env, Date.now(), [process.pid, daemon.pid!]);
+  writeArm("codex", other, { host, ticket: "K7code1234" }, env, Date.now());
   const out = await hook("Stop", { session_id: other, turn_id: "a2", transcript_path: transcript });
   expect(out.systemMessage).toMatch(/K7QX-M2PD|as codex-3f2a/);
   expect(log.tickets.at(-1)).toBe("K7code1234");

@@ -2,7 +2,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readSync } from "node:fs";
 import { join } from "node:path";
 import { errorText } from "../../adapter-core.ts";
-import { armPath, consents, takeArm } from "../../arm.ts";
+import { armPath, connectCommand, takeArm } from "../../arm.ts";
 import { workspaceArg } from "../../../../shared/workspace.ts";
 import { boundMark, call, codexVersion, dir, pairingCommand, readLive, RECEIPT, unsupported, validId, type Live } from "./shared.ts";
 
@@ -111,14 +111,16 @@ async function fromArm(env: Env, payload: Payload): Promise<Output | undefined> 
   if (!existsSync(armPath("codex", sessionId, env)) && !existsSync(armPath("codex", sessionId, env, true))) return undefined;
   const daemonPid = findDaemon(env);
   // The shell tool runs under the daemon, so the arm lists it among the CLI's ancestors.
-  const found = daemonPid ? takeArm("codex", sessionId, env, Date.now(), daemonPid, true) : undefined;
+  const found = daemonPid ? takeArm("codex", sessionId, env, Date.now(), true) : undefined;
   if (!found) return undefined;
   const prompt = latestPrompt(payload.transcript_path);
   const typed = `slirc ${workspaceArg(found.host)}`.trim();
-  if (!consents(prompt, found.host)) return { systemMessage: `Slirc: something ran slirc-agent for ${found.host}. To connect, type ${typed}.` };
+  // The workspace and code are the person's, not the file's.
+  const asked = connectCommand(prompt);
+  if (asked?.host !== found.host) return { systemMessage: `Slirc: something ran slirc-agent for ${found.host}. To connect, type ${typed}.` };
   const live = await ensureListener(env, payload, daemonPid!, true);
   if (!live) return { systemMessage: `Slirc's listener didn't start. Its log is ${join(dir(env), "listener.log")}. Fix what it says, then type ${typed}.` };
-  try { return { systemMessage: `Slirc: ${(await call(live, "/connect", { workspace: found.host, ...(found.ticket ? { ticket: found.ticket } : {}) }, 12_000)).text}` }; }
+  try { return { systemMessage: `Slirc: ${(await call(live, "/connect", { workspace: asked.host, ...(asked.ticket ? { ticket: asked.ticket } : {}) }, 12_000)).text}` }; }
   catch (error) { return { systemMessage: `Slirc: ${errorText(error)}` }; }
 }
 

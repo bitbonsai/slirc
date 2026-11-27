@@ -218,7 +218,7 @@ test("Esc on a turn that carried a Slirc request fails it with a plain message",
 test("an arm file pairs only after the person's own slirc-agent prompt", async () => {
   const one = await instance("/work/one");
   try {
-    const arm = () => writeArm("opencode", "ses_d", { host: host(), ticket: "k7f2q9xdpa3m" }, process.env, Date.now(), [process.pid]);
+    const arm = () => writeArm("opencode", "ses_d", { host: host(), ticket: "k7f2q9xdpa3m" }, process.env, Date.now());
     // The model ran it on its own: the latest prompt asked for something else.
     one.hook("session.prompt", { sessionID: "ses_d", prompt: { text: "fix the tests" } });
     arm();
@@ -231,10 +231,16 @@ test("an arm file pairs only after the person's own slirc-agent prompt", async (
     one.hook("tool.execute.after", { tool: "shell", sessionID: "ses_d" });
     await pause(100);
     expect(log.connected.length).toBe(pairs);
-    one.hook("session.prompt", { sessionID: "ses_d", prompt: { text: `bunx slirc-agent@latest ${host()}` } });
-    arm();
-    one.hook("tool.execute.after", { tool: "shell", sessionID: "ses_d" });
+    // The person pasted the command: the session pairs from it at once, with its code, whatever
+    // the model then does with it.
+    one.hook("session.prompt", { sessionID: "ses_d", prompt: { text: `bunx slirc-agent@latest ${host()} k7f2q9xdpa3m` } });
     await until(() => log.connected.length === pairs + 1);
-    expect(log.tickets).toContain("k7f2q9xdpa3m");
+    expect(log.tickets.at(-1)).toBe("k7f2q9xdpa3m");
+    // The model runs it as well, twice: Slirc isn't asked again.
+    const asked = log.tickets.length;
+    for (let run = 0; run < 2; run++) { arm(); one.hook("tool.execute.after", { tool: "shell", sessionID: "ses_d" }); }
+    await pause(100);
+    expect(log.connected.length).toBe(pairs + 1);
+    expect(log.tickets.length).toBe(asked);
   } finally { await one.cleanup(); }
 });

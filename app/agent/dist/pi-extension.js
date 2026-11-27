@@ -875,7 +875,6 @@ import { join as join3 } from "node:path";
 var ARM_TTL_MS = 10 * 60000;
 var KEY = /^[A-Za-z0-9_-]{1,128}$/;
 var validTicket = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(value);
-var checksProcesses = process.platform !== "win32";
 var armDir = (harness, env = process.env) => join3(stateDir(harness, env), "arm");
 var armPath = (harness, key, env = process.env, reload = false) => {
   if (!KEY.test(key))
@@ -887,13 +886,12 @@ function parse(text, now) {
     const raw = JSON.parse(text);
     if (typeof raw.host !== "string" || typeof raw.at !== "number" || now - raw.at > ARM_TTL_MS || raw.at > now + 60000)
       return;
-    const pids = Array.isArray(raw.pids) ? raw.pids.filter((pid) => Number.isInteger(pid) && pid > 0) : undefined;
-    return { host: expandWorkspace(raw.host), at: raw.at, ...validTicket(raw.ticket) ? { ticket: raw.ticket } : {}, ...pids ? { pids } : {} };
+    return { host: expandWorkspace(raw.host), at: raw.at, ...validTicket(raw.ticket) ? { ticket: raw.ticket } : {} };
   } catch {
     return;
   }
 }
-function takeArm(harness, key, env = process.env, now = Date.now(), self = process.pid, starting = false) {
+function takeArm(harness, key, env = process.env, now = Date.now(), starting = false) {
   let paths;
   try {
     paths = starting ? [armPath(harness, key, env), armPath(harness, key, env, true)] : [armPath(harness, key, env)];
@@ -919,46 +917,53 @@ function takeArm(harness, key, env = process.env, now = Date.now(), self = proce
   } finally {
     rmSync(taken, { force: true });
   }
-  const arm = parse(text, now);
-  if (!arm || checksProcesses && !arm.pids?.includes(self))
-    return;
-  const { pids: _pids, ...rest } = arm;
-  return rest;
+  return parse(text, now);
 }
 var isDelivery = (text) => /Slirc delivery receipt: [0-9a-f-]{36}/.test(text);
 var WORKSPACE = /^(?:https?:\/\/)?[A-Za-z0-9][A-Za-z0-9.-]*(?::\d{1,5})?\/?$/;
 var VALUE = /^[A-Za-z0-9_-]{1,64}$/;
-function consents(prompt, host) {
+function connectCommand(prompt) {
   if (!prompt || isDelivery(prompt))
-    return false;
+    return;
   const line = prompt.trim();
   if (/[\r\n]/.test(line))
-    return false;
+    return;
   const words = line.split(/[ \t]+/);
   let index = words[0] === "bunx" || words[0] === "npx" ? 1 : words[0] === "pnpm" && words[1] === "dlx" ? 2 : 0;
   if (!/^slirc-agent(?:@[\w.-]+)?$/.test(words[index] ?? ""))
-    return false;
+    return;
   if (words[index + 1] === "connect")
     index++;
   const positional = [];
+  let ticket;
   for (index++;index < words.length; index++) {
     const word = words[index];
     if (word === "--ticket" || word === "--harness") {
-      if (!VALUE.test(words[++index] ?? ""))
-        return false;
+      const value = words[++index] ?? "";
+      if (!VALUE.test(value))
+        return;
+      if (word === "--ticket")
+        ticket = value;
       continue;
     }
-    if (/^--(?:ticket|harness)=[A-Za-z0-9_-]{1,64}$/.test(word))
+    const option = /^--(ticket|harness)=([A-Za-z0-9_-]{1,64})$/.exec(word);
+    if (option) {
+      if (option[1] === "ticket")
+        ticket = option[2];
       continue;
+    }
     positional.push(word);
   }
   const [workspace, code, ...rest] = positional;
   if (rest.length || workspace !== undefined && !WORKSPACE.test(workspace) || code !== undefined && !validTicket(code))
-    return false;
+    return;
+  ticket = code ?? ticket;
+  if (ticket !== undefined && !validTicket(ticket))
+    ticket = undefined;
   try {
-    return expandWorkspace(workspace ?? "") === host;
+    return { host: expandWorkspace(workspace ?? ""), ...ticket ? { ticket } : {} };
   } catch {
-    return false;
+    return;
   }
 }
 // package.json
@@ -1016,6 +1021,14 @@ var package_default = {
 // src/version.ts
 var VERSION = package_default.version;
 var PACKAGE = package_default.name;
+function compareVersions(a, b) {
+  const parts = (value) => (value.match(/^(\d+)\.(\d+)\.(\d+)/)?.slice(1) ?? ["0", "0", "0"]).map(Number);
+  const [x, y] = [parts(a), parts(b)];
+  for (let index = 0;index < 3; index++)
+    if (x[index] !== y[index])
+      return x[index] - y[index];
+  return 0;
+}
 
 // src/harnesses/pi/extension.ts
 function canonicalSessionFile(file) {
@@ -1182,7 +1195,14 @@ Slirc delivery receipt: ${randomUUID()}`;
     if (client && epoch === sessionEpoch)
       await activate(client);
   }
+  let pairing;
+  const linkText = (link) => `Slirc: open ${link.url} to connect this session, or enter ${link.code} under Agents in Slirc.`;
   async function connect(ctx, host, ticket) {
+    if (pairing?.epoch === sessionEpoch && pairing.host === host && (!ticket || ticket === pairing.ticket)) {
+      if (pairing.link)
+        ctx?.ui?.notify?.(linkText(pairing.link), "info");
+      return;
+    }
     let identity;
     try {
       identity = context(ctx);
@@ -1191,7 +1211,13 @@ Slirc delivery receipt: ${randomUUID()}`;
       return;
     }
     const { epoch } = beginEpoch();
-    const show = (link) => ctx?.ui?.notify?.(`Slirc: open ${link.url} to connect this session, or enter ${link.code} under Agents in Slirc.`, "info");
+    const mine = { host, ...ticket ? { ticket } : {}, epoch };
+    pairing = mine;
+    const show = (link) => {
+      if (pairing === mine)
+        mine.link = link;
+      ctx?.ui?.notify?.(linkText(link), "info");
+    };
     try {
       const paired = await SessionClient.pair(adapter(ctx), piStatePath(identity), identity, originFor(host), readMetadata(ctx), process.env.HOSTNAME || "unknown", show, () => epoch === sessionEpoch, ticket);
       if (!paired || epoch !== sessionEpoch)
@@ -1202,6 +1228,9 @@ Slirc delivery receipt: ${randomUUID()}`;
     } catch (error) {
       if (epoch === sessionEpoch)
         ctx?.ui?.notify?.(`Slirc: ${errorText(error)}`, "error");
+    } finally {
+      if (pairing === mine)
+        pairing = undefined;
     }
   }
   const slircCommand = {
@@ -1250,13 +1279,36 @@ Slirc delivery receipt: ${randomUUID()}`;
     await delivery.client.started(delivery.id).catch(() => delivery.client.notify("Slirc could not update the request status.", "warning"));
   });
   let lastInput;
-  pi.on("input", (event, ctx) => {
+  pi.on("input", async (event, ctx) => {
     let sessionId = "";
     try {
       sessionId = ctx?.sessionManager?.getSessionId?.() ?? "";
     } catch {}
-    lastInput = { sessionId, ...event?.source === "interactive" && typeof event.text === "string" ? { text: event.text } : {} };
+    const text = event?.source === "interactive" && typeof event.text === "string" ? event.text : undefined;
+    lastInput = { sessionId, ...text !== undefined ? { text } : {} };
+    const asked = connectCommand(text);
+    if (!asked || !sessionId || !await takesWorkspace(asked.host))
+      return;
+    lastInput = { sessionId };
+    if (active?.active && active.state.origin === originFor(asked.host))
+      ctx?.ui?.notify?.(`Slirc: already connected as ${active.state.binding?.nick}.`, "info");
+    else {
+      ctx?.ui?.notify?.(`Slirc: connecting this session to ${asked.host}. The code shows here in a moment.`, "info");
+      slircCommand.settled = connect(ctx, asked.host, asked.ticket);
+    }
+    return { action: "handled" };
   });
+  async function takesWorkspace(host) {
+    try {
+      const response = await fetch(`${originFor(host)}/api/agent/version`, { signal: AbortSignal.timeout(8000) });
+      const body = await response.json();
+      if (!response.ok || typeof body?.version !== "string" || body.enabled === false)
+        return false;
+      return VERSION.split(".")[0] === body.version.split(".")[0] && compareVersions(VERSION, body.version) >= 0;
+    } catch {
+      return false;
+    }
+  }
   function humanPrompt(ctx, sessionId) {
     if (lastInput?.sessionId === sessionId)
       return lastInput.text;
@@ -1280,21 +1332,23 @@ Slirc delivery receipt: ${randomUUID()}`;
     } catch {}
     if (!sessionId)
       return;
-    const arm = takeArm("pi", sessionId, process.env, Date.now(), process.pid, starting);
+    const arm = takeArm("pi", sessionId, process.env, Date.now(), starting);
     if (!arm)
       return;
-    const typed = `/slirc ${workspaceArg(arm.host)}`.trim();
-    const prompt = humanPrompt(ctx, sessionId);
-    lastInput = { sessionId };
-    if (!consents(prompt, arm.host)) {
-      ctx?.ui?.notify?.(`Slirc: something ran slirc-agent for ${arm.host}. To connect, type ${typed}.`, "warning");
-      return;
-    }
     if (active?.active && active.state.origin === originFor(arm.host)) {
       ctx?.ui?.notify?.(`Slirc: already connected as ${active.state.binding?.nick}.`, "info");
       return;
     }
-    slircCommand.settled = connect(ctx, arm.host, arm.ticket);
+    const typed = `/slirc ${workspaceArg(arm.host)}`.trim();
+    const asked = connectCommand(humanPrompt(ctx, sessionId));
+    lastInput = { sessionId };
+    if (pairing?.epoch === sessionEpoch && pairing.host === arm.host && asked?.host !== arm.host)
+      return;
+    if (asked?.host !== arm.host) {
+      ctx?.ui?.notify?.(`Slirc: something ran slirc-agent for ${arm.host}. To connect, type ${typed}.`, "warning");
+      return;
+    }
+    slircCommand.settled = connect(ctx, asked.host, asked.ticket);
   }
   pi.on("tool_execution_end", (event, ctx) => {
     if (event?.toolName === "bash")

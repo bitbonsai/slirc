@@ -93,9 +93,9 @@ for (const [name, runtime] of runtimes) {
     const first = await cli(runtime, [host(), "k7f2q9xdpa3m"], inside);
     expect(first.code).toBe(0);
     expect(first.out).toContain("Slirc is installed. Type /reload, then a code shows in this session: enter it on the Agents page in Slirc.");
-    // /slirc only as the fallback, once the reload has loaded it.
-    expect(first.out).toContain(`If no code shows after /reload, type /slirc ${host()}. Tell the owner these lines as they are.`);
-    expect(first.out.match(/\/slirc/g)).toHaveLength(1);
+    // The session connects by itself after the reload: nothing for the owner to type but /reload.
+    expect(first.out).toContain("Tell the owner these lines as they are.");
+    expect(first.out).not.toContain("/slirc");
     const reloadArm = arm.replace(/\.json$/, ".reload.json");
     expect(existsSync(arm)).toBe(false);
     expect(JSON.parse(readFileSync(reloadArm, "utf8"))).toMatchObject({ host: host(), ticket: "k7f2q9xdpa3m" });
@@ -103,9 +103,9 @@ for (const [name, runtime] of runtimes) {
     expect(statSync(join(arm, "..")).mode & 0o777).toBe(0o700);
     // Set up already: nothing to type.
     const again = await cli(runtime, [host()], inside);
-    expect(again.out).toContain(`Connecting this Pi session to ${host()}. A code shows in this session in a few seconds: enter it on the Agents page in Slirc, or open the link shown with it.`);
-    // The fallback is the CLI's own words, so the agent relays it instead of guessing one.
-    expect(again.out).toContain(`If no code shows, type /slirc ${host()}.`);
+    expect(again.out).toContain(`This Pi session is connecting to ${host()} by itself. A code shows in this session, not here: enter it on the Agents page in Slirc, or open the link shown with it.`);
+    expect(again.out).toContain("This command is done.");
+    expect(again.out).not.toContain("/slirc");
     expect(JSON.parse(readFileSync(arm, "utf8")).ticket).toBeUndefined();
     // An older Pi gives its shell no session id: the typed command, as before.
     const old = await cli(runtime, [host()], { ...fake.env, PI_CODING_AGENT: "true" });
@@ -126,7 +126,7 @@ for (const [name, runtime] of runtimes) {
       expect(existsSync(arm)).toBe(false);
       // Set up already: this thread pairs itself when the command's turn ends.
       const again = await cli(runtime, [host()], env);
-      expect(again.out).toContain("Connecting this Codex session");
+      expect(again.out).toContain("This Codex session is connecting");
       expect(existsSync(join(arm, `${thread}.json`))).toBe(true);
     } finally { codex.done(); }
   });
@@ -146,7 +146,7 @@ for (const [name, runtime] of runtimes) {
     const run = await cli(runtime, [host(), "k7f2q9xdpa3m"], env);
     expect(run.code).toBe(0);
     expect(run.out).toContain("reload OpenCode so it loads the plugin");
-    expect(run.out).toContain(`Slirc is installed and loaded, so there's nothing to reload. Connecting this OpenCode session to ${host()}.`);
+    expect(run.out).toContain(`Slirc is installed and loaded, so there's nothing to reload. This OpenCode session is connecting to ${host()} by itself.`);
     expect(run.out).not.toMatch(/^\s*opencode reload$/m);
     expect(readFileSync(join(root, "calls.log"), "utf8")).toContain("reload");
   });

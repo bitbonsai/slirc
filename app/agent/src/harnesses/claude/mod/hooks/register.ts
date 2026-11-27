@@ -106,7 +106,7 @@ function show($: any, line: Line): void {
 
 // Start the one listener for the session open now. A crash restarts it with a growing delay; a
 // listener that finds another one serving this session exits with EXIT_BUSY and stays down.
-type Armed = { host?: string; ticket?: string; arm?: { prompt?: string; command: string; starting?: boolean } }
+type Armed = { host?: string; ticket?: string; arm?: { prompt?: string; command: string; starting?: boolean }; prompted?: string }
 async function start($: any, armed: Armed = {}): Promise<void> {
   listener?.stop()
   const sessionId = await $.session.id()
@@ -118,7 +118,8 @@ async function start($: any, armed: Armed = {}): Promise<void> {
     while (!self.stopped) {
       const began = await $.clock.now()
       const config = { sessionId, cwd: await $.session.cwd(), model: await $.session.model().catch(() => ''),
-        ...(armed.host ? { armed: armed.host } : {}), ...(armed.ticket ? { ticket: armed.ticket } : {}), ...(armed.arm ? { arm: armed.arm } : {}) }
+        ...(armed.host ? { armed: armed.host } : {}), ...(armed.ticket ? { ticket: armed.ticket } : {}), ...(armed.arm ? { arm: armed.arm } : {}),
+        ...(armed.prompted ? { prompted: armed.prompted } : {}) }
       armed = {}
       const stream = $.process.spawn({ argv: [exec, `${$.plugin.root}/listener.js`, JSON.stringify(config)] })
       const it = stream[Symbol.asyncIterator]()
@@ -211,6 +212,19 @@ async function checkArm($: any, starting = false): Promise<void> {
   } finally { checking = false }
 }
 
+// The person submitted what looks like the Agents page's command. The listener checks it exactly
+// and pairs from it now, so how the model then runs the command (in the background, twice, or not
+// at all) doesn't matter; the model's own run only finds the pairing already under way.
+const PASTED = /^\s*(?:(?:bunx|npx|pnpm\s+dlx)\s+)?slirc-agent(?:@\S+)?(?:[ \t]+\S+)*\s*$/
+async function fromPrompt($: any, text: string): Promise<void> {
+  if (!interactive) return
+  const sessionId = await $.session.id()
+  if (listener && !listener.stopped && listener.sessionId === sessionId) {
+    for (let waited = 0; !listener.socket && waited < 5_000; waited += 100) await $.clock.sleep(100)
+    await call($, '/prompt', { text }).catch(() => undefined)
+  } else await start($, { prompted: text })
+}
+
 async function stopListener($: any): Promise<void> {
   const current = listener
   if (!current) return
@@ -301,6 +315,7 @@ export const register: Register = on => {
 
   on('prompt.submit', async ($: any, e: any, next: any) => {
     submitted = e.origin?.kind === 'composer' && !e.isMeta && !e.command && typeof e.text === 'string' && e.text.trim() && !RECEIPT.test(e.text) ? e.text : undefined
+    if (submitted && PASTED.test(submitted)) void fromPrompt($, submitted).catch(() => undefined)
     return next(e)
   })
 
