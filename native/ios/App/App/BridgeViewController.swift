@@ -275,22 +275,25 @@ final class StartCover {
             controller.view.isUserInteractionEnabled = false
             host.view.addSubview(controller.view)
             screen = controller
-            scheduleCaption(on: controller.view)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.giveUp) { [weak self] in
             if self?.generation == current { self?.hide() }
         }
     }
 
-    // The mark stands alone. Only if the start is still running after captionDelay seconds does a short
-    // line fade in under it, so a normal start never shows any text.
-    private func scheduleCaption(on view: UIView) {
+    // The mark stands alone. A workspace has begun opening: only if that is still running captionDelay
+    // seconds from now does a short line fade in under the mark. The clock starts here, not when the app
+    // launched, so time spent starting the app and the picker (long in a Debug build) never counts, and
+    // a start that feels quick shows no text.
+    func opening() {
+        guard let view = screen?.view else { return }
         let token = UUID()
         captionToken = token
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.captionDelay) { [weak self, weak view] in
             guard let self = self, let view = view, self.captionToken == token else { return }
             let label = UILabel()
-            label.text = self.hostName().map { "Opening \($0)…" } ?? "Opening…"
+            guard let host = self.hostName() else { return }
+            label.text = "Opening \(host)…"
             label.font = .preferredFont(forTextStyle: .footnote)
             label.textColor = .secondaryLabel
             label.textAlignment = .center
@@ -444,6 +447,7 @@ class SlircShellPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve()
         DispatchQueue.main.async { [loadWatch, startCover] in
             startCover.show()
+            startCover.opening()
             loadWatch.start(url, in: bridge.webView)
             _ = bridge.webView?.load(URLRequest(url: url))
         }
