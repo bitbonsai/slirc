@@ -1,7 +1,7 @@
 // The sidebar's workspace mark: a name from the host, the Slirc mark on app.slirc.org, and a
 // monogram whose colour comes from the name alone.
 import { expect, test } from "bun:test";
-import { OPEN_WORKSPACE, WORKSPACE_PALETTE, animateListHeight, filterWorkspaces, railWorkspaces, workspaceChoices, workspaceMark, workspaceName, workspaceOrigin, workspaceRows } from "../client/workspace-mark.ts";
+import { OPEN_WORKSPACE, WORKSPACE_PALETTE, animateListHeight, filterWorkspaces, railWorkspaces, workspaceActivity, workspaceChoices, workspaceMark, workspaceName, workspaceOrigin, workspaceRows } from "../client/workspace-mark.ts";
 
 test("the name comes from the workspace's address", () => {
   expect(workspaceName("ai-guild.slirc.app")).toBe("ai-guild");
@@ -185,4 +185,19 @@ test("workspaces with activity are never hidden, even when every workspace has s
 test("expanded, the rail shows every workspace and keeps its chevron", () => {
   const rows = rail(["a", "b", "c", "d", "e", "f"]);
   expect(railWorkspaces(rows, true)).toEqual({ shown: rows, peek: null, hidden: 0, foldable: true });
+});
+
+test("the activity set holds the other workspaces with something unread", () => {
+  const here = "https://a.example.test";
+  expect(workspaceActivity({ [here]: 5, "https://b.example.test": 2, "https://c.example.test": 0 }, here)).toEqual(new Set(["https://b.example.test"]));
+  expect(workspaceActivity({}, here).size).toBe(0);
+});
+
+test("a busy workspace shows in full on the folded rail, wherever it sits", () => {
+  const rows = rail(["a", "b", "c", "d", "e"]);
+  const active = workspaceActivity({ "https://e.example.test": 3, "https://c.example.test": 1 }, rows[0]!.origin);
+  const { shown, peek, hidden } = railWorkspaces(rows, false, active);
+  expect(letters(shown)).toEqual(["a", "c", "e"]);
+  expect(peek?.origin).toBe("https://b.example.test");
+  expect(hidden).toBe(1);
 });

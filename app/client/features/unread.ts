@@ -1,6 +1,7 @@
 import { conversationId, foldIdentifier } from "@client/model.ts";
 import { buildMarkReadCommand, type AuthorizedConversation } from "@client/sync.ts";
 import { badgeText, sidebarUnreadTotal, firstReadMarker, newestServerTime, shouldMarkRead } from "@client/store.ts";
+import { reportUnread } from "@client/native-shell.ts";
 import { type ThreadGrant } from "@client/access.ts";
 import { type RuntimeState } from "@client/core/runtime-state.ts";
 import { type ClientState } from "@client/client-state.ts";
@@ -70,6 +71,7 @@ export function createUnread(deps: UnreadDeps) {
     document.title = total ? `(${badgeText(total)}) ${baseTitle}` : baseTitle;
     if (total === appBadge) return;
     appBadge = total;
+    reportUnread(total);
     const app = navigator as Navigator & { setAppBadge?: (count: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
     (total ? app.setAppBadge?.(total) : app.clearAppBadge?.())?.catch(() => {});
   }

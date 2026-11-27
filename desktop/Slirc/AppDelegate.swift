@@ -24,6 +24,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The unreachable screen, over its workspace's page until that page loads.
     private var notices: [URL: PickerView] = [:]
     private var titleObservation: NSKeyValueObservation?
+    /// Each pooled page's own unread count, which it reports (slircUnread). Every page gets the whole
+    /// map as window.SlircUnread, so the workspace rail can show busy workspaces in full.
+    private var unread: [URL: Int] = [:]
     private let updates = Updates()
     private var toast: Toast?
 
@@ -101,6 +104,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             page.onUnreachable = { [weak self] in self?.unreachable(origin) }
             page.onLoaded = { [weak self] in self?.reached(origin) }
             page.onSignedOut = { [weak self] in self?.signedOut(origin) }
+            page.onUnread = { [weak self] count in self?.setUnread(origin, count) }
             page.onSwitchWorkspace = { [weak self] in self?.showPicker(canCancel: true) }
             page.onOpenWorkspace = { [weak self] typed in self?.openPicked(typed) }
             pages[origin] = page
@@ -173,6 +177,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func refreshWorkspaces(_ page: ShellWebView) {
         let known = (try? JSONSerialization.data(withJSONObject: Workspace.known.map(\.absoluteString))).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
         page.evaluateJavaScript("window.SlircWorkspaces = Object.freeze(\(known))")
+        pushUnread(to: page)
+    }
+
+    private func setUnread(_ origin: URL, _ count: Int) {
+        guard pages[origin] != nil else { return }
+        if count > 0 { unread[origin] = count } else { unread.removeValue(forKey: origin) }
+        for page in pages.values { pushUnread(to: page) }
+    }
+
+    /// The counts as { "https://host": n }, set on the page and announced with a "slirc-unread" event
+    /// (app/client/native-shell.ts watchWorkspaceUnread).
+    private func pushUnread(to page: ShellWebView) {
+        let counts = Dictionary(uniqueKeysWithValues: unread.map { ($0.key.absoluteString, $0.value) })
+        let json = (try? JSONSerialization.data(withJSONObject: counts)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+        page.evaluateJavaScript("window.SlircUnread = Object.freeze(\(json)); dispatchEvent(new Event('slirc-unread'))")
     }
 
     /// Moves a page already loaded to a route inside it, as a click does, so it keeps its socket and
@@ -200,6 +219,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Takes a page out of the pool. Its web view goes with it, since nothing shows it again.
     private func drop(_ origin: URL) {
         pages.removeValue(forKey: origin)?.removeFromSuperview()
+        if unread.removeValue(forKey: origin) != nil { for page in pages.values { pushUnread(to: page) } }
         notices.removeValue(forKey: origin)?.removeFromSuperview()
         order.removeAll { $0 == origin }
         guard current == origin else { return }
@@ -235,6 +255,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// The workspace page loaded: the unreachable screen, if it was up, goes.
     private func reached(_ origin: URL) {
+        if let page = pages[origin] { pushUnread(to: page) }
         guard let notice = notices.removeValue(forKey: origin) else { return }
         notice.removeFromSuperview()
         if origin == current, let page = pages[origin] { window?.makeFirstResponder(page) }
@@ -498,6 +519,7 @@ final class ShellWebView: WKWebView, WKScriptMessageHandler, WKScriptMessageHand
     var onSignedOut: (() -> Void)?
     var onSwitchWorkspace: (() -> Void)?
     var onOpenWorkspace: ((String) -> Void)?
+    var onUnread: ((Int) -> Void)?
     /// True while the pointer, inside the title bar strip, is over a button, link or field. The strip
     /// then lets clicks through to the page.
     private(set) var pointerOnControl = false
@@ -537,6 +559,8 @@ final class ShellWebView: WKWebView, WKScriptMessageHandler, WKScriptMessageHand
         // Notifications: the page asks for permission from Settings and hands over what the server
         // sent its account. Its presence tells the web client this build can show them.
         content.addScriptMessageHandler(WeakReplyHandler(self), contentWorld: .page, name: "slircNotify")
+        // The page's own unread count, for the other workspaces' rails.
+        content.add(WeakHandler(self), name: "slircUnread")
         // The workspaces opened on this Mac, for the page's workspace dialog. The app refreshes it
         // on every switch, since a pooled page outlives the list it was built with.
         let known = (try? JSONSerialization.data(withJSONObject: Workspace.known.map(\.absoluteString))).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
@@ -607,6 +631,11 @@ final class ShellWebView: WKWebView, WKScriptMessageHandler, WKScriptMessageHand
                 else if left { self?.onSignedOut?() }
                 else { self?.onSwitchWorkspace?() }
             }
+            return
+        }
+        if message.name == "slircUnread" {
+            let count = (message.body as? [String: Any])?["count"] as? Int ?? 0
+            DispatchQueue.main.async { [weak self] in self?.onUnread?(max(0, count)) }
             return
         }
         guard let state = message.body as? String else { return }

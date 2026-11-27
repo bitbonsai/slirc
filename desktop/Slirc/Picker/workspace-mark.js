@@ -71,6 +71,9 @@ function railWorkspaces(rows, expanded, active = new Set, max = RAIL_MAX) {
   const rest = rows.filter((row) => !shown.includes(row));
   return { shown, peek: rest[0] ?? null, hidden: Math.max(0, rest.length - 1), foldable: rest.length > 0 };
 }
+function workspaceActivity(counts, here) {
+  return new Set(Object.entries(counts).filter(([origin, count]) => origin !== here && count > 0).map(([origin]) => origin));
+}
 function savedWorkspaceCount(rows) {
   return rows.filter((row) => !row.note).length;
 }
@@ -169,5 +172,5 @@ function installWorkspaceKeys(root, field) {
     }
   });
 }
-globalThis.slircWorkspaceMark = { WORKSPACE_PALETTE, workspaceName, WORKSPACE_ICON_PATH, workspaceIconUrl, workspaceMark, OPEN_WORKSPACE, workspaceOrigin, workspaceChoices, RAIL_MAX, railWorkspaces, savedWorkspaceCount, workspaceRows, filterWorkspaces, animateListHeight, rowAfterKey, installWorkspaceKeys };
+globalThis.slircWorkspaceMark = { WORKSPACE_PALETTE, workspaceName, WORKSPACE_ICON_PATH, workspaceIconUrl, workspaceMark, OPEN_WORKSPACE, workspaceOrigin, workspaceChoices, RAIL_MAX, railWorkspaces, workspaceActivity, savedWorkspaceCount, workspaceRows, filterWorkspaces, animateListHeight, rowAfterKey, installWorkspaceKeys };
 })();

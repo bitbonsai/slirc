@@ -1,13 +1,18 @@
+import { workspaceOrigin } from "@client/workspace-mark.ts";
+
 // The iOS shell in native/ and the Mac app in desktop/ load this client from the workspace's own
 // address, and both can return to their workspace picker. On iOS the SlircShell plugin offers
 // switchWorkspace. The Mac app registers a slircSwitchWorkspace message handler; builds before it
 // have only slircShell, so the handler itself is the test, not html.mac-shell. Browsers and the
 // installed Home Screen app have neither, so "Switch workspace" shows only where the call works.
 type Win = {
-  webkit?: { messageHandlers?: { slircSwitchWorkspace?: { postMessage: (body: unknown) => void }; slircNotify?: { postMessage: (body: unknown) => Promise<unknown> } } };
+  webkit?: { messageHandlers?: { slircSwitchWorkspace?: { postMessage: (body: unknown) => void }; slircNotify?: { postMessage: (body: unknown) => Promise<unknown> }; slircUnread?: { postMessage: (body: unknown) => void } } };
   location?: { assign: (url: string) => void };
   SlircShellInfo?: { version?: unknown; build?: unknown };
   SlircWorkspaces?: unknown;
+  SlircUnread?: unknown;
+  addEventListener?: (type: string, listener: () => void) => void;
+  removeEventListener?: (type: string, listener: () => void) => void;
   SlircOpenWorkspaces?: () => boolean;
   Capacitor?: {
     isNativePlatform?: () => boolean;
@@ -104,6 +109,36 @@ export function shellListsWorkspaces(win: Win = globalThis as Win): boolean {
   if (iosShell(win)) return typeof win.Capacitor?.Plugins?.SlircShell?.workspaces === "function";
   if (macShell(win)) return Array.isArray(win.SlircWorkspaces);
   return true;
+}
+
+// Unread across workspaces, for the instance rail. Only the Mac app can know it: it keeps one live
+// page per workspace, so each page tells the app its own badge count (slircUnread) and the app
+// hands every workspace's count back to the page on screen as window.SlircUnread, an object of
+// origin to count, followed by a "slirc-unread" event. A browser, the Home Screen app and the iOS
+// shell load one workspace at a time and can't read another origin's state, so they report and
+// receive nothing. Builds from before slircUnread lack the handler and get null from this.
+export function reportUnread(count: number, win: Win = globalThis as Win): void {
+  const handler = win.webkit?.messageHandlers?.slircUnread;
+  if (typeof handler?.postMessage === "function") handler.postMessage({ count: Math.max(0, Math.floor(count) || 0) });
+}
+
+// The shell's counts as a map of https origin to a count above zero. Anything else is dropped.
+export function readWorkspaceUnread(value: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!value || typeof value !== "object") return out;
+  for (const [key, count] of Object.entries(value)) {
+    const origin = workspaceOrigin(key);
+    if (origin && origin === key && typeof count === "number" && Number.isFinite(count) && count > 0) out[origin] = Math.floor(count);
+  }
+  return out;
+}
+
+// Calls onChange with the shell's counts now and on every update. Returns the function that stops it.
+export function watchWorkspaceUnread(onChange: (counts: Record<string, number>) => void, win: Win = globalThis as Win): () => void {
+  const read = () => onChange(readWorkspaceUnread(win.SlircUnread));
+  read();
+  win.addEventListener?.("slirc-unread", read);
+  return () => win.removeEventListener?.("slirc-unread", read);
 }
 
 // The Mac app's Switch Workspace menu item calls window.SlircOpenWorkspaces() and shows its own

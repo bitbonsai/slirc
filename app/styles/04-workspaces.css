@@ -31,6 +31,8 @@
 .instance-rail-item.active .instance-rail-pill { opacity: 1; height: 1.75rem; }
 .instance-rail-item:only-of-type .instance-rail-pill { display: none; }
 /* The folded rail: the next workspace peeks out under the current one and fades into the rail. */
+/* The existing unread badge, small, on the tile's top right. */
+.instance-rail-unread { position: absolute; top: .05rem; right: .1rem; min-width: 1rem; height: 1rem; padding: 0 .25rem; margin: 0; pointer-events: none; }
 .instance-rail-peek { height: 1.25rem; align-items: start; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, #000 0, transparent 100%); mask-image: linear-gradient(to bottom, #000 0, transparent 100%); }
 .instance-rail-peek .instance-rail-pill { display: none; }
 .instance-rail-peek .workspace-badge { margin-top: .25rem; }

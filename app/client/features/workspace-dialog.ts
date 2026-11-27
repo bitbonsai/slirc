@@ -1,10 +1,10 @@
 import { workspaceRows } from "@client/workspace-mark.ts";
 import { savedWorkspaces, workspaceLink } from "@client/workspace-list.ts";
-import { canSwitchWorkspace, exposeWorkspaceDialog, openWorkspace, shellWorkspaces } from "@client/native-shell.ts";
+import { canSwitchWorkspace, exposeWorkspaceDialog, openWorkspace, shellWorkspaces, watchWorkspaceUnread } from "@client/native-shell.ts";
 import type { ClientState } from "@client/client-state.ts";
 
 export interface WorkspaceDialogDeps {
-  ui: Pick<ClientState, "authenticated" | "workspace" | "workspaceBusy" | "workspaceChoices" | "workspaceDialog"> & { openWorkspaces: () => void };
+  ui: Pick<ClientState, "authenticated" | "workspace" | "workspaceBusy" | "workspaceChoices" | "workspaceDialog" | "workspaceUnread"> & { openWorkspaces: () => void };
   signal: AbortSignal;
 }
 
@@ -31,6 +31,10 @@ export function createWorkspaceDialog(deps: WorkspaceDialogDeps) {
   const hideWorkspaceDialog = exposeWorkspaceDialog(ui);
 
   signal.addEventListener("abort", hideWorkspaceDialog, { once: true });
+
+  // The Mac app reports each workspace's unread count; the rail shows busy ones in full.
+  const stopUnread = watchWorkspaceUnread((counts) => { ui.workspaceUnread = counts; });
+  signal.addEventListener("abort", stopUnread, { once: true });
 
   return { refreshWorkspaceChoices, pickWorkspace };
 }

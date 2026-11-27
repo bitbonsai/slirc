@@ -103,6 +103,12 @@ export function railWorkspaces<T extends { origin: string; current: boolean }>(r
   return { shown, peek: rest[0] ?? null, hidden: Math.max(0, rest.length - 1), foldable: rest.length > 0 };
 }
 
+// The workspaces the rail must show in full: the ones other than this with something unread, from
+// the shell's counts (origin to count). Counts come from native-shell.ts watchWorkspaceUnread.
+export function workspaceActivity(counts: Record<string, number>, here: string): Set<string> {
+  return new Set(Object.entries(counts).filter(([origin, count]) => origin !== here && count > 0).map(([origin]) => origin));
+}
+
 // The count beside the workspace row on the phone's More tab: the workspaces in the dialog,
 // leaving out the app.slirc.org row a hosted workspace offers but nobody saved.
 export function savedWorkspaceCount(rows: WorkspaceChoice[]): number {

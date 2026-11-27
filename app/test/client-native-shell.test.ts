@@ -1,7 +1,7 @@
 // "Switch workspace" belongs to the iOS shell and the Mac app. Browsers, the installed Home Screen
 // app, iOS builds without the SlircShell plugin and Mac builds without the handler never see it.
 import { expect, test } from "bun:test";
-import { readShellState, shellNotifications, showShellNotification } from "../client/native-shell.ts";
+import { readShellState, readWorkspaceUnread, reportUnread, watchWorkspaceUnread, shellNotifications, showShellNotification } from "../client/native-shell.ts";
 import { aboutLabel, canSwitchWorkspace, exposeWorkspaceDialog, openWorkspace, openWorkspaceLink, shellListsWorkspaces, shellOwnsStart, shellReady, shellVersion, shellWorkspaces, signedOut, switchWorkspace } from "../client/native-shell.ts";
 
 const shell = (plugins: string[], calls: string[] = []) => ({
@@ -214,4 +214,39 @@ test("the Mac app gets each notification with a same-site route, except for the 
   expect(showShellNotification({ body: "no title" }, win, () => false)).toBe(false);
   expect(showShellNotification({ title: "x", body: "y" }, {} as never, () => false)).toBe(false);
   expect(posted).toHaveLength(3);
+});
+
+test("a page reports its unread count to the Mac app, and only where the handler exists", () => {
+  const sent: unknown[] = [];
+  const mac = { webkit: { messageHandlers: { slircUnread: { postMessage: (body: unknown) => { sent.push(body); } } } } };
+  reportUnread(3, mac as never);
+  reportUnread(-2, mac as never);
+  reportUnread(Number.NaN, mac as never);
+  expect(sent).toEqual([{ count: 3 }, { count: 0 }, { count: 0 }]);
+  expect(() => reportUnread(3, {})).not.toThrow();
+  expect(() => reportUnread(3, { webkit: { messageHandlers: { slircSwitchWorkspace: { postMessage() {} } } } } as never)).not.toThrow();
+});
+
+test("the shell's unread counts keep only workspace origins with a positive count", () => {
+  expect(readWorkspaceUnread({ "https://a.example.test": 4.9, "https://b.example.test": 0, "https://c.example.test": -1, "http://d.example.test": 2, "a.example.test": 2, "https://e.example.test": "5" }))
+    .toEqual({ "https://a.example.test": 4 });
+  expect(readWorkspaceUnread(null)).toEqual({});
+  expect(readWorkspaceUnread([1, 2])).toEqual({});
+});
+
+test("the page reads the shell's counts at once and again on each update", () => {
+  const listeners: (() => void)[] = [];
+  const win: { SlircUnread?: unknown; addEventListener: (t: string, f: () => void) => void; removeEventListener: (t: string, f: () => void) => void } = {
+    addEventListener: (_t, f) => { listeners.push(f); },
+    removeEventListener: (_t, f) => { listeners.splice(listeners.indexOf(f), 1); },
+  };
+  const seen: Record<string, number>[] = [];
+  const stop = watchWorkspaceUnread((counts) => seen.push(counts), win as never);
+  win.SlircUnread = { "https://a.example.test": 2 };
+  listeners.forEach((f) => f());
+  stop();
+  expect(listeners).toHaveLength(0);
+  expect(seen).toEqual([{}, { "https://a.example.test": 2 }]);
+  // A browser has no such events and nothing to read.
+  expect(() => watchWorkspaceUnread(() => {}, {})()).not.toThrow();
 });
