@@ -972,7 +972,7 @@ function connectCommand(prompt) {
 // package.json
 var package_default = {
   name: "slirc-agent",
-  version: "3.4.0",
+  version: "3.5.0",
   description: "Connect coding agents to Slirc rooms",
   keywords: [
     "slirc",
