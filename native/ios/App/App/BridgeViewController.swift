@@ -223,6 +223,7 @@ final class StartCover {
     private var generation = 0
     private static let giveUp: TimeInterval = 12
     private static let busyGrace: TimeInterval = 1
+    private static let presentLag: TimeInterval = 0.35
     // -1 for a page that sends "ready" itself (html[data-shell]), 0 while the client is booting, 1 once it
     // shows but something still animates, 2 when idle. Only pages that cannot say ready are polled.
     private static let stateScript = """
@@ -269,6 +270,15 @@ final class StartCover {
                 return
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { self.poll(webView, generation: current, bootedAt: booted) }
+        }
+    }
+
+    // The page says it has painted. Its frames reach the screen a little after it draws them, so the
+    // cover waits a moment before the fade; fading at once showed bare background for a few frames.
+    func ready() {
+        let current = generation
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.presentLag) { [weak self] in
+            if self?.generation == current { self?.hide(fade: 0.2) }
         }
     }
 
@@ -394,7 +404,7 @@ class SlircShellPlugin: CAPPlugin, CAPBridgedPlugin {
     // The picker with its form, or a workspace page with its app, has painted: the overlay can go.
     @objc func ready(_ call: CAPPluginCall) {
         call.resolve()
-        DispatchQueue.main.async { [startCover] in startCover.hide(fade: 0.2) }
+        DispatchQueue.main.async { [startCover] in startCover.ready() }
     }
 
     @objc func switchWorkspace(_ call: CAPPluginCall) {

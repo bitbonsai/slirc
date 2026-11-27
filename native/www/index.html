@@ -346,7 +346,8 @@
     alertBox.textContent = message || "";
     main.classList.add("ready");
     // The shell holds its own mark over this page until the form has painted, then takes it off.
-    requestAnimationFrame(() => requestAnimationFrame(() => window.Capacitor?.Plugins?.SlircShell?.ready?.()?.catch?.(() => {})));
+    const painted = () => requestAnimationFrame(() => requestAnimationFrame(() => window.Capacitor?.Plugins?.SlircShell?.ready?.()?.catch?.(() => {})));
+    document.querySelector(".opening img").decode().then(painted, painted);
     // With saved workspaces the field is a search: focus it so typing starts at once. First launch
     // leaves it alone, as before, and so does an unreachable workspace, so the keyboard doesn't
     // cover Try again.
