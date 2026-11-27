@@ -1,7 +1,7 @@
 title: Notifications
 crumb: Guides / Notifications
 description: Turn Slirc notifications on or off from your profile.
-lead: Slirc can notify you about messages in your channels and DMs, even when the app is closed.
+lead: Slirc can notify you about messages in your channels and DMs, in the browser, the Mac app and the iPhone app.
 
 ## Turning them on
 
@@ -9,7 +9,9 @@ Open **More → Profile** on a phone. On desktop, open your profile from the roo
 
 If notifications are blocked, allow them in this site's browser settings, then reopen your profile. On iPhone, add Slirc to your Home Screen and open it there. Web push needs HTTPS and a browser that supports it.
 
-The Mac app and the iPhone app don't show notifications yet. For notifications on a computer, install Slirc from the browser; [Download](/docs/download) shows how.
+In the Mac app and the iPhone app, the same switch asks macOS or iOS for permission the first time. If you said no then, turn notifications on for Slirc in System Settings → Notifications on a Mac, or in Settings → Notifications on iPhone, then reopen your profile. The iPhone app notifies you even when it's closed. The Mac app notifies you while it's open, including when its window is behind others. Choosing a notification opens its conversation, in the right workspace.
+
+iPhone notifications need the workspace to be set up for them. When it isn't, your profile says so.
 
 ## Turning them off
 

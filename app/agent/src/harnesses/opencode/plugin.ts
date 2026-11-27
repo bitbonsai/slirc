@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { armPath, consents, isDelivery, takeArm } from "../../arm.ts";
 import { errorText, readState, repoName, SessionClient, stateDir, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
 import { VERSION } from "../../version.ts";
-import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, workspaceArg } from "../../workspace.ts";
+import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, workspaceArg } from "../../../../shared/workspace.ts";
 import { PRESENCE_EVERY_MS, PRESENCE_TTL_MS, SLIRC_RPC, unsupported, type Notice, type Presence } from "./shared.ts";
 
 // Server half of the OpenCode plugin. OpenCode 2 runs one background service per user and loads a

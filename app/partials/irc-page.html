@@ -2,7 +2,7 @@
     <div class="mobile-screen-head" x-show="!isDesktop"><div class="home-brand"><a class="home-brand profile-back" href="/profile" aria-label="Back to Profile" x-on:click.prevent="openProfile()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a><strong>IRC clients</strong></div></div>
     <div class="profile-page-body" :class="{ 'mobile-screen-body': !isDesktop }">
       <section class="profile-dialog-card profile-screen-card">
-        <div class="profile-heading" x-show="isDesktop"><div class="profile-modal-avatar"><img :src="avatarUrl(account)" alt="" /></div><div><h2><span x-text="me"></span><span class="admin-badge" x-show="isAdmin" role="img" aria-label="Administrator" x-html="lucideIcon('user-star')"></span></h2><p x-text="'@' + account"></p></div></div>
+<!-- include: account-heading -->
 <!-- include: account-navigation -->
         <section class="irc-settings">
           <h3>IRC clients</h3>
@@ -46,7 +46,7 @@
         </section>
       </section>
     </div>
-    <dialog class="custom-modal" aria-labelledby="irc-remove-title" tabindex="-1" x-on:keydown="irc.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && ircRoute && irc.removeTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!irc.busy) irc.closeRemove()">
+    <dialog class="custom-modal" aria-labelledby="irc-remove-title" tabindex="-1" x-on:keydown="irc.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && ircRoute && irc.removeTarget" x-on:cancel.prevent="if (!irc.busy) irc.closeRemove()">
       <section class="notice-card"><h2 id="irc-remove-title">Remove <span x-text="irc.removeTarget?.label"></span>?</h2><p x-text="irc.removeMessage()"></p><p class="profile-error" role="alert" x-show="irc.error" x-text="irc.error"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="irc.busy" x-on:click="irc.closeRemove()">Cancel</button><button type="button" class="btn-danger" :disabled="irc.busy" x-on:click="irc.confirmRemove()" x-text="irc.busy ? 'Removing…' : 'Remove'"></button></div></section>
     </dialog>
   </div>

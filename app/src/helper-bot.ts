@@ -8,7 +8,7 @@ import { answerFromDocs, askModel, docsUrl, plainRelativeLinks, selfReply, sourc
 import { IrcClient, sanitizeLine, type ParsedMessage } from "./irc.ts";
 import { createHelperTyping } from "./helper-typing.ts";
 import { afterNick, matchesAtMention, matchesMention } from "./mention.ts";
-import { reactionLine } from "../public/reactions.js";
+import { reactionLine } from "../shared/reactions.ts";
 import { alreadyOpenLines, announceLines, canClose, closePoll, createPoll, duePolls, openPoll, parsePoll, pollIntent, POLL_EXAMPLE, tallyLines, voteIn, votes } from "./polls.ts";
 import { dueNote, enabled as ambienceEnabled, gifLine, gifQuery, giphyUrl, markNote, replacePreviousGif } from "./room-ambience.ts";
 import { openDirectConversation } from "./direct.ts";

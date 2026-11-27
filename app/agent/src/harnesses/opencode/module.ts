@@ -3,6 +3,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { harnessInfo } from "../../../../shared/harnesses.ts";
 import type { Env, Harness } from "../types.ts";
 import { onPath } from "../pi/module.ts";
 import { unsupported } from "./shared.ts";
@@ -51,13 +52,7 @@ function conflict(env: Env): string | undefined {
 }
 
 const opencode: Harness = {
-  id: "opencode",
-  name: "OpenCode",
-  released: true,
-  homepage: "https://opencode.ai",
-  sessionCommand: (workspace) => workspace ? `/slirc ${workspace}` : "/slirc",
-  // No reloadHint: install ends with `opencode reload`, which loads the plugin into the running
-  // service and TUI.
+  ...harnessInfo.opencode,
 
   // OpenCode gives its shell tool OPENCODE_SESSION_ID. Every session's shell runs under the one
   // background service, so the arm file's process check can't tell sessions apart here; the

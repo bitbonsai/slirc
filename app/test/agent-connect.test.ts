@@ -14,7 +14,7 @@ const { db } = await import("../src/db.ts");
 await import("../src/accounts.ts");
 const { app } = await import("../src/server.ts");
 const connect = await import("../src/agent-connect.ts");
-const { harnesses } = await import("../agent/src/harnesses/index.ts");
+const { harnessInfos: harnesses } = await import("../shared/harnesses.ts");
 
 const token = "owner-session";
 db.query("INSERT INTO sessions (token_hash, nick, created_at) VALUES (?, 'bitbonsai', ?)").run(createHash("sha256").update(token).digest("hex"), Date.now());

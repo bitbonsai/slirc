@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { closeSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, writeSync } from "node:fs";
 import { join } from "node:path";
 import { stateDir } from "./adapter-core.ts";
-import { expandWorkspace } from "./workspace.ts";
+import { expandWorkspace } from "../../shared/workspace.ts";
 
 // Arm files: `slirc-agent <workspace>` run inside a session asks that same session to pair. The
 // CLI writes one file named after the session key; the runtime loaded in that session picks it up

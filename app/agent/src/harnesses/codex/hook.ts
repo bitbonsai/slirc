@@ -3,7 +3,7 @@ import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readSync } from 
 import { join } from "node:path";
 import { errorText } from "../../adapter-core.ts";
 import { armPath, consents, takeArm } from "../../arm.ts";
-import { workspaceArg } from "../../workspace.ts";
+import { workspaceArg } from "../../../../shared/workspace.ts";
 import { boundMark, call, codexVersion, dir, pairingCommand, readLive, RECEIPT, unsupported, validId, type Live } from "./shared.ts";
 
 // Slirc's Codex hooks. Codex runs each one as a command under its app-server daemon with the

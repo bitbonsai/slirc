@@ -1,3 +1,4 @@
+import { parseLine } from "../shared/irc.ts";
 import { db } from "./db.ts";
 import { publish } from "./live.ts";
 import { isMember, normalized } from "./rooms.ts";
@@ -11,41 +12,6 @@ const rootsWithoutAuthor = new Set<string>((db.query("SELECT root_msgid FROM rep
 
 const MSGID = /^[A-Za-z0-9_-]{1,512}$/;
 
-function unescapeTag(value: string): string {
-  return value.replace(/\\(.?)/g, (_m, char: string) => ({ ":": ";", s: " ", r: "\r", n: "\n", "\\": "\\" } as Record<string, string>)[char] ?? char);
-}
-
-type Parsed = { tags: Record<string, string>; nick: string; command: string; params: string[] };
-
-function parseLine(line: string): Parsed | null {
-  let rest = line;
-  const tags: Record<string, string> = {};
-  if (rest.startsWith("@")) {
-    const end = rest.indexOf(" ");
-    if (end < 0) return null;
-    for (const part of rest.slice(1, end).split(";")) {
-      const eq = part.indexOf("=");
-      tags[eq < 0 ? part : part.slice(0, eq)] = eq < 0 ? "" : unescapeTag(part.slice(eq + 1));
-    }
-    rest = rest.slice(end + 1).trimStart();
-  }
-  if (!rest.startsWith(":")) return null;
-  const space = rest.indexOf(" ");
-  if (space < 0) return null;
-  const nick = rest.slice(1, space).split("!")[0] ?? "";
-  rest = rest.slice(space + 1).trimStart();
-  const params: string[] = [];
-  const command = (rest.split(" ", 1)[0] ?? "").toUpperCase();
-  rest = rest.slice(command.length).trimStart();
-  while (rest) {
-    if (rest.startsWith(":")) { params.push(rest.slice(1)); break; }
-    const next = rest.indexOf(" ");
-    params.push(next < 0 ? rest : rest.slice(0, next));
-    rest = next < 0 ? "" : rest.slice(next + 1).trimStart();
-  }
-  return { tags, nick, command, params };
-}
-
 // Called with every line the relay forwards to a browser. Only a channel message (or the opener of
 // a multiline one) that carries both a msgid and a +reply tag changes the index.
 export function observeReplyLine(line: string): void {
@@ -53,20 +19,22 @@ export function observeReplyLine(line: string): void {
   const isReply = line.includes("+reply=");
   if (!seen || (!isReply && !rootsWithoutAuthor.has(seen))) return;
   const parsed = parseLine(line);
-  if (!parsed || !parsed.nick) return;
-  const { tags, command, params } = parsed;
+  const sender = parsed.prefix?.split("!")[0];
+  if (!sender) return;
+  const { tags, params } = parsed;
+  const command = parsed.command.toUpperCase();
   const target = command === "PRIVMSG" ? params[0] : command === "BATCH" && params[1] === "draft/multiline" ? params[2] : undefined;
   const msgid = tags.msgid;
   const parent = tags["+reply"];
   if (!target?.startsWith("#") || !msgid) return;
   // The root itself: its author started the thread, so it is on their list too.
-  if (!parent) { claimRoot(msgid, parsed.nick.toLowerCase(), normalized(target)); return; }
+  if (!parent) { claimRoot(msgid, sender.toLowerCase(), normalized(target)); return; }
   if (!MSGID.test(msgid) || !MSGID.test(parent)) return;
   // An edit re-sends the same reply under a new msgid; counting it would double the thread.
   if (tags["+draft/edit"]) return;
   const channel = normalized(target);
   const at = Date.parse(tags.time ?? "") || Date.now();
-  const nick = parsed.nick.toLowerCase();
+  const nick = sender.toLowerCase();
   const people: string[] = [];
   const added = db.transaction(() => {
     const root = (db.query("SELECT root_msgid FROM reply_thread_msgs WHERE msgid = ?").get(parent) as { root_msgid: string } | null)?.root_msgid ?? parent;

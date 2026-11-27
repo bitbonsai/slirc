@@ -6,7 +6,7 @@ Small things, made well. Favor the smallest change that makes correct behavior u
 
 ## Start here
 
-- **Current client:** `app/public/index.html`, TypeScript in `app/client/`, served as `/client.js`. Trace the entrypoint and shell selection in `app/src/server.ts` before editing. Shared styles live in `app/public/style.css`.
+- **Current client:** `app/public/index.html`, TypeScript in `app/client/`, served as `/client.js`. Trace the entrypoint and shell selection in `app/src/server.ts` before editing. Shared styles live in `app/styles/*.css`, assembled into the served `app/public/style.css` by `bun run assemble`; edit the parts, never the generated file.
 - **One client:** current client is the default in every environment; no `SLIRC_CLIENT` flags. Legacy shell, bundle and boot document are removed. `/sw.js` retires old shell caches without touching IndexedDB, drafts or sessions. Keep shared utilities still imported by current code.
 - **Local testing:** `just dev` serves the app on loopback port `9110` (or an HTTPS URL configured via `SLIRC_DEV_ORIGIN`). Canonical routes include `/profile`, `/dm/:nick`, `/dms`, and `/more`.
 - **Visual rules:** `design.md`.
@@ -38,11 +38,11 @@ Small things, made well. Favor the smallest change that makes correct behavior u
 - `landing/demo.js` is cached 4h by browsers: bump `?v=` in `landing/index.html` whenever it changes.
 - Cloudflare gives `.js`/`.css` a 4h browser cache whatever the app sends. The shell's scripts, stylesheet, manifest and SVG refs get `?v=<content hash>` at serve time (`versionShell` in `server.ts`); a new first-party file loaded by the client by address (like the icon sprite) needs its version passed the same way, or returning members run new HTML with the old file.
 - `prepack` in `app/agent` rebuilds `dist/` on publish: pull first and reset or commit `app/agent/dist` cleanly. `npm view` lags 1-2 minutes after publish.
-- Harnesses live in `app/agent/src/harnesses/<id>/` behind one interface; the registry there is the only list the server, Agents page, docs and CLI read. Adding one: `app/agent/HARNESSES.md`.
+- Harnesses live in `app/agent/src/harnesses/<id>/` behind one interface; `app/shared/harnesses.ts` holds the data half (names, released, session commands) that the server, Agents page and docs read; `agent/src/harnesses/index.ts` lists the modules the CLI runs. Adding one: `app/agent/HARNESSES.md`.
 - `app/agent/dist` is tracked: after any `app/agent/src` change run `bun run build` there and commit dist.
 - `pkill -f <pattern>` over SSH can kill the SSH command itself (exit 255). Use a captured spawn PID or verified port owner, never a name-selected PID.
 - Rootless podman: Caddy's requests reach the app from the app container's own address. `SLIRC_TRUSTED_PROXIES` needs that address pinned (see `deploy/README.md`).
-- `app/.dockerignore` drops `agent/` except files the server imports (harness registry, `version.ts`, `workspace.ts`, `package.json`). New server import from `../agent` must be whitelisted or prod crash-loops "Cannot find module" (16 Nov 2026). `scripts/deploy-app.py` now `bun build`s main.ts inside the image before downtime.
+- `app/.dockerignore` drops `agent/` except `agent/package.json` (the server reads the published version from it). Anything the server shares with the agent lives in `app/shared/`; a new server import from `../agent` crash-loops prod "Cannot find module" (16 Nov 2026). `scripts/deploy-app.py` `bun build`s main.ts inside the image before downtime.
 - Mac app loads Sparkle via `@rpath`: needs `LD_RUNPATH_SEARCH_PATHS = @executable_path/../Frameworks`. Xcode Debug runs hide its absence; Release quits with "Library missing".
 - WebKit (Safari, Mac app) skips `:focus-visible` on script focus after a mouse click, and Tab reaches only text fields. Arrow-key rows carry `.kb-focus`; `client/dialog-keys.ts` handles Tab/arrows in dialogs.
 - Pi writes a new session file only after first message: anything resolving it at `/slirc` time must not require it to exist.

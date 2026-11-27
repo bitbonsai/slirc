@@ -1,0 +1,227 @@
+/* Desktop messages: avatar column, name and time on the first row of a run, follow-ups tuck under. */
+@media (not (pointer: coarse)) and (min-width: 501px) {
+  .msg { grid-template-columns: 4.25rem 2.25rem auto minmax(0, 1fr); grid-template-rows: auto auto; column-gap: .6rem; padding: .25rem .35rem; margin-bottom: .8rem; }
+  .msg:not(.cont):not(.action) { padding-top: .45rem; }
+  .msg.action { grid-template-columns: 4.25rem 2.25rem auto minmax(0, 1fr); }
+  .message-entry:has(.msg:not(.cont)) { margin-top: .55rem; }
+  /* Run spacing lives in the margin so the hover tint stops at the text. */
+  .message-entry:has(+ .message-entry .msg.cont) .msg { margin-bottom: 0; }
+  /* Hovering, or holding the picker or menu open, tints the row the action lands on. Half the focus tint, no edge. */
+  .msg { transition: background-color var(--dur-micro) ease; }
+  .msg:hover, .msg.menu-open { background: color-mix(in srgb, var(--panel-hi) 28%, transparent); }
+  /* Both actions sit in the left gutter on the message's first text line: row 2 under a name, row 1 otherwise. */
+  .message-add, .message-more { grid-row: 2; align-self: start; height: 1.55rem; margin: 0; }
+  .message-more { position: static; grid-column: 1; justify-self: start; }
+  .msg.cont .message-add, .msg.action .message-add, .msg.cont .message-more, .msg.action .message-more { grid-row: 1; }
+  .message-avatar { display: grid; grid-column: 2; grid-row: 1 / span 2; align-self: start; width: 2.25rem; height: 2.25rem; margin-top: .1rem; font-size: var(--text-base); }
+  .msg .nick { grid-column: 3; grid-row: 1; justify-self: start; text-align: left; font: 700 var(--text-sm)/1.4 var(--ui); }
+  .msg .time { grid-column: 4; grid-row: 1; align-self: baseline; justify-self: start; text-align: left; transform: translateY(.1875rem); color: color-mix(in srgb, var(--muted) 45%, transparent); font: 400 var(--text-xs)/1.4 var(--ui); }
+  .msg .body { grid-column: 3 / span 2; grid-row: 2; line-height: 1.55; }
+  .msg.cont .message-avatar, .msg.cont:not(.action) .nick { display: none; }
+  .msg.cont .body { grid-row: 1; }
+  .msg.cont .time { display: none; }
+  .msg.action .message-avatar { display: none; }
+  .msg.action .nick { display: flex; grid-column: 3; grid-row: 1; font: inherit; font-style: italic; color: var(--brand); }
+  .msg.action .body { grid-column: 4; grid-row: 1; }
+  .msg.action .time { grid-column: 4; grid-row: 1; justify-self: end; align-self: start; margin-top: .3rem; }
+}
+
+/* Touch: long-press sheet replaces hover picker + kebab; composer rides the keyboard; 44px targets. */
+@media (pointer: coarse) {
+  .reaction-tooltip { display: none !important; }
+  header { gap: .5rem; padding-inline: 12px; }
+  /* Touch header: back, identity pill (name + topic or presence), unread DM avatars. Bell lives in More. */
+  .room-heading { flex: 0 1 auto; min-width: 0; margin-left: auto; justify-items: end; }
+  .room-title { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; min-height: 2.75rem; max-width: 100%; padding: .3rem .55rem .3rem .35rem; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--panel-hi) 55%, transparent); color: var(--text); gap: .55rem; }
+  .room-title .room-mark { width: 2.1rem; height: 2.1rem; font-size: var(--text-base); }
+  /* The members button pairs with the title's lock pill: same see-through circle, solid bright icon. */
+  header > .members-toggle { position: relative; color: var(--text); }
+  header > .members-toggle::before { content: ""; position: absolute; inset: 0; margin: auto; width: 2.1rem; height: 2.1rem; border-radius: var(--radius-round); background: color-mix(in srgb, var(--panel-hi) 55%, transparent); }
+  .room-title .room-mark.channel { background: color-mix(in srgb, var(--panel-hi) 55%, transparent); color: var(--text); }
+  header > .members-toggle .members-icon { position: relative; width: 1.05rem; height: .7rem; -webkit-mask-image: url(/icons/ui/members-glyph.svg?v=1); mask-image: url(/icons/ui/members-glyph.svg?v=1); }
+  .room-title-text { align-self: center; text-align: left; line-height: 1.15; }
+  .room-title-text > span { font: 650 var(--text-base)/1.15 var(--ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .room-subtitle { display: block; overflow: hidden; color: var(--muted); font: 500 var(--text-xs)/1.2 var(--ui); text-overflow: ellipsis; white-space: nowrap; max-width: 46vw; }
+  .thread-link { gap: .35rem; margin-top: .25rem; color: var(--muted); font: 600 var(--text-xs)/1 var(--ui); white-space: nowrap; }
+  .mobile-back svg, header button svg { width: 1.5rem; height: 1.5rem; stroke-width: 2; }
+  /* 44pt hit areas for small visuals */
+  .image-preview summary::after { content: ""; position: absolute; inset: -.45rem; }
+  .mobile-time { font-size: var(--text-2xs); }
+  /* Phones reach channels through More, and the channels panel hides both the back arrow and the × when it
+     stands alone, so the sheet keeps no + that could strand someone. */
+  .section-add { display: none; }
+  .header-logo { display: none; }
+  /* Signed out there is no back arrow, so the wordmark holds the left edge. */
+  body.peeking header .header-logo { display: inline-flex; margin-right: auto; padding-left: .25rem; }
+  header .mobile-back, header .header-icon { flex: 0 0 2.75rem; }
+  .msg { min-height: 2.75rem; padding: .35rem .25rem; transition: translate var(--dur-micro) ease-out; touch-action: pan-y; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+  .msg .body, .msg .body a { -webkit-touch-callout: none; }
+  body:has(.sheet-backdrop:not([style*="display: none"])) { user-select: none; -webkit-user-select: none; }
+  .message-add, .message-more, .reaction-picker, .message-menu { display: none; }
+  .room, .profile-card, .thread-link { min-height: 2.75rem; }
+  .reaction-chip { min-width: 2.75rem; min-height: 2.75rem; padding: .2rem .7rem; font-size: var(--text-base); }
+  /* A fixed .5rem baseline lifted by translate to --composer-bottom, so riding the keyboard moves a layer instead of relaying out every frame. */
+  .composer { left: 1rem; right: 1rem; bottom: .5rem; width: auto; padding: .5rem calc(.5rem + env(safe-area-inset-right, 0px)) .5rem calc(.5rem + env(safe-area-inset-left, 0px)); box-shadow: none; translate: 0 calc(.5rem - var(--composer-bottom)); transition: translate var(--dur-micro) ease-out, border-radius var(--dur-fast) ease; }
+  /* One line is a pill: half the 2.75rem button plus the padding and border, an exact radius so it
+     can ease into the 18px frame a taller composer (attachments, several lines) uses. A 999px pill put
+     the chips' corners and the send button outside the curve. */
+  .composer { border-radius: calc(1.375rem + .5rem + 1px); }
+  .composer.tall { border-radius: 18px; }
+  /* iOS pans the page up under the keyboard; --vv-top (composer-editor.ts) moves the bars back into view. */
+  header, .mobile-screen-head { translate: 0 var(--vv-top, 0px); }
+  /* The phone message avatar is 24px; a 40px invisible pad makes it an easy tap and long press target. */
+  .message-avatar.avatar-status-host::before { content: ""; position: absolute; inset: -.5rem; }
+  .composer { border-color: transparent; background: var(--nav-surface); box-shadow: var(--nav-edge); backdrop-filter: var(--nav-glass); -webkit-backdrop-filter: var(--nav-glass); }
+  .mobile-settings-body { min-height: 0; flex: 1; overflow-y: auto; padding: .75rem 1rem calc(var(--nav-h) + var(--nav-lift) + 1rem); }
+  .channel-settings > .mobile-settings-body, .irc-settings > .mobile-settings-body { display: flex; flex-direction: column; }
+  .channel-settings > .mobile-settings-body::before, .irc-settings > .mobile-settings-body::before { content: ""; margin-top: auto; }
+  .chat #messages { padding-bottom: calc(var(--composer-space, 4rem) + var(--nav-lift) - var(--kb, 0px)); }
+  body.kb-open .chat #messages { padding-bottom: calc(var(--composer-space, 4rem) + .5rem - var(--kb, 0px)); }
+  .composer-plus, .composer-send { width: 2.75rem; height: 2.75rem; }
+  .composer-plus img { width: 1.1rem; height: 1.1rem; }
+  .composer-send img { width: 1.65rem; height: 1.65rem; }
+  header button, .channel-kebab { min-width: 2.75rem; min-height: 2.75rem; }
+  .channel-menu button, .message-menu button { min-height: 2.75rem; }
+  /* Touch: row popovers become bottom sheets, like message actions. */
+  /* rooms-sheet's backdrop-filter makes fixed children position relative to it; span the viewport explicitly. */
+  .rooms-sheet { backdrop-filter: none; background: var(--bg); }
+  .channel-menu { position: fixed; z-index: var(--z-navigation-menu); inset: auto 0 0; width: 100vw; min-width: 0; padding: .75rem .75rem calc(.75rem + env(safe-area-inset-bottom, 0px)); border: 0; border-top: 1px solid color-mix(in srgb, var(--text) 12%, transparent); border-radius: 1.25rem 1.25rem 0 0; background: var(--glass-tint); backdrop-filter: var(--blur-heavy) saturate(1.3); -webkit-backdrop-filter: var(--blur-heavy) saturate(1.3); box-shadow: none; animation: sheet-in var(--dur-base) ease-out; }
+  .channel-menu button { min-height: 2.9rem; padding: 0 .9rem; border-radius: var(--radius-md); font: var(--text-base)/1 var(--ui); }
+  .channel-menu button:active { background: var(--panel-hi); }
+  /* Above-composer floaters: composer top edge = --composer-bottom + composer height (--composer-space minus kb and its 16px gap). */
+  .toast-region, .giphy-results, .new-below { --above-composer: calc(var(--composer-bottom) + var(--composer-space, 4rem) - var(--kb, 0px) - 16px + .5rem); }
+  .toast-region, .new-below { bottom: var(--above-composer); }
+  .toast-region.no-composer { bottom: calc(var(--nav-h) + var(--nav-lift) + .75rem); }
+  .giphy-results { inset: auto 0 var(--above-composer); }
+}
+/* A touchscreen laptop reports a coarse primary pointer between touches, which would take the selection
+   away from message text with a mouse or trackpad sitting right there. A fine pointer means copyable text. */
+@media (any-pointer: fine) {
+  .msg { user-select: text; -webkit-user-select: text; }
+}
+.sheet-backdrop { position: fixed; z-index: var(--z-sheet-backdrop); inset: 0; display: grid; align-items: end; background: #0006; backdrop-filter: var(--blur-light); }
+.action-sheet { display: grid; gap: .5rem; padding: .75rem .75rem calc(.75rem + env(safe-area-inset-bottom, 0px)); border-top: 1px solid color-mix(in srgb, var(--text) 12%, transparent); border-radius: 1.25rem 1.25rem 0 0; background: var(--glass-tint); backdrop-filter: var(--blur-heavy) saturate(1.3); -webkit-backdrop-filter: var(--blur-heavy) saturate(1.3); box-shadow: none; animation: sheet-in var(--dur-base) ease-out; }
+.sheet-head { display: flex; justify-content: space-between; padding: .25rem .5rem; color: var(--muted); font: var(--text-xs)/1.2 var(--mono); }
+.sheet-head strong { color: var(--accent); }
+.sheet-reactions { display: flex; gap: .25rem; overflow-x: auto; padding: .25rem; scrollbar-width: none; }
+.sheet-reactions button { display: inline-flex; align-items: center; justify-content: center; gap: .25rem; flex: 0 0 auto; min-height: 2.75rem; padding: 0 .45rem; border: 0; border-radius: var(--radius-lg); background: transparent; color: var(--text); font: var(--text-lg)/1 var(--mono); white-space: nowrap; cursor: pointer; }
+.sheet-reactions small { color: var(--muted); font-size: var(--text-2xs); }
+.sheet-reactions button:active { transform: scale(.94); }
+.sheet-actions { display: grid; }
+.sheet-divider { height: 1px; margin: .25rem 0; background: color-mix(in srgb, var(--text) 12%, transparent); }
+.sheet-actions button { min-height: 2.9rem; padding: 0 .9rem; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--text); font: var(--text-base)/1 var(--ui); text-align: left; cursor: pointer; display: flex; align-items: center; gap: .7rem; }
+.sheet-actions button:active { background: var(--panel-hi); }
+.sheet-actions button.danger { color: var(--danger); }
+.sheet-actions button.danger:active { background: color-mix(in srgb, var(--danger) 14%, transparent); }
+/* 1rem keeps iOS from zooming into the field; the native wheel picks the date and time. */
+.action-sheet .remind-form { padding: .25rem .5rem; }
+.action-sheet .remind-form input { min-height: 2.9rem; font-size: var(--text-base); }
+.action-sheet .remind-form-actions button { min-height: 2.75rem; flex: 1; }
+/* The sheet rides above the keyboard while the Add reaction field has focus. */
+dialog.custom-modal.sheet-modal { padding: 0 0 var(--kb, 0px); }
+.sheet-modal > .action-sheet { width: 100%; margin: auto 0 0; }
+/* The finger that opened the sheet is still down over it; Android would select the header text. */
+.sheet-modal { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.sheet-modal input { user-select: text; -webkit-user-select: text; }
+.sheet-reactions button:disabled { opacity: var(--disabled-opacity); cursor: default; }
+.sheet-reactions .reaction-search-open { color: var(--muted); }
+.sheet-reactions .reaction-search-open .menu-icon { width: 1.35rem; height: 1.35rem; }
+.sheet-reaction-search { display: grid; gap: .25rem; }
+.sheet-reaction-search .picker-search-input { min-height: 2.75rem; font-size: var(--text-base); }
+.sheet-reaction-search .reaction-search-grid { max-height: 14rem; }
+.sheet-reaction-search .reaction-search-grid button { min-height: 2.75rem; font-size: var(--text-xl); }
+.sheet-reaction-search .reaction-search-grid button:active { background: var(--panel-hi); }
+.sheet-reaction-search .reaction-search-code { display: none; }
+.reaction-search-back { min-height: 2.75rem; }
+@keyframes sheet-in { from { translate: 0 1.5rem; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .action-sheet, .msg, .message-entry { animation: none; transition: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .composer, .composer-send { transition: none; }
+  }
+
+.login input {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  outline: none;
+  background: var(--bg);
+  color: var(--text);
+  padding: 10px 12px;
+  font: inherit;
+}
+.login input:focus { border-color: var(--accent); }
+
+.login {
+  position: fixed;
+  inset: 0;
+  width: min(22.5rem, calc(100vw - 2rem));
+  height: max-content;
+  display: flex;
+  flex-direction: column;
+  gap: .8rem;
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.login-logo { width: 10rem; height: 10rem; margin: 0 auto 1.5rem; object-fit: contain; }
+.login label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--muted);
+  font-size: var(--text-base);
+}
+.auth-modal { perspective: 700px; backdrop-filter: none; }
+.auth-card { position: relative; padding: 1.25rem 1.25rem .85rem; }
+.invite-heading { margin-bottom: .8rem; }
+.auth-card .login-logo { width: 7rem; height: 7rem; margin-bottom: .75rem; }
+.auth-card .login-logo.login-wordmark { width: auto; height: 2.25rem; margin-bottom: 1.1rem; }
+.auth-card:has(.auth-view:not(.collapsed) .email-sent) > .login-logo { display: none; }
+.auth-card:has(.auth-view:not(.collapsed) .pair-panel) > .login-logo { display: none; }
+.auth-code { margin-top: .5rem; }
+.scan-panel { width: 100%; }
+.scan-video { width: 100%; max-width: 20rem; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-lg); background: #000; }
+.auth-card form { display: grid; gap: 1rem; }
+.auth-card .profile-error { display: flex; align-items: flex-start; gap: .5rem; width: 100%; color: var(--danger); font-size: var(--text-sm); line-height: 1.45; text-align: left; overflow-wrap: anywhere; }
+.auth-card .profile-error .menu-icon { margin-top: .15rem; }
+.auth-card > .profile-error { margin-top: 1rem; }
+.auth-card > .auth-denied-signout { margin-top: 1.25rem; }
+.auth-divider { display: flex; align-items: center; gap: .6rem; margin: 1.4rem 0 1.3rem; color: var(--muted); font: 650 var(--text-2xs)/1 var(--ui); letter-spacing: .12em; text-transform: uppercase; }
+.auth-divider::before, .auth-divider::after { content: ""; height: 1px; flex: 1; background: color-mix(in srgb, var(--line) 80%, transparent); }
+.auth-secondary { display: flex; align-items: center; justify-content: center; gap: .5rem; width: 100%; min-height: 2.5rem; padding: 0 .9rem; border: 1px solid color-mix(in srgb, var(--brand) 45%, var(--line)); border-radius: var(--radius-md); background: color-mix(in srgb, var(--brand) 6%, transparent); color: var(--text); font: 700 var(--text-sm)/1 var(--ui); cursor: pointer; transition: border-color var(--dur-fast) ease, background-color var(--dur-fast) ease; }
+.auth-secondary .menu-icon { color: var(--brand); }
+.auth-secondary:not(:disabled):hover, .auth-secondary:focus-visible { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 12%, transparent); outline: none; }
+.auth-secondary:disabled { opacity: var(--disabled-opacity); cursor: default; }
+@media (prefers-reduced-motion: reduce) { .auth-secondary { transition: none; } }
+.pair-panel { display: grid; justify-items: center; gap: .7rem; text-align: center; }
+.pair-panel h2 { margin: .1rem 0 0; font-size: var(--text-lg); }
+.pair-panel-copy { margin: 0; color: var(--muted); font-size: var(--text-sm); line-height: 1.45; }
+.pair-code-block { display: grid; place-items: center; gap: .65rem; margin: .15rem 0; }
+.pair-code-value { color: var(--text); font: 750 2rem/1 var(--mono); letter-spacing: .14em; text-indent: .14em; font-variant-numeric: tabular-nums; }
+.pair-code-block .invite-qr { padding: .7rem; border-radius: var(--radius-md); }
+.pair-code-block .invite-qr svg { width: 9rem; height: 9rem; }
+.auth-card label { display: grid; gap: .3rem; color: var(--muted); font-size: var(--text-sm); }
+.auth-step { display: grid; grid-template-rows: 1fr; opacity: 1; transition: grid-template-rows var(--dur-entrance) ease-in-out, opacity var(--dur-base) ease-in-out; }
+.auth-step.collapsed { grid-template-rows: 0fr; opacity: 0; pointer-events: none; }
+.auth-step > div { min-height: 0; overflow: hidden; margin-bottom: .75rem; }
+.auth-view > div { margin-bottom: 0; }
+.change-email { justify-self: stretch; width: 100%; }
+@media (hover: hover) { .change-email:hover { color: var(--text); } }
+.email-sent { display: grid; justify-items: center; gap: .75rem; padding: .75rem .5rem .5rem; text-align: center; }
+.email-sent h2 { margin: .15rem 0 0; font-size: var(--text-lg); }
+.email-sent p { margin: 0; color: var(--muted); line-height: 1.5; }
+.email-sent strong { color: var(--text); overflow-wrap: anywhere; }
+.dev-link { display: grid; justify-items: center; gap: .5rem; padding: .75rem; border: 1px dashed color-mix(in srgb, var(--brand) 50%, transparent); border-radius: var(--radius-lg); }
+.dev-link p { margin: 0; color: var(--muted); font-size: var(--text-xs); }
+.dev-link a { color: var(--brand); font-weight: 700; word-break: break-all; }
+.email-sent .change-email { justify-self: center; }
+.email-sent .login-code { display: flex; align-items: end; gap: .5rem; width: 100%; max-width: 20rem; margin-top: .25rem; text-align: left; }
+.email-sent .login-code label { flex: 1; }
+.email-sent .login-code input { font-variant-numeric: tabular-nums; letter-spacing: .12em; }
+.email-sent .login-code .btn-primary { flex: 0 0 auto; }
+.email-sent .login-code-error { margin: 0; color: var(--danger); }
+.auth-card input { width: 100%; padding: .7rem .8rem; border: 1px solid var(--line); border-radius: var(--radius-md); outline: none; background: var(--bg); color: var(--text); font: inherit; font-size: var(--text-base); }
+.auth-card input:focus { border-color: var(--brand); }
+.notice-card { position: relative; padding: 1.5rem; text-align: center; }

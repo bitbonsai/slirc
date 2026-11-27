@@ -8,7 +8,7 @@ process.chdir(new URL("..", import.meta.url).pathname);
 const { db } = await import("../src/db.ts");
 const { accountByNick } = await import("../src/accounts.ts");
 const { app } = await import("../src/server.ts");
-const { harnesses } = await import("../agent/src/harnesses/index.ts");
+const { harnessInfos: harnesses } = await import("../shared/harnesses.ts");
 
 const owner = accountByNick("bitbonsai")!;
 const token = "agent-harness-session";

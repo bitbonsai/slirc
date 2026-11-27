@@ -20,7 +20,7 @@
     <p class="members-empty" x-show="!members.rows().length" x-text="members.emptyText()"></p>
     <button type="button" class="link-button members-retry" x-show="members.error()" x-on:click="members.request()">Try again</button>
   </aside>
-  <dialog class="custom-modal sheet-modal" aria-label="Members" x-cloak x-effect="const open = !isDesktop && members.open && members.canShow(); if (open && !$el.open) $el.showModal(); else if (!open && $el.open) $el.close()" x-on:cancel.prevent="members.close()" x-on:close="members.close()" x-on:click="if ($event.target === $el) members.close()">
+  <dialog class="custom-modal sheet-modal" aria-label="Members" x-cloak x-modal="!isDesktop && members.open && members.canShow()" x-on:cancel.prevent="members.close()" x-on:close="members.close()" x-on:click="if ($event.target === $el) members.close()">
     <section class="action-sheet members-sheet">
       <div class="sheet-head"><strong>Members</strong><span x-text="members.countLabel()"></span></div>
       <div class="members-sheet-list">

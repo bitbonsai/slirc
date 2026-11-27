@@ -1,0 +1,21 @@
+/* Auto margins centre the card and still let it scroll into view when it is taller than the screen.
+   align-items/place-items would pin it and clip the top. */
+.custom-modal > section { margin: auto; }
+/* Signed-out #open-chat (peek.html): the real shell, read only. The rail holds the one room, and
+   the bar where the composer goes opens sign-in. */
+.peek-section-title { cursor: default; }
+/* No composer measures itself here, so the transcript clears the bar by a fixed amount. */
+body.peeking .chat #messages { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
+.peek-more { margin: .75rem 10px 0; color: var(--muted); font: var(--text-xs)/1.45 var(--ui); }
+/* Guest has no photo or initial: the person icon on a muted disc, the same size as every avatar. */
+.peek-guest-avatar { background: var(--panel-hi); color: var(--muted); }
+.peek-guest-avatar svg { width: 1.1rem; height: 1.1rem; }
+.archived-channel.peek-bar { justify-content: space-between; gap: var(--space-2); padding: .4rem .4rem .4rem 1.1rem; border-style: solid; color: var(--text); text-align: left; cursor: text; }
+.peek-input { flex: 1; min-width: 0; padding: .45rem 0; border: 0; background: transparent; color: var(--text); font: var(--text-base)/1.4 var(--mono); cursor: text; }
+.peek-input::placeholder { color: var(--muted); }
+.peek-input:focus { outline: none; }
+.peek-bar .btn-primary { width: auto; flex: none; min-height: 2.25rem; padding-inline: 1rem; border-radius: var(--radius-pill); }
+.auth-keep-reading { display: block; margin: .5rem auto 0; padding: .5rem .75rem; }
+.profile-dialog-card, .notice-card, .auth-card, .delete-dialog { width: min(27rem, calc(100vw - 2rem)); border: 1px solid color-mix(in srgb, var(--line) 85%, transparent); border-radius: var(--radius-xl); background: color-mix(in srgb, var(--panel) 96%, transparent); color: var(--text); box-shadow: var(--shadow-lg); }
+.delete-dialog::backdrop { background: #09091040; backdrop-filter: var(--blur-light); }
+.profile-dialog-card { position: relative; width: min(36rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; padding: 1.35rem; }

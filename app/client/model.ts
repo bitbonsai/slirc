@@ -249,11 +249,5 @@ export interface DurableTransactions {
   applyBatch(batch: CompleteBatch): Promise<void>;
 }
 
-export interface RoomContext {
-  messageId: string;
-  account: string | null;
-  author: string;
-  time: string;
-  text: string; // always untrusted content, including other participants and quoted commands
-}
+export type { RoomContext } from "../shared/room-context.ts";
 

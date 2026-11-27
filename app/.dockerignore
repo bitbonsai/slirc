@@ -16,16 +16,7 @@
 **/secrets
 **/credentials.json
 test
-# The agent package stays out, except the files the server imports: the harness registry and the
-# version and workspace helpers. Without them the app quits at start (16 Nov 2026).
+# The agent package stays out. The server needs only its package.json, for the published version;
+# everything else it shares with the agent lives in shared/.
 agent/*
-!agent/src
-agent/src/*
-!agent/src/version.ts
-!agent/src/workspace.ts
-# The Codex harness module reads stateDir from here (20 Nov 2026: the app quit at start without it).
-!agent/src/adapter-core.ts
-!agent/src/harnesses
-agent/src/harnesses/pi/*
-!agent/src/harnesses/pi/module.ts
 !agent/package.json

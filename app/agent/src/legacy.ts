@@ -1,4 +1,4 @@
-import { IrcClient, type ParsedMessage } from "../../src/irc.ts";
+import { IrcClient, type ParsedMessage } from "../../shared/irc.ts";
 import { loadCredentials, NotPairedError, type Credentials } from "./credentials.ts";
 import { ownerFromAgentNick } from "./listen.ts";
 import { MentionWatcher, type Mention } from "./wait.ts";

@@ -1,6 +1,6 @@
+import { escapeHtml } from "../shared/escape-html.ts";
 import { brandKind } from "./config.ts";
 
-const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char] as string));
 const SANS = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 
 const shell = (origin: string, subject: string, preheader: string, content: string, footer: string) => `<!doctype html>

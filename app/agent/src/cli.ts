@@ -6,7 +6,7 @@ import { harnesses, type Harness } from "./harnesses/index.ts";
 import type { Env } from "./harnesses/types.ts";
 import { writeArm } from "./arm.ts";
 import { compareVersions, VERSION } from "./version.ts";
-import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, workspaceArg } from "./workspace.ts";
+import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, workspaceArg } from "../../shared/workspace.ts";
 
 // The `slirc-agent` command. Everything here is harness-neutral: it reaches harnesses only
 // through the registry. Runs the same under Node and Bun (npx or bunx), with no npm specifics.

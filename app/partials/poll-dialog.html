@@ -1,4 +1,4 @@
-  <dialog id="poll-dialog" class="custom-modal poll-modal" :class="!isDesktop && 'sheet-modal'" aria-labelledby="poll-dialog-title" x-cloak x-effect="const show = authenticated && polls.dialogOpen; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="polls.closeDialog()" x-on:click="if ($event.target === $el) polls.closeDialog()">
+  <dialog id="poll-dialog" class="custom-modal poll-modal" :class="!isDesktop && 'sheet-modal'" aria-labelledby="poll-dialog-title" x-cloak x-modal="authenticated && polls.dialogOpen" x-on:cancel.prevent="polls.closeDialog()" x-on:click="if ($event.target === $el) polls.closeDialog()">
     <section class="poll-dialog-card" :class="isDesktop ? 'notice-card' : 'action-sheet'">
       <form class="poll-form" novalidate x-on:submit.prevent="polls.submit()">
         <div class="poll-dialog-head">
@@ -41,7 +41,7 @@
       </form>
     </section>
   </dialog>
-  <dialog id="poll-votes" class="custom-modal poll-modal" :class="!isDesktop && 'sheet-modal'" aria-labelledby="poll-votes-title" x-cloak x-effect="const show = authenticated && !!polls.votesFor; if (show && !$el.open) { $el.showModal(); $nextTick(() => $el.querySelector('.dialog-close')?.focus()); } else if (!show && $el.open) $el.close()" x-on:cancel.prevent="polls.closeVotes()" x-on:click="if ($event.target === $el) polls.closeVotes()">
+  <dialog id="poll-votes" class="custom-modal poll-modal" :class="!isDesktop && 'sheet-modal'" aria-labelledby="poll-votes-title" x-cloak x-modal="authenticated && !!polls.votesFor" data-modal-focus=".dialog-close" x-on:cancel.prevent="polls.closeVotes()" x-on:click="if ($event.target === $el) polls.closeVotes()">
     <section class="poll-dialog-card poll-votes-card" :class="isDesktop ? 'notice-card' : 'action-sheet'">
       <div class="poll-dialog-head">
         <h2 id="poll-votes-title">Votes</h2>

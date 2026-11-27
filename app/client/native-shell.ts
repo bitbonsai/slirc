@@ -4,7 +4,7 @@
 // have only slircShell, so the handler itself is the test, not html.mac-shell. Browsers and the
 // installed Home Screen app have neither, so "Switch workspace" shows only where the call works.
 type Win = {
-  webkit?: { messageHandlers?: { slircSwitchWorkspace?: { postMessage: (body: unknown) => void } } };
+  webkit?: { messageHandlers?: { slircSwitchWorkspace?: { postMessage: (body: unknown) => void }; slircNotify?: { postMessage: (body: unknown) => Promise<unknown> } } };
   location?: { assign: (url: string) => void };
   SlircShellInfo?: { version?: unknown; build?: unknown };
   SlircWorkspaces?: unknown;
@@ -12,7 +12,8 @@ type Win = {
   Capacitor?: {
     isNativePlatform?: () => boolean;
     isPluginAvailable?: (name: string) => boolean;
-    Plugins?: { SlircShell?: { ready?: () => Promise<unknown>; switchWorkspace?: (options?: { link: string }) => Promise<unknown>; workspaces?: () => Promise<{ workspaces?: unknown }> } };
+    Plugins?: { SlircShell?: { ready?: () => Promise<unknown>; switchWorkspace?: (options?: { link: string }) => Promise<unknown>; workspaces?: () => Promise<{ workspaces?: unknown }>;
+      notificationStatus?: () => Promise<unknown>; enableNotifications?: () => Promise<unknown> } };
   };
 };
 
@@ -127,4 +128,52 @@ export async function openWorkspace(origin: string, win: Win = globalThis as Win
   if (iosShell(win)) await win.Capacitor?.Plugins?.SlircShell?.switchWorkspace?.({ link: origin + "/" });
   else if (macShell(win)) win.webkit?.messageHandlers?.slircSwitchWorkspace?.postMessage({ open: origin });
   else win.location?.assign(browserLink);
+}
+
+// Notifications inside the apps, where WKWebView has no web push or Notification API. The Mac app
+// answers a slircNotify message handler and shows what the page hands it with the system's
+// notifications; the iOS app's SlircShell plugin asks for permission and returns the APNs device
+// token, which the server pushes to. Builds from before these have neither and get null, as do
+// browsers, which keep web push.
+export type ShellPermission = "granted" | "denied" | "default";
+export type ShellNotificationState = { permission: ShellPermission; token?: string; environment?: "sandbox" | "production" };
+export type ShellNotifications = { platform: "mac" | "ios"; status: () => Promise<ShellNotificationState>; request: () => Promise<ShellNotificationState> };
+
+export function readShellState(value: unknown): ShellNotificationState {
+  const raw = (value || {}) as Record<string, unknown>;
+  const permission: ShellPermission = raw.permission === "granted" || raw.permission === "denied" ? raw.permission : "default";
+  const token = typeof raw.token === "string" && /^[0-9a-f]{64,200}$/i.test(raw.token) ? raw.token.toLowerCase() : undefined;
+  const environment = raw.environment === "sandbox" || raw.environment === "production" ? raw.environment : undefined;
+  return { permission, ...(token ? { token } : {}), ...(environment ? { environment } : {}) };
+}
+
+export function shellNotifications(win: Win = globalThis as Win): ShellNotifications | null {
+  const plugin = win.Capacitor?.Plugins?.SlircShell;
+  if (iosShell(win) && typeof plugin?.notificationStatus === "function" && typeof plugin.enableNotifications === "function") {
+    return { platform: "ios", status: async () => readShellState(await plugin.notificationStatus!()), request: async () => readShellState(await plugin.enableNotifications!()) };
+  }
+  const mac = win.webkit?.messageHandlers?.slircNotify;
+  if (typeof mac?.postMessage === "function") {
+    return { platform: "mac", status: async () => readShellState(await mac.postMessage({ action: "status" })), request: async () => readShellState(await mac.postMessage({ action: "request" })) };
+  }
+  return null;
+}
+
+// A notification the server sent this page's account (the "notify" event). The Mac app shows it;
+// clicking it brings that workspace forward on its route. Skipped while the window has focus on
+// that same conversation, which the person is already reading.
+export type ShellNote = { title: string; body: string; tag: string; url: string };
+export function showShellNotification(data: unknown, win: Win = globalThis as Win, focusedOn: (url: string) => boolean = onScreen): boolean {
+  const note = data as Partial<ShellNote> | null;
+  const mac = win.webkit?.messageHandlers?.slircNotify;
+  if (typeof mac?.postMessage !== "function" || !note || typeof note.title !== "string" || typeof note.body !== "string") return false;
+  const url = typeof note.url === "string" && note.url.startsWith("/") && !note.url.startsWith("//") ? note.url : "/";
+  if (focusedOn(url)) return false;
+  void Promise.resolve(mac.postMessage({ action: "show", title: note.title, body: note.body, tag: typeof note.tag === "string" ? note.tag : "", path: url })).catch(() => {});
+  return true;
+}
+
+function onScreen(url: string): boolean {
+  if (typeof document === "undefined" || !document.hasFocus() || url === "/") return false;
+  return location.pathname + location.hash === url;
 }

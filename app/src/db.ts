@@ -135,6 +135,12 @@ db.exec(`
     width INTEGER,
     height INTEGER
   );
+  CREATE TABLE IF NOT EXISTS native_devices (
+    token TEXT PRIMARY KEY,
+    nick TEXT NOT NULL,
+    environment TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
   CREATE TABLE IF NOT EXISTS notification_prefs (
     nick TEXT PRIMARY KEY,
     preference TEXT NOT NULL

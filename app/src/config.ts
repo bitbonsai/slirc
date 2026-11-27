@@ -102,6 +102,21 @@ export function inactiveHelper(nick: string | null | undefined): boolean {
   return (HELPER_NICKS as readonly string[]).includes(key) && !enabledHelpers().includes(key);
 }
 
+// iPhone push through Apple (APNs) with a token key. APNS_KEY holds the .p8 file's text (literal
+// "\n" sequences are read as newlines, so it fits on one env line), APNS_KEY_ID its 10-character
+// key ID, APNS_TEAM_ID the Apple team and APNS_TOPIC the iOS app's bundle ID. Missing any of them
+// means no iPhone push on this instance: the app says so in Settings and nothing else changes.
+// The values never leave this function except to sign APNs requests; nothing logs them.
+export type ApnsConfig = { key: string; keyId: string; teamId: string; topic: string };
+export function apnsConfig(env: NodeJS.ProcessEnv = process.env): ApnsConfig | null {
+  const key = (env.APNS_KEY || "").replace(/\\n/g, "\n").trim();
+  const keyId = (env.APNS_KEY_ID || "").trim();
+  const teamId = (env.APNS_TEAM_ID || "").trim();
+  const topic = (env.APNS_TOPIC || "").trim();
+  if (!key.includes("PRIVATE KEY") || !keyId || !teamId || !topic) return null;
+  return { key, keyId, teamId, topic };
+}
+
 // Helpers every verified member can find in Contacts and New DM. poll and welcome act only in
 // channels, so they stay out.
 export function contactHelpers(): string[] {

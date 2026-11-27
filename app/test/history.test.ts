@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { emojify, setEmojiTable } from "../public/history.js";
+import { emojify, setEmojiTable } from "../shared/history.ts";
 import emojiRows from "../public/vendor/emoji.json" with { type: "json" };
 
 // Real vendored table, same as the app fetches at runtime, so these tests

@@ -1,5 +1,5 @@
 import { type Operation } from "@client/model.ts";
-import { CONCAT_TAG, wireParts } from "../public/multiline.js";
+import { CONCAT_TAG, wireParts } from "../shared/multiline.ts";
 import { parseIrcLine } from "@client/irc.ts";
 import { SendRefusedError } from "@client/outbox.ts";
 import { actionBody, isActionText } from "@client/render.ts";

@@ -1,9 +1,8 @@
 // Magic-link email. Table layout and inline styles: email clients ignore most modern CSS.
 // Logo is hotlinked from the app origin, the only external asset.
 
+import { escapeHtml } from "../shared/escape-html.ts";
 import { brandKind, slircMode } from "./config.ts";
-
-const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char] as string));
 
 // Room names read as code, in the same green the button uses. `nowrap` keeps the
 // name intact: without it the hyphen becomes a break point at 440px. Email clients

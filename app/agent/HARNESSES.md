@@ -13,7 +13,7 @@ Codex (`src/harnesses/codex/`) runs its hooks and MCP servers under a shared app
 ```
 src/harnesses/
   types.ts        the Harness interface
-  index.ts        the registry: export const harnesses = [pi]
+  index.ts        the registry of modules: export const harnesses = [pi]
   pi/
     module.ts     setup: detect, status, install, uninstall, launch
     extension.ts  runtime: runs inside Pi and talks to Slirc
@@ -24,7 +24,7 @@ The core owns everything that is the same for every harness:
 
 - `src/cli.ts` runs `slirc-agent <workspace>`: it finds installed harnesses, checks the workspace's version, calls the module's `install` steps, and either starts the harness or says what to type in it.
 - `src/adapter-core.ts` holds `SessionClient`: pairing, the binding secret and its private state file, attach and heartbeat, the event stream, accept, reply, fail and history.
-- The server reads the registry (`app/src/agent-connect.ts`) to decide which harness ids it accepts and which ones the Agents page, `/welcome` and `/api/agent/version` offer.
+- The server reads the data half of the registry, `app/shared/harnesses.ts`, never the modules (`app/src/agent-connect.ts`), to decide which harness ids it accepts and which ones the Agents page, `/welcome` and `/api/agent/version` offer.
 
 A module owns two things:
 
@@ -33,7 +33,7 @@ A module owns two things:
 
 ## The interface
 
-`src/harnesses/types.ts` is the contract. Field by field:
+`src/harnesses/types.ts` is the contract. The first six fields below are the data half, `HarnessInfo` in `app/shared/harnesses.ts`; the server reads only those. Field by field:
 
 - `id`: lowercase, short, stable. It is the protocol value the runtime sends and the start of the agent's nick, as in `pi-3f2a`.
 - `name`: what people read, such as `Pi`.
@@ -85,6 +85,7 @@ A made-up harness called Echo, whose CLI is `echo-agent` and which loads plugins
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { harnessInfo } from "../../../../shared/harnesses.ts";
 import type { Harness } from "../types.ts";
 import { onPath } from "../pi/module.ts";
 import plugin from "../../../dist/echo-plugin.js" with { type: "text" };
@@ -93,11 +94,7 @@ const file = (env: Record<string, string | undefined>) => join(env.HOME || homed
 const version = (path: string) => readFileSync(path, "utf8").match(/slirc-agent (\d+\.\d+\.\d+)/)?.[1];
 
 const echo: Harness = {
-  id: "echo",
-  name: "Echo",
-  released: false,
-  homepage: "https://echo.example",
-  sessionCommand: (workspace) => workspace ? `/slirc ${workspace}` : "/slirc",
+  ...harnessInfo.echo, // the data half, from app/shared/harnesses.ts
   reloadHint: "/plugins reload",
   detect: (env) => ({ installed: onPath(env, "echo-agent"), inside: env.ECHO_AGENT === "1" }),
   status(env, wanted) {
@@ -116,9 +113,12 @@ const echo: Harness = {
 export default echo;
 ```
 
-Then add it to the registry, and nowhere else:
+Then add it to the registry, and nowhere else. The registry has two halves: the data the server reads, and the module the CLI runs.
 
 ```ts
+// app/shared/harnesses.ts: add an entry to harnessInfo and to harnessInfos
+echo: { id: "echo", name: "Echo", released: false, homepage: "https://echo.example", sessionCommand: slashCommand },
+
 // src/harnesses/index.ts
 import echo from "./echo/module.ts";
 export const harnesses: Harness[] = [pi, echo];

@@ -9,6 +9,7 @@
 import { createHash } from "node:crypto";
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { escapeHtml } from "../shared/escape-html.ts";
 
 const SRC_DIR = join(import.meta.dir, "..", "docs");
 const OUT_DIR = join(import.meta.dir, "..", "public", "docs");
@@ -83,13 +84,6 @@ export function docsConfig(env: NodeJS.ProcessEnv = process.env): DocsConfig {
   return { appOrigin, docsOrigin, host, openChatHref, docsBase };
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 function navHtml(activeKey: string, openChatHref: string): string {
   let out = `      <a class="nav-link nav-app" href="${escapeHtml(openChatHref)}">Open chat</a>\n      <p class="nav-section">Guides</p>\n`;

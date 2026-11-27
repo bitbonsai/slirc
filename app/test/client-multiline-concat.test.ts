@@ -5,7 +5,7 @@ import { expect, test } from "bun:test";
 import type { Operation } from "@client/model.ts";
 import { serializeOperation } from "@client/protocol.ts";
 import { eventsFromBatch } from "@client/sync.ts";
-import { joinParts, wireParts } from "../public/multiline.js";
+import { joinParts, wireParts } from "../shared/multiline.ts";
 
 const wireBytes = (line: string) => new TextEncoder().encode(line.replace(/^@\S+ /, "")).length + 2;
 

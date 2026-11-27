@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { reactionLine } from "../public/reactions.js";
+import { reactionLine } from "../shared/reactions.ts";
 
 test("reaction lines carry current and draft reply tags", () => {
   expect(reactionLine("#room", "a b;c", "👍")).toBe("@+reply=a\\sb\\:c;+draft/reply=a\\sb\\:c;+draft/react=👍 TAGMSG #room");

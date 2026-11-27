@@ -11,7 +11,7 @@ import { afterAll, beforeAll, expect, test } from "bun:test";
 import { connect, type Socket } from "node:net";
 import type { Operation } from "@client/model.ts";
 import { serializeOperation } from "@client/protocol.ts";
-import { isConcat, joinParts, wireParts } from "../public/multiline.js";
+import { isConcat, joinParts, wireParts } from "../shared/multiline.ts";
 import { parseLine } from "../src/irc.ts";
 
 const IMAGE = process.env.SLIRC_TEST_ERGO_IMAGE || "ghcr.io/bitbonsai/slirc-ergo:v2.19.1-63c743a";

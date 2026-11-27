@@ -1,5 +1,5 @@
-import type { ParsedMessage } from "../../src/irc.ts";
-import type { RoomContext } from "../../client/model.ts";
+import type { ParsedMessage } from "../../shared/irc.ts";
+import type { RoomContext } from "../../shared/room-context.ts";
 import { isOwnerMention } from "./listen.ts";
 
 export type MentionTrigger = { room: string; thread?: string; from: string; text: string; msgid: string };

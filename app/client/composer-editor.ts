@@ -1,3 +1,4 @@
+import { escapeHtml } from "../shared/escape-html.ts";
 import { emojiContext, type EmojiSuggestion } from "@client/emoji.ts";
 import { type createEmojiPicker } from "@client/emoji-picker.ts";
 import { type createGiphyPicker } from "@client/giphy-picker.ts";
@@ -508,12 +509,6 @@ export function createComposerEditor(reactive: <T extends object>(value: T) => T
       document.execCommand(inCode ? "insertText" : "insertHTML", false, inCode ? selected : `<code>${escapeHtml(selected)}</code>`);
     }
     if (serializeComposer(input) !== String(core.composer ?? "")) onInput({ target: input } as unknown as Event);
-  }
-
-  function escapeHtml(text: string): string {
-    const element = document.createElement("span");
-    element.textContent = text;
-    return element.innerHTML;
   }
 
   function init(): void {

@@ -1,0 +1,120 @@
+/* Agents off: a top-of-page empty state that says what agents are and who turns them on. */
+.agents-off { display: grid; gap: var(--space-2); margin: 0 0 var(--space-4); padding: var(--space-4); border: 1px solid color-mix(in srgb, var(--line) 75%, transparent); border-radius: var(--radius-md); background: color-mix(in srgb, var(--panel-hi) 42%, transparent); }
+.agents-off h3 { margin: 0; font: 700 var(--text-lg)/1.3 var(--ui); }
+.agents-off p { margin: 0; color: var(--muted); font-size: var(--text-sm); line-height: 1.45; }
+.agents-off .agents-off-action { color: var(--text); }
+.agents-off-line { justify-self: start; max-width: 100%; overflow-x: auto; padding: .35rem .55rem; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--bg) 55%, transparent); font: var(--text-xs)/1.4 var(--mono); white-space: nowrap; }
+.agents-off-link { justify-self: start; color: var(--brand); font-size: var(--text-sm); }
+/* Phone: read top-down, with the copy command as the main action and links big enough to tap. */
+/* Agents page: a one-line lede, a panel per step (paste the command, enter the code), then the agent list.
+   Panels take the phone glass tokens, so the page reads like the tab bar on top of the same glow. */
+.agents-page .agent-install, .agents-page .agent-panel, .agents-page .agent-list { grid-template-columns: minmax(0, 1fr); }
+.agents-page .agent-install { display: grid; gap: var(--space-3); margin: 0 0 var(--space-5); }
+.agents-page .agent-lede { margin: 0 0 0 var(--space-1); color: var(--text); font-size: var(--text-base); line-height: 1.45; }
+.agents-page .agent-lede a { color: var(--brand); white-space: nowrap; }
+.agents-page .agent-panel { display: grid; gap: var(--space-2); margin: 0; padding: var(--space-3); border: 0; border-radius: var(--radius-lg); background: var(--nav-surface); box-shadow: var(--nav-edge, inset 0 0 0 1px color-mix(in srgb, var(--line) 55%, transparent)); }
+.agents-page .agent-panel-title { flex-basis: auto; margin: 0; color: var(--text); font: 650 var(--text-sm)/1.45 var(--ui); }
+.agents-page .agent-pair { margin: 0; border-color: transparent; background: color-mix(in srgb, var(--bg) 60%, transparent); }
+.agents-page .agent-quiet, .agents-page .agent-terminal-note { margin: 0; }
+.agents-page .agent-code-row { display: flex; gap: var(--space-2); }
+.agents-page .agent-code-row input { flex: 1; min-width: 0; }
+.agents-page .agent-code-row button { flex: 0 0 auto; }
+.agents-page .agent-list { gap: var(--space-2); }
+.agents-page .agent-empty { margin: 0 0 0 var(--space-1); }
+.agents-page .agent-list-title { margin: 0 0 0 var(--space-1); color: var(--muted); font: 650 var(--text-xs)/1.3 var(--ui); letter-spacing: .04em; text-transform: uppercase; }
+.agents-page .agent-rows { gap: 0; padding: var(--space-1); list-style: none; }
+.agents-page .agent-rows .agent-row { position: relative; align-items: center; gap: var(--space-1); min-height: 3.5rem; padding: .3rem .2rem .3rem .45rem; border: 0; border-radius: var(--radius-md); background: transparent; }
+/* A hairline between rows, starting under the names like an iOS list. */
+.agents-page .agent-rows .agent-row + .agent-row::before { content: ""; position: absolute; top: 0; left: 3.35rem; right: .45rem; height: 1px; background: color-mix(in srgb, var(--line) 55%, transparent); }
+@media (hover: hover) { .agents-page .agent-rows .agent-row:hover { background: color-mix(in srgb, var(--panel-hi) 45%, transparent); } }
+.agents-page .agent-open { gap: var(--space-3); min-height: 2.75rem; }
+.agents-page .agent-avatar { position: relative; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-round); background: var(--panel-hi); }
+.agents-page .agent-avatar img { width: 1.35rem; height: 1.35rem; object-fit: contain; }
+/* Online state as a dot on the harness icon; the label beside the name says it in words. */
+.agents-page .agent-avatar::after { content: ""; position: absolute; right: -.05rem; bottom: -.05rem; width: .7rem; height: .7rem; border-radius: var(--radius-round); background: var(--muted); box-shadow: 0 0 0 2px var(--panel); }
+.agents-page .agent-avatar[data-state="ready"]::after { background: var(--brand); }
+.agents-page .agent-avatar[data-state="working"]::after { background: var(--mine); }
+.agents-page .agent-avatar[data-state="input"]::after { background: var(--attention); }
+.agents-page .agent-avatar[data-state="unverified"]::after { background: var(--panel); box-shadow: 0 0 0 2px var(--panel), inset 0 0 0 1.5px var(--muted); }
+.agents-page .agent-copy strong { font: 650 var(--text-sm)/1.3 var(--ui); }
+.agents-page .agent-copy small { display: flex; align-items: center; gap: .35rem; min-width: 0; }
+.agents-page .agent-copy .agent-status { font: 600 var(--text-xs)/1.3 var(--ui); }
+.agents-page .agent-copy .agent-status::before { display: none; }
+.agents-page .agent-sub { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agents-page .agent-sub::before { content: "·"; margin-right: .35rem; }
+.agents-page .agent-icon-button { display: grid; place-items: center; flex: 0 0 auto; width: 2.25rem; min-width: 0; height: 2.25rem; padding: 0; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--muted); cursor: pointer; transition: color var(--dur-fast) ease, background-color var(--dur-fast) ease; }
+.agents-page .agent-icon-button .menu-icon, .agents-page .agent-icon-button svg { width: 1rem; height: 1rem; }
+.agents-page .agent-icon-button:hover, .agents-page .agent-icon-button:focus-visible { background: var(--panel-hi); color: var(--text); outline: none; }
+.agents-page .agent-icon-button.danger:hover, .agents-page .agent-icon-button.danger:focus-visible { color: var(--danger); }
+.agents-page .agent-connect-card { margin: 0 0 var(--space-4); box-shadow: inset 0 0 0 1px var(--brand); }
+.agents-page .agent-connect-card .agent-step { margin: 0; color: var(--text); font: 650 var(--text-sm)/1.45 var(--ui); }
+.agents-page.mobile-screen .agents-settings { padding-top: var(--space-4); }
+.agents-page.mobile-screen .agent-pair { padding: .3rem .3rem .3rem .8rem; }
+.agents-page.mobile-screen .agent-pair code { font-size: var(--text-sm); }
+.agents-page.mobile-screen .agent-pair .copy-button, .agents-page.mobile-screen .agent-icon-button { width: 2.75rem; height: 2.75rem; }
+/* 44px tap targets for Use npx and Guide, pulled in so the panel stays tight. */
+.agents-page.mobile-screen .agent-quiet { flex-wrap: wrap; gap: 0 .6rem; }
+.agents-page.mobile-screen .agent-quiet:has(.link-button) { margin: -.55rem 0; }
+.agents-page.mobile-screen .agent-quiet .link-button, .agents-page.mobile-screen .agent-quiet a { display: inline-flex; align-items: center; min-height: 2.75rem; font-size: var(--text-sm); }
+.agent-connect-card { display: grid; gap: .35rem; margin: 0 0 1rem; padding: .7rem; border: 1px solid var(--brand); border-radius: var(--radius-md); }
+.agent-connect-card code { color: var(--text); font: var(--text-sm)/1.4 var(--mono); letter-spacing: .06em; }
+.agent-connect-actions { display: flex; justify-content: flex-end; gap: .5rem; }
+.agent-code-form { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin: .6rem 0 0; }
+.agent-code-form label { flex-basis: 100%; color: var(--muted); font-size: var(--text-xs); }
+.agent-code-form input { flex: 1; min-width: 8rem; font: var(--text-sm)/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.agent-code-form .btn-secondary { flex: 0 0 auto; }
+.agent-connect-code { margin: .25rem 0 .5rem; color: var(--muted); font-size: var(--text-sm); line-height: 1.5; }
+.agent-connect-code code { margin: 0 .15rem; }
+.agent-step { margin: 0 0 .4rem; color: var(--muted); font-size: var(--text-xs); line-height: 1.45; }
+.agent-step code { color: var(--text); font: var(--text-xs)/1.4 var(--mono); user-select: all; }
+.copy-button:disabled { opacity: var(--disabled-opacity); cursor: default; }
+.profile-dialog-card .pair-code-form { display: flex; align-items: end; gap: .5rem; margin: 0 0 .9rem; }
+.pair-code-form label { flex: 1; }
+.pair-code-form input { font-variant-numeric: tabular-nums; letter-spacing: .08em; }
+.pair-code-form .btn-secondary { flex: 0 0 auto; }
+.copy-button { position: relative; display: grid; place-items: center; width: 2.25rem; height: 2.25rem; flex: 0 0 auto; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--muted); cursor: pointer; }
+.copy-button:focus-visible { color: var(--text); background: var(--panel-hi); outline: none; }
+@media (hover: hover) { .copy-button:hover { color: var(--text); background: var(--panel-hi); outline: none; } }
+.copy-button:not(:disabled):active { transform: scale(.92); }
+.copy-button .menu-icon { grid-area: 1 / 1; transition: opacity var(--dur-fast) ease, transform var(--dur-fast) ease; }
+.copy-button .check-glyph { color: var(--brand); opacity: 0; transform: scale(.6); }
+.copy-button.copied .copy-glyph { opacity: 0; transform: scale(.6); }
+.copy-button.copied .check-glyph { opacity: 1; transform: scale(1); }
+.channel-settings > p, .session-settings > p { margin: 0 0 1rem; color: var(--muted); font-size: var(--text-sm); }
+.channel-settings h3 { margin: 0 0 .35rem; }
+.channel-settings .mobile-settings-body > p { margin: 0 0 1rem; color: var(--muted); font-size: var(--text-sm); }
+.profile-dialog-card .field-hint, .field-hint { margin: -.35rem 0 0; color: var(--muted); font-size: var(--text-xs); line-height: 1.4; }
+.field-hint a { color: var(--brand); }
+.profile-dialog-card select { appearance: none; -webkit-appearance: none; padding-right: 2.4rem; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239399b2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right .85rem center; background-size: 1rem; }
+.session-more { margin-top: .2rem; }
+.session-more summary { display: inline-block; min-height: 2.25rem; padding: .5rem .25rem; color: var(--muted); font: 650 var(--text-sm)/1 var(--ui); cursor: pointer; list-style: none; }
+.session-more summary::-webkit-details-marker { display: none; }
+.session-more summary::after { content: ""; display: inline-block; width: .45rem; height: .45rem; margin-left: .45rem; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-.15rem) rotate(45deg); transition: transform var(--dur-entrance) ease; }
+.session-more[open] summary::after { transform: translateY(.05rem) rotate(-135deg); }
+.session-more summary:focus-visible { color: var(--text); outline: none; }
+@media (hover: hover) { .session-more summary:hover { color: var(--text); outline: none; } }
+.session-list { display: grid; gap: .4rem; }
+.session-row { display: flex; min-height: 3.25rem; align-items: center; justify-content: space-between; gap: .75rem; padding: .5rem .65rem; border: 1px solid color-mix(in srgb, var(--line) 72%, transparent); border-radius: var(--radius-md); background: color-mix(in srgb, var(--panel-hi) 42%, transparent); }
+.session-row > span { min-width: 0; flex: 1; }
+.session-row > button { flex-shrink: 0; }
+.session-row strong, .session-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.session-row strong { font: 650 var(--text-sm)/1.35 var(--ui); display: flex; align-items: center; gap: .45rem; }
+.session-row strong > span { overflow: hidden; text-overflow: ellipsis; }
+.session-row small { color: var(--muted); font-size: var(--text-2xs); }
+.session-row strong b { padding: .12rem .35rem; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--brand); font-size: .62rem; text-transform: uppercase; }
+.session-row strong b.pending { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning); }
+.install-banner { margin: .35rem .15rem 0; flex: 0 0 auto; }
+.install-banner .menu-icon { flex: 0 0 auto; width: 1.25rem; height: 1.25rem; color: var(--brand); }
+.settings-toggle { display: flex; align-items: center; justify-content: space-between; gap: .75rem; width: 100%; min-height: 3.5rem; padding: .6rem .75rem; border: 1px solid color-mix(in srgb, var(--line) 75%, transparent); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--bg) 55%, transparent); color: var(--text); text-align: left; cursor: pointer; }
+.settings-toggle > span:first-child { min-width: 0; display: flex; align-items: center; gap: .5rem; }
+.settings-toggle small::before { content: "·"; margin-right: .5rem; }
+.settings-toggle strong { font: 700 var(--text-sm)/1.25 var(--ui); }
+.settings-toggle small { color: var(--muted); font-size: var(--text-xs); }
+/* The trailing span is drawn as a switch; aria-checked carries the state and aria-label the name. */
+.settings-toggle > span:last-child { position: relative; flex: 0 0 auto; width: 2.5rem; height: 1.5rem; border-radius: var(--radius-pill); background: var(--secondary-fill); color: transparent; font-size: 0; transition: background-color var(--dur-fast) var(--ease-standard); }
+.settings-toggle > span:last-child::after { content: ""; position: absolute; top: .1875rem; left: .1875rem; width: 1.125rem; height: 1.125rem; border-radius: var(--radius-round); background: var(--muted); transition: translate var(--dur-fast) var(--ease-standard), background-color var(--dur-fast) var(--ease-standard); }
+.settings-toggle[aria-checked="true"] > span:last-child { background: var(--brand-fill); }
+.settings-toggle[aria-checked="true"] > span:last-child::after { translate: 1rem 0; background: var(--on-brand); }
+@media (prefers-reduced-motion: reduce) { .settings-toggle > span:last-child, .settings-toggle > span:last-child::after { transition: none; } }
+.settings-toggle:disabled { cursor: default; opacity: var(--disabled-opacity); }
+.settings-toggle .menu-icon { color: var(--muted); }

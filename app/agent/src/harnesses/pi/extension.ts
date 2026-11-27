@@ -6,7 +6,7 @@ import { Type } from "typebox";
 import { errorText, repoName, SessionClient, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
 import { consents, isDelivery, takeArm } from "../../arm.ts";
 import { VERSION } from "../../version.ts";
-import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, workspaceArg } from "../../workspace.ts";
+import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, workspaceArg } from "../../../../shared/workspace.ts";
 
 type PiApi = {
   registerCommand(name: string, options: any): void;

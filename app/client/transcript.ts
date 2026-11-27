@@ -1,20 +1,22 @@
 import { type ClientState } from "@client/client-state.ts";
 import { type Message } from "@client/model.ts";
 import { type AuthorizedConversation } from "@client/sync.ts";
-import { textSegments } from "@client/render.ts";
+import { isActionText, textSegments } from "@client/render.ts";
 import { embedMetaFromResponse, type EmbedMeta } from "@client/embed.ts";
 import { dateDividerLabel, groupsWithPrevious, nearBottom } from "@client/presentation.ts";
 import { isHiddenThreadAnnouncement } from "@client/threads.ts";
 import { buildReplyIndex, isLegacyThreadAnnouncement } from "@client/reply-threads.ts";
 import { isDailyGreeting } from "../shared/service-bots.ts";
 
-export function createTranscript({ core, nextTick, authorized, stopped, linkOpen, closeLink, onPinChange, hidden = () => false, rememberEmbed }: {
-  core: Pick<ClientState, "messages" | "threads" | "embeds" | "currentConversationId" | "greeting">;
+export function createTranscript({ core, nextTick, authorized, stopped, linkOpen, closeLink, onPinChange, menuOpenId = () => "", hidden = () => false, rememberEmbed }: {
+  core: Pick<ClientState, "messages" | "threads" | "embeds" | "currentConversationId" | "greeting" | "notesOpen" | "replyThreadRootId" | "replyThreadFaded">;
   nextTick: (callback?: () => void) => Promise<void>;
   authorized: () => AuthorizedConversation[];
   stopped: () => boolean;
   linkOpen: () => boolean;
   closeLink: () => void;
+  // The id of the message whose action menu is open, or empty.
+  menuOpenId?: () => string;
   onPinChange?: (pinned: boolean) => void;
   // Rows the transcript leaves out, such as a poll tally its live card already shows.
   hidden?: (message: Message) => boolean;
@@ -120,6 +122,21 @@ export function createTranscript({ core, nextTick, authorized, stopped, linkOpen
     return groupsWithPrevious(displayedMessages(), index, message);
   }
 
+  // The classes of one message row: grouped with the one above, still sending, menu or thread open,
+  // an action line or a note.
+  function messageClass(message: Message, index: number): (string | false)[] {
+    const threadOpen = !!core.replyThreadRootId && message.serverId === core.replyThreadRootId;
+    return [
+      continuesPrevious(message, index) && "cont",
+      (message.state === "saving" || message.state === "queued" || message.state === "sending") && "pending",
+      menuOpenId() === message.id && "menu-open",
+      threadOpen && "thread-open",
+      !!core.replyThreadFaded[message.serverId as string] && "thread-fade",
+      isActionText(message.text) && "action",
+      core.notesOpen && "note",
+    ];
+  }
+
   function dateDivider(_message: Message, index: number): string {
     return dateDividerLabel(displayedMessages(), index);
   }
@@ -215,7 +232,7 @@ export function createTranscript({ core, nextTick, authorized, stopped, linkOpen
     retryTimers.clear(); embedEpoch += 1; core.embeds = {};
   }
   return {
-    loadEmbeds, onChatScroll, noteInput, noteKey, scrollToBottom, displayedMessages, continuesPrevious, dateDivider, cancelConversationTransition, beforePaint, afterPaint, prepare, reset, focus,
+    loadEmbeds, onChatScroll, noteInput, noteKey, scrollToBottom, displayedMessages, continuesPrevious, messageClass, dateDivider, cancelConversationTransition, beforePaint, afterPaint, prepare, reset, focus,
     version: () => switchVersion,
     isPinned: () => pinnedToBottom,
     noFade: () => { fadeFor = null; },

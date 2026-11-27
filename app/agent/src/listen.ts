@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { access, chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
-import type { ParsedMessage } from "../../src/irc.ts";
+import type { ParsedMessage } from "../../shared/irc.ts";
 
 export type RoomMap = Record<string, { repo: string }>;
 export type ListenClient = { send(line: string): void };

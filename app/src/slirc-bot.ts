@@ -7,8 +7,10 @@ import { publish } from "./live.ts";
 import { createHmac } from "node:crypto";
 import { accountByNick, allAccounts, ergo } from "./accounts.ts";
 import { isDailyGreeting } from "../shared/service-bots.ts";
-import { isConcat } from "../public/multiline.js";
+import { isConcat } from "../shared/multiline.ts";
 import { agentMetadata } from "./agent-session.ts";
+import { apnsPayload, deadToken, sendApns, type ApnsEnvironment } from "./apns.ts";
+import { apnsConfig } from "./config.ts";
 
 export function vapidContact(env: NodeJS.ProcessEnv = process.env): string | null {
   const direct = env.VAPID_CONTACT?.trim();
@@ -36,13 +38,19 @@ function nickOf(prefix?: string) {
   return (prefix || "").split("!", 1)[0];
 }
 
-// Where a notification opens: the channel or thread, or the root for a DM, whose route needs the
-// other person's nick rather than the #dm-* channel name.
-export function pushUrl(target: string): string {
-  return /^#dm-/i.test(target) || !target.startsWith("#") ? "/" : `/#${target.slice(1)}`;
+// Where a notification opens: the channel or thread, or for a DM the conversation with its sender,
+// since the DM route takes the other person's nick rather than the #dm-* channel name.
+export function pushUrl(target: string, from = ""): string {
+  if (/^#dm-/i.test(target)) return /^[a-z0-9][a-z0-9_-]{0,31}$/i.test(from) ? `/dm/${from}` : "/";
+  return target.startsWith("#") ? `/#${target.slice(1)}` : "/";
 }
 
-async function notify(nick: string, title: string, body: string, tag: string, url = "/") {
+let apnsMissingLogged = false;
+async function notify(nick: string, title: string, body: string, tag: string, url = "/", thread = "") {
+  // The Mac app shows this with its own notifications while a page of this workspace is open
+  // (app/client/native-shell.ts). Browser tabs ignore it.
+  publish(nick, "notify", { title, body, tag, url });
+  await notifyDevices(nick, title, body, tag, url, thread);
   const rows = db.query("SELECT endpoint, p256dh, auth FROM subscriptions WHERE nick = ?").all(nick) as { endpoint: string; p256dh: string; auth: string }[];
   if (!rows.length) return;
   if (!ensureVapidDetails()) {
@@ -57,6 +65,27 @@ async function notify(nick: string, title: string, body: string, tag: string, ur
       if (status === 404 || status === 410) db.query("DELETE FROM subscriptions WHERE endpoint = ?").run(row.endpoint);
       else console.error("push failed:", error);
     }
+  }
+}
+
+// The iPhone app's devices, through APNs. Without the APNs env nothing is sent, and the iPhone's
+// Settings says notifications aren't set up on this workspace.
+async function notifyDevices(nick: string, title: string, body: string, tag: string, url: string, thread: string) {
+  const rows = db.query("SELECT token, environment FROM native_devices WHERE nick = ?").all(nick) as { token: string; environment: ApnsEnvironment }[];
+  if (!rows.length) return;
+  const config = apnsConfig();
+  if (!config) {
+    if (!apnsMissingLogged) console.error("iPhone push skipped: APNS_KEY, APNS_KEY_ID, APNS_TEAM_ID and APNS_TOPIC are not all set");
+    apnsMissingLogged = true;
+    return;
+  }
+  const payload = apnsPayload({ title, body, url, thread, origin: process.env.APP_ORIGIN || "" });
+  for (const row of rows) {
+    // A malformed key throws while signing; the message names the failure, never the key.
+    const { status, reason } = await sendApns(row, payload, tag, config).catch((error: unknown) => ({ status: 0, reason: error instanceof Error ? error.message : "send failed" }));
+    if (status === 200) continue;
+    if (deadToken(status, reason)) db.query("DELETE FROM native_devices WHERE token = ?").run(row.token);
+    else console.error(`iPhone push failed: ${status || "no answer"} ${reason}`);
   }
 }
 
@@ -96,7 +125,7 @@ async function notifyChannel(from: string, target: string, text: string, channel
   let shown: string | null = null;
   for (const { nick } of allAccounts()) {
     if (nick === from || !isMember(nick, target)) continue;
-    if (wantsChannelPush(nick, from, text)) await notify(nick, `${from} in ${target}`, shown ??= pushText(text), `channel:${from}:${chars(text, 40)}`, pushUrl(target));
+    if (wantsChannelPush(nick, from, text)) await notify(nick, `${from} in ${target}`, shown ??= pushText(text), `channel:${from}:${chars(text, 40)}`, pushUrl(target, from), target.toLowerCase());
   }
 }
 

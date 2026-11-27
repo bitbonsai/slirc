@@ -15,7 +15,7 @@ import { existsSync } from "node:fs";
 import { homedir as homedir2, tmpdir } from "node:os";
 import { basename, dirname as dirname2, join as join2, resolve } from "node:path";
 
-// src/workspace.ts
+// ../shared/workspace.ts
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";

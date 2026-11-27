@@ -302,7 +302,7 @@ class MentionWatcher {
 // src/client.ts
 import { randomUUID } from "node:crypto";
 
-// ../src/irc.ts
+// ../shared/irc.ts
 import { connect as netConnect } from "node:net";
 import { connect as tlsConnect } from "node:tls";
 function unescapeTag(value) {
@@ -567,7 +567,7 @@ class IrcClient {
   }
 }
 
-// ../public/reactions.js
+// ../shared/reactions.ts
 function escapeTag(value) {
   return String(value).replace(/\\/g, "\\\\").replace(/;/g, "\\:").replace(/ /g, "\\s").replace(/\r/g, "\\r").replace(/\n/g, "\\n");
 }
@@ -1332,6 +1332,46 @@ async function session(action, foreground) {
   }
 }
 
+// ../shared/harnesses.ts
+var slashCommand = (workspace) => workspace ? `/slirc ${workspace}` : "/slirc";
+var harnessInfo = {
+  pi: {
+    id: "pi",
+    name: "Pi",
+    released: true,
+    homepage: "https://pi.dev",
+    sessionCommand: slashCommand,
+    reloadHint: "/reload"
+  },
+  claude: {
+    id: "claude",
+    name: "Claude Code",
+    released: true,
+    homepage: "https://claude.com/claude-code",
+    sessionCommand: slashCommand,
+    reloadHint: "/reload-plugins",
+    perFolder: true
+  },
+  codex: {
+    id: "codex",
+    name: "Codex",
+    released: true,
+    homepage: "https://developers.openai.com/codex/cli",
+    terminalOnly: true,
+    sessionCommand: (workspace) => workspace ? `slirc ${workspace}` : "slirc",
+    reloadHint: "/new",
+    reloadStartsNewSession: true
+  },
+  opencode: {
+    id: "opencode",
+    name: "OpenCode",
+    released: true,
+    homepage: "https://opencode.ai",
+    sessionCommand: slashCommand
+  }
+};
+var harnessInfos = [harnessInfo.pi, harnessInfo.claude, harnessInfo.codex, harnessInfo.opencode];
+
 // src/harnesses/pi/module.ts
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync as readFileSync2, realpathSync, statSync } from "node:fs";
@@ -1393,12 +1433,7 @@ function conflict(env) {
   return found ? `${found} is another Slirc extension. Move it out of ${dir}, then run this again.` : undefined;
 }
 var pi = {
-  id: "pi",
-  name: "Pi",
-  released: true,
-  homepage: "https://pi.dev",
-  sessionCommand: (workspace) => workspace ? `/slirc ${workspace}` : "/slirc",
-  reloadHint: "/reload",
+  ...harnessInfo.pi,
   sessionKey: (env) => env.PI_CODING_AGENT === "true" && env.PI_SESSION_ID ? env.PI_SESSION_ID : undefined,
   detect(env) {
     const installed = onPath(env, "pi");
@@ -1629,19 +1664,13 @@ function place(env) {
 `);
 }
 var claude = {
-  id: "claude",
-  name: "Claude Code",
-  released: true,
-  homepage: "https://claude.com/claude-code",
-  sessionCommand: (workspace) => workspace ? `/slirc ${workspace}` : "/slirc",
+  ...harnessInfo.claude,
   localCommand(env, workspace) {
     const own = [join4(configDir(env), "skills", "slirc"), join4(configDir(env), "commands", "slirc.md")].some((path) => existsSync2(path));
     const name = own ? "/slirc-connect" : "/slirc";
     return workspace ? `${name} ${workspace}` : name;
   },
-  reloadHint: "/reload-plugins",
   sessionKey: (env) => env.CLAUDECODE === "1" && env.CLAUDE_CODE_SESSION_ID ? env.CLAUDE_CODE_SESSION_ID : undefined,
-  perFolder: true,
   detect(env) {
     const found = onPath(env, "claude");
     const version = found ? probe2(env, ["--version"])?.trim().split(" ")[0] : undefined;
@@ -1741,7 +1770,7 @@ import { fileURLToPath as fileURLToPath2 } from "node:url";
 import { homedir as homedir6, tmpdir } from "node:os";
 import { basename, dirname as dirname4, join as join6, resolve as resolve2 } from "node:path";
 
-// src/workspace.ts
+// ../shared/workspace.ts
 import { mkdirSync as mkdirSync2, readFileSync as readFileSync4, writeFileSync as writeFileSync3 } from "node:fs";
 import { homedir as homedir5 } from "node:os";
 import { dirname as dirname3, join as join5 } from "node:path";
@@ -1880,14 +1909,7 @@ function conflict3(env) {
   return;
 }
 var codex = {
-  id: "codex",
-  name: "Codex",
-  released: true,
-  homepage: "https://developers.openai.com/codex/cli",
-  terminalOnly: true,
-  sessionCommand: (workspace) => workspace ? `slirc ${workspace}` : "slirc",
-  reloadHint: "/new",
-  reloadStartsNewSession: true,
+  ...harnessInfo.codex,
   sessionKey: (env) => validId(env.CODEX_THREAD_ID) ? env.CODEX_THREAD_ID : undefined,
   detect(env) {
     const found = onPath(env, "codex");
@@ -2025,11 +2047,7 @@ function conflict4(env) {
   return;
 }
 var opencode = {
-  id: "opencode",
-  name: "OpenCode",
-  released: true,
-  homepage: "https://opencode.ai",
-  sessionCommand: (workspace) => workspace ? `/slirc ${workspace}` : "/slirc",
+  ...harnessInfo.opencode,
   sessionKey: (env) => env.OPENCODE === "1" && env.OPENCODE_SESSION_ID ? env.OPENCODE_SESSION_ID : undefined,
   detect(env) {
     const found = version(env);

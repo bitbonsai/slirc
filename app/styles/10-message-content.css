@@ -1,0 +1,133 @@
+/* Inline chips sit on top of the space around them, so their padding reads as a double gap. The negative
+   margin pulls the layout back to a plain word space while the background keeps its breathing room. */
+.msg .body .mention { display: inline; padding: .08rem .35rem; border: 0; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--brand); font: inherit; font-weight: 600; cursor: pointer; transition: opacity var(--dur-micro) ease, background-color var(--dur-micro) ease; }
+.msg .body .mention:hover, .msg .body .mention:focus-visible { background: color-mix(in srgb, var(--brand) 28%, transparent); outline: none; }
+.msg .body .mention.me { background: var(--mention-me-fill); color: var(--mine); }
+/* An agent mention shows its harness mark and display name; the nick is in the tooltip. */
+.msg .body .mention.agent-mention { white-space: nowrap; }
+.msg .body .agent-mention-mark { display: inline-block; width: 1em; height: 1em; margin-right: .3em; vertical-align: -.15em; object-fit: contain; }
+.msg .body .message-link { display: inline-block; max-width: 100%; overflow: hidden; overflow-wrap: normal; word-break: normal; text-overflow: ellipsis; vertical-align: bottom; white-space: nowrap; }
+.message-link:hover { text-decoration: underline; }
+.link-popover { z-index: var(--z-dialog); display: flex; align-items: center; gap: .2rem; padding: .25rem; border: 1px solid color-mix(in srgb, var(--line) 85%, transparent); border-radius: var(--radius-lg); background: var(--glass-tint); backdrop-filter: var(--blur-medium) saturate(1.15); -webkit-backdrop-filter: var(--blur-medium) saturate(1.15); box-shadow: var(--shadow-md); }
+.link-popover a, .link-popover button { display: inline-flex; align-items: center; justify-content: center; gap: .35rem; min-height: 2.4rem; padding: 0 .65rem; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text); font: 650 var(--text-sm)/1 var(--ui); text-decoration: none; cursor: pointer; transition: background-color var(--dur-micro) var(--ease-standard), color var(--dur-micro) var(--ease-standard); }
+.link-popover a:hover, .link-popover a:focus-visible, .link-popover button:hover, .link-popover button:focus-visible { background: color-mix(in srgb, var(--panel-hi) 72%, transparent); color: var(--brand); outline: none; }
+.link-popover svg { width: .95rem; height: .95rem; }
+@media (pointer: coarse) { .link-popover a, .link-popover button { min-height: 2.75rem; } }
+/* Inline, not inline-block: an inline-block with overflow other than visible sits on its bottom edge, so the chip floated above the text. Long code wraps instead of scrolling. */
+.msg .body code { padding: .08rem .28rem; border-radius: var(--radius-xs); background: var(--panel-hi); color: var(--mine); font: .9em var(--mono); overflow-wrap: anywhere; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+/* Outbox status (stage 3, .plans/instant.md): shown on a message row whose op failed after
+   its 30s retry window, never as a modal. Pending rows carry no visible marker of their own,
+   just the ordinary "sent" tick swapped in once the echo confirms them. */
+.outbox-status { margin-left: .35rem; color: var(--danger); font-size: var(--text-xs); font-style: normal; }
+.outbox-status[data-state="saving"], .outbox-status[data-state="queued"], .outbox-status[data-state="sending"] { color: var(--muted); }
+.outbox-status .typing-dots { margin-left: var(--space-2); vertical-align: middle; }
+.agent-request-status { margin-left: var(--space-2); color: var(--muted); font-size: var(--text-xs); font-style: normal; }
+.outbox-retry, .outbox-discard { padding: 0; border: 0; background: transparent; color: var(--danger); font: inherit; text-decoration: underline; cursor: pointer; }
+.msg.pending { opacity: .6; }
+.msg .body .fence { display: block; margin: .375rem 0 .25rem; padding: .625rem .75rem; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg); overflow-x: auto; }
+.msg .body .fence code { padding: 0; background: transparent; color: var(--text); }
+.fence code b, .fence code strong { color: var(--brand); font-weight: 700; }
+.fence code em { color: var(--mine); font-style: normal; }
+.fence code sup { color: var(--muted); font-style: italic; font-size: inherit; vertical-align: baseline; }
+.fence code label { color: var(--mine); }
+.fence code i { color: var(--muted); font-style: normal; }
+.fence code u { text-decoration: none; color: var(--brand); }
+.fence code mark { background: transparent; color: var(--brand); }
+.fence code ins { color: var(--brand); text-decoration: none; }
+.fence code del { color: var(--danger); opacity: .75; }
+.fence code dfn { color: var(--mine); font-style: normal; }
+.image-preview { position: relative; width: min(100%, 440px); margin-top: .45rem; }
+.image-preview summary {
+  position: absolute;
+  z-index: var(--z-content);
+  top: .5rem;
+  right: 1rem;
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 0;
+  border-radius: var(--radius-round);
+  background: color-mix(in srgb, var(--panel-hi) 92%, #000);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  list-style: none;
+  opacity: .92;
+  transition: opacity var(--dur-micro) var(--ease-standard);
+}
+.image-preview summary:hover, .image-preview summary:focus-visible { opacity: 1; }
+.image-preview summary::-webkit-details-marker { display: none; }
+.image-preview summary svg { width: .9rem; height: .9rem; fill: none; stroke: currentColor; stroke-width: 2; transition: transform var(--dur-micro) var(--ease-standard); }
+.image-preview .image-icon { display: none; }
+.image-preview:not([open]) { display: inline-block; width: fit-content; margin: 0; vertical-align: top; }
+.image-preview:not([open]) summary { position: static; margin: 0; }
+.image-preview:not([open]) .image-chevron { display: none; }
+.image-preview:not([open]) .image-icon { display: block; }
+/* The native details-content close animation keeps children painted while height interpolates.
+   Hide the photo immediately so it cannot scale/reflow during that shrink; summary stays usable. */
+.image-preview:not([open]) > .message-media, .image-preview:not([open]) > .message-video { visibility: hidden; }
+/* Tall photos hit .msg .body img's 300px max-height, so their rendered width can be narrower
+   than the 22rem button cap. Shrink-wrap button to that rendered image; summary anchors to it. */
+.image-preview[open]:has(> .message-media) { width: fit-content; max-width: min(22rem, 100%); }
+.image-preview[open]:has(> .message-media) > .message-media { width: fit-content; }
+.image-preview[open]:has(> .message-media) > .message-media img { width: auto; max-width: 100%; }
+.image-preview[open]:has(> .message-media) > summary { right: .5rem; }
+/* An uploaded video shrink-wraps the same way, so the toggle sits on the player's corner. */
+.image-preview[open]:has(> .message-video) { width: fit-content; max-width: min(22rem, 100%); }
+.image-preview[open]:has(> .message-video) > summary { right: .5rem; }
+/* Embed cards: toggle sits top-right on a plain dark chip; text keeps clear of it. */
+
+.embed-card .embed-copy, .embed-card .embed-player-copy { padding-right: 1.75rem; }
+/* The bracketed Giphy label, and the direct-image fallback, are the visible links that replace
+   the raw URL the body no longer prints. */
+.message-media-item { display: block; }
+.giphy-caption, .media-fallback { display: block; width: fit-content; max-width: 100%; margin-top: .3rem; font-size: .82em; overflow-wrap: anywhere; }
+/* A collapsed Giphy puts its icon inline to the right of the bracketed label. The expanded
+   photo and ordinary images keep the stacked layout. The kind class is explicit because every
+   media item carries a hidden .giphy-caption, so :has(> .giphy-caption) alone would match images. */
+.message-media-item.is-giphy:has(> .image-preview:not([open])) { display: flex; align-items: center; gap: .35rem; }
+.message-media-item.is-giphy:has(> .image-preview:not([open])) > .giphy-caption { margin-top: 0; min-width: 0; }
+/* An ordinary image collapsed to its toggle rides on the caption line: the copy turns inline only
+   while that toggle exists, so the icon follows the text and wraps with it. Expanded photos keep
+   the stacked block below the text, and Giphy keeps its own inline label/icon rule above. */
+.msg .body:has(> .message-media-item:is(.is-image, .is-video) > .image-preview:not([open])) > .message-copy { display: inline; }
+.message-media-item:is(.is-image, .is-video):has(> .image-preview:not([open])) { display: inline; margin-left: .35rem; }
+.msg .body img {
+  display: block;
+  max-width: min(100%, 440px);
+  max-height: 300px;
+  aspect-ratio: auto 4 / 3;
+  margin-top: 0;
+  border-radius: 7px;
+}
+.custom-emoji, .msg .body .custom-emoji { display: inline-block; width: 1.25em; height: 1.25em; margin: 0 .06em; border-radius: .18em; object-fit: contain; vertical-align: -.25em; }
+/* A preview thumbnail keeps its box before its bytes arrive: the quiet panel tone is what shows
+   while the picture loads, and the picture fades in over it. The class is added on load, so an
+   image that never loads shows its reserved box instead of nothing, and a broken script never
+   hides a photo. */
+.thumb-img { background: color-mix(in srgb, var(--panel) 82%, transparent); }
+.thumb-img.thumb-loaded { animation: thumb-in var(--dur-fast) var(--ease-standard); }
+@keyframes thumb-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .thumb-img.thumb-loaded { animation: none; } }
+.reaction-chip .custom-emoji, .picker-reaction .custom-emoji, .sheet-reactions .custom-emoji, .reaction-tooltip .custom-emoji { width: 1.35rem; height: 1.35rem; margin: 0; vertical-align: middle; }
+.msg .body video {
+  display: block;
+  max-width: min(100%, 440px);
+  max-height: 300px;
+  aspect-ratio: auto 16 / 9;
+  border-radius: 7px;
+  background: #000;
+  cursor: pointer;
+}
+.msg.system {
+  display: block;
+  margin: 12px 0 5px;
+  padding: 5px 9px;
+  color: var(--muted);
+  font-size: var(--text-base);
+  white-space: pre-line;
+}
+.msg.error { color: var(--danger); }
+.spinner { display: inline-block; width: 1rem; height: 1rem; border: 2px solid transparent; border-top-color: var(--brand); border-radius: var(--radius-round); vertical-align: -.2rem; animation: spin .8s linear infinite; }
+.loading { display: inline-flex; align-items: center; gap: .5rem; }

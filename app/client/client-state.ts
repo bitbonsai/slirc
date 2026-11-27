@@ -8,7 +8,7 @@ import { type PendingThread } from "@client/threads.ts";
 import { DEV_CHANNEL } from "@client/protocol.ts";
 import { type StickyNote } from "@client/reminder-notice.ts";
 import { type AgentProfiles } from "@client/agent-roster.ts";
-import { type WorkspaceChoice } from "@client/workspace-mark.ts";
+import { type WorkspaceChoice, type WorkspaceMark } from "@client/workspace-mark.ts";
 
 // One channel-members row as returned by GET /api/channels/:channel/members. Presence is separate.
 export interface ChannelMember {
@@ -56,7 +56,7 @@ export function createClientState(isDesktop: boolean, coarse: boolean) {
     // Inside the iOS shell and the Mac app, the profile and sign-in screens offer "Switch workspace" (native-shell.ts).
     canSwitchWorkspace: false,
     // The sidebar's workspace mark, from this page's host (workspace-mark.ts).
-    workspace: { name: "", letter: "", color: "", logo: "" },
+    workspace: { name: "", letter: "", color: "", logo: "" } as WorkspaceMark,
     // The workspace dialog, opened from the sidebar mark or the phone's More screen (workspace-mark.ts).
     workspaceDialog: false,
     workspaceChoices: [] as WorkspaceChoice[],

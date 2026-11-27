@@ -1,0 +1,152 @@
+/* Fade only: a live arrival already slides up with #messages, and a rise on top of that doubles the motion. */
+@keyframes msg-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes intro-in { from { opacity: 0; translate: 0 14px; } to { opacity: 1; translate: 0 0; } }
+.chat #messages { padding-bottom: calc(var(--composer-space, calc(5rem + env(safe-area-inset-bottom))) + .5rem); }
+
+/* The list runs under the header and the translucent composer, so messages scroll behind their
+   blur. The top padding keeps the first message and the banners clear of the header (1rem chat
+   padding plus a .5rem gap); the bottom padding keeps the newest line clear of the composer.
+   Phones size the bottom padding in their own block below. */
+.chat {
+  position: fixed;
+  font-family: var(--mono);
+  inset: 0;
+  width: min(100%, 860px);
+  margin-inline: auto;
+  overflow-y: auto;
+  padding: calc(var(--header-h) + 1.5rem) max(1rem, env(safe-area-inset-left)) max(1rem, env(safe-area-inset-right));
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.chat::-webkit-scrollbar, .giphy-results::-webkit-scrollbar { display: none; }
+/* Conversation hugs the composer like a phone messenger; older messages scroll up. */
+#messages { min-height: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
+/* Smooth arrivals (scrollToBottom in client/transcript.ts): the list is held where it was and eases up to rest. */
+#messages.sliding { transition: translate var(--dur-base) cubic-bezier(.2, .7, .2, 1); }
+@media (prefers-reduced-motion: reduce) { #messages.sliding { transition: none; } }
+.message-entry { display: contents; }
+/* Inline Add / Ignore note under a message or after /invite. Only this tab ever sees it. */
+/* Inline Add / Dismiss note: one quiet local-only line under the names, marked by a thin bar; the
+   eye-off mark says only you see it. Wraps on narrow screens. */
+.add-prompt { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .9rem; margin: .2rem 0 .55rem calc(.25rem + 2rem + 9px); padding: .2rem 0 .2rem .7rem; border-left: 2px solid color-mix(in srgb, var(--brand) 45%, transparent); color: var(--text); font: var(--text-sm)/1.45 var(--ui); }
+.add-prompt-text { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.add-prompt-who { display: inline-flex; align-items: center; gap: .3rem; padding: 0 .4rem 0 .15rem; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--brand); font-weight: 600; vertical-align: middle; }
+.add-prompt-who .mention-avatar { width: 1.15rem; height: 1.15rem; font-size: .6rem; }
+.add-prompt-private { display: inline-grid; place-items: center; margin-left: .3rem; color: var(--muted); vertical-align: -.15em; border-radius: var(--radius-xs); }
+.add-prompt-private svg { width: .95rem; height: .95rem; }
+.add-prompt-private:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.add-prompt-actions { display: inline-flex; align-items: center; gap: .35rem; }
+.add-prompt-add, .add-prompt-dismiss { min-height: 1.65rem; padding: 0 .7rem; border: 0; border-radius: var(--radius-pill); font: 650 var(--text-sm)/1 var(--ui); cursor: pointer; transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease; }
+.add-prompt-add { background: color-mix(in srgb, var(--brand) 22%, transparent); color: var(--brand); }
+.add-prompt-add:hover:not(:disabled) { background: color-mix(in srgb, var(--brand) 32%, transparent); }
+.add-prompt-dismiss { background: transparent; color: var(--muted); }
+.add-prompt-dismiss:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
+.add-prompt-add:disabled, .add-prompt-dismiss:disabled { opacity: var(--disabled-opacity); cursor: default; }
+.add-prompt-add:focus-visible, .add-prompt-dismiss:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+@media (max-width: 500px) { .add-prompt { margin-left: .35rem; } }
+.date-divider { display: flex; align-items: center; gap: .75rem; margin: 1.15rem 0 .65rem; color: var(--muted); font: 650 var(--text-xs)/1 var(--ui); }
+.date-divider::before, .date-divider::after { content: ""; height: 1px; flex: 1; background: color-mix(in srgb, var(--muted) 18%, transparent); }
+.new-divider { color: var(--brand); }
+.new-divider::before, .new-divider::after { background: color-mix(in srgb, var(--brand) 35%, transparent); }
+.msg {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2rem 3.25rem minmax(5.25rem, auto) minmax(0, 1fr);
+  column-gap: 9px;
+  align-items: start;
+  line-height: 1.6;
+  padding: 2px .25rem;
+  border-radius: var(--radius-xs);
+  outline: none;
+  scroll-margin-top: calc(var(--header-h) + .75rem);
+}
+/* .kb-focus: rows reached with the arrow keys. WebKit leaves :focus-visible off a row that script
+   focuses after a mouse click (into the composer, say), so the class carries the highlight there. */
+.msg:focus-visible, .msg.kb-focus:focus { background: color-mix(in srgb, var(--panel-hi) 38%, transparent); }
+/* Message link / thread parent link: one row below the fixed header gets a tint that fades out over
+   2s. With reduced motion the tint holds still until transcript.ts clears it at 2s. */
+.msg.focus-flash { background: color-mix(in srgb, var(--brand) 20%, transparent); }
+@keyframes focus-flash { from { background: transparent; } 20%, 60% { background: color-mix(in srgb, var(--brand) 20%, transparent); } to { background: transparent; } }
+/* Starts once the rows have faded in (msg-in), so the tint is seen rising, not already there. */
+@media (prefers-reduced-motion: no-preference) { .msg.focus-flash { animation: focus-flash 2.2s ease-in-out .3s both; } }
+/* The finished entrance animation would otherwise cap the menu's backdrop blur at this row. */
+/* The panel's own copy of the menu, teleported to <body>; placeMenuUnder (popups.ts) sets top and right from the More button. */
+.message-menu.reply-thread-menu { position: fixed; z-index: var(--z-floating); left: auto; bottom: auto; translate: none; }
+.msg.menu-open { z-index: var(--z-message); animation: none; }
+/* The row whose reply thread is open in the side panel: the link tint held steady until the panel closes. */
+/* .thread-open carries the transition too: a thread opened from a shared link sets replyThreadRootId without openReplyThread, and
+   @starting-style fades in a row that is first drawn already open. */
+.msg.thread-fade, .msg.thread-open { transition: background-color var(--dur-reveal) var(--ease-standard); }
+@starting-style { .msg.thread-open { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .msg.thread-fade, .msg.thread-open { transition: none; } }
+.msg.thread-open, .msg.thread-open:hover { background: color-mix(in srgb, var(--brand) 10%, transparent); }
+.msg:focus-visible .message-add, .msg.kb-focus:focus .message-add { opacity: .7; }
+.message-add {
+  grid-column: 1;
+  align-self: start;
+  justify-self: end;
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity var(--dur-micro) var(--ease-standard), color var(--dur-micro) var(--ease-standard);
+}
+.msg:hover .message-add, .message-add:focus-visible { opacity: .7; }
+/* No transform on these triggers: the picker/menu anchor to the button's box, so a hover/active
+   scale would drag the open popup a few pixels. Color and opacity carry the feedback instead. */
+.message-add:hover { color: var(--brand); opacity: 1; }
+.message-add:active { color: var(--brand); opacity: .75; }
+.message-add.stamp { animation: stamp var(--dur-reaction) cubic-bezier(.12,.8,.25,1); }
+.message-add svg { width: .875rem; height: .875rem; }
+.msg .time {
+  grid-column: 2;
+  color: color-mix(in srgb, var(--muted) 52%, transparent);
+  font-size: var(--text-base);
+  font-weight: 200;
+  text-align: right;
+  white-space: nowrap;
+  user-select: none;
+}
+.msg .nick {
+  grid-column: 3;
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  justify-self: end;
+  text-align: right;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.msg .nick > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.msg .nick > small { flex: 0 0 auto; padding: .15rem .3rem; border: 1px solid color-mix(in srgb, var(--muted) 55%, transparent); border-radius: var(--radius-pill); color: var(--muted); font: 700 .58rem/1 var(--ui); letter-spacing: .04em; text-transform: uppercase; }
+.mobile-time { display: none; color: var(--muted); font-size: var(--text-2xs); white-space: nowrap; user-select: none; }
+.message-avatar { display: none; position: relative; place-items: center; overflow: hidden; border-radius: var(--radius-round); background: var(--avatar-fill); color: var(--bg); font: 750 var(--text-sm)/1 var(--ui); }
+.message-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.thread-root { margin-bottom: .45rem; padding-bottom: .55rem; border-bottom: 1px solid color-mix(in srgb, var(--brand) 25%, transparent); }
+.thread-root .nick, .thread-root .time { display: none; }
+.msg .body { grid-column: 4; min-width: 0; overflow-wrap: anywhere; container-type: inline-size; }
+.message-copy { display: block; }
+.msg .body .body-seg > span { white-space: pre-wrap; }
+.message-edited { margin-left: .35rem; color: var(--muted); font-size: var(--text-xs); white-space: nowrap; }
+.msg .body .list-item { display: flex; gap: var(--space-2); }
+.msg .body .list-marker { flex: none; min-width: 2ch; color: var(--muted); text-align: right; }
+.msg .body .list-text { min-width: 0; }
+.msg .body blockquote { display: block; margin: .15rem 0 .3rem; padding: .1rem .6rem; border-left: 2px solid color-mix(in srgb, var(--brand) 70%, transparent); color: var(--muted); font-style: italic; }
+.reaction-chips { display: flex; flex-wrap: wrap; gap: .3rem; margin: .3rem 0 0; }
+.reaction-chip { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: .3rem; min-height: 1.75rem; padding: .15rem .35rem; border: 0; border-radius: 0; background: transparent; color: var(--text); font: var(--text-sm)/1 var(--mono); white-space: nowrap; cursor: pointer; animation: reaction-in var(--dur-fast) ease-out; }

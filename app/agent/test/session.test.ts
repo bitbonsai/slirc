@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { IrcClient, ParsedMessage } from "../../src/irc.ts";
+import type { IrcClient, ParsedMessage } from "../../shared/irc.ts";
 import { ask, reactionDelay, runPaths, Session } from "../src/session.ts";
 
 const credentials = { nick: "pi-wolff", host: "localhost:8080", password: "x" };

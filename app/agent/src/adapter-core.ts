@@ -3,7 +3,7 @@ import { chmod, mkdir, mkdtemp, open, readFile, rename, rmdir, unlink } from "no
 import { existsSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
-export { originFor } from "./workspace.ts";
+export { originFor } from "../../shared/workspace.ts";
 
 // The Slirc session client every session adapter (Pi, OpenCode, Codex) shares: binding secret and
 // journal in a private state file, connect, attach/lease/heartbeat, the SSE event stream, accept,

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import type { ParsedMessage } from "../../src/irc.ts";
+import type { ParsedMessage } from "../../shared/irc.ts";
 import { boundContext, CONTEXT_MAX_CHARS, CONTEXT_MAX_MESSAGES, MentionWatcher } from "../src/wait.ts";
 
 const msg = (account: string, text: string, target = "#slirc", msgid = `m-${text}`, time = "2026-09-28T09:00:00.000Z"): ParsedMessage => ({

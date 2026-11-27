@@ -1,0 +1,54 @@
+/* Inside the iOS shell the native overlay holds the mark, so the page has no boot screen of its own and the
+   sign-in mark is already in place under that overlay. */
+html[data-shell] .boot-screen { display: none; }
+html[data-shell].booting .auth-card .login-logo { opacity: 1; transform: none; }
+/* The shell boots directly: the boot screen is opaque while .booting and fades out once as a whole. */
+body[data-client-root] > .boot-screen { transition: opacity var(--dur-boot-exit) ease-out, visibility 0s linear var(--dur-boot-exit); }
+html.booting body[data-client-root] > .boot-screen { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  body[data-client-root] > .boot-screen { transition: none; }
+}
+/* Native <details> opens and closes smoothly instead of snapping. `interpolate-size` makes the
+   `auto` keyword animatable, and transitioning `content-visibility` with `allow-discrete` keeps the
+   content painted through the closing frame. Engines without `::details-content` keep today's
+   instant open/close, so this is a progressive enhancement with no JS, timers or height math. */
+@supports selector(details::details-content) and (interpolate-size: allow-keywords) {
+  details { interpolate-size: allow-keywords; }
+  details::details-content {
+    content-visibility: hidden;
+    block-size: 0;
+    overflow: clip;
+    overflow-clip-margin: .25rem;
+    transition: block-size var(--dur-base) var(--ease-standard), content-visibility var(--dur-base) allow-discrete;
+  }
+  details[open]::details-content {
+    content-visibility: visible;
+    block-size: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  details::details-content { transition: none; }
+}
+/* Overlay ladder. Viewport menus mount outside the clipped navigation rail. */
+:root {
+  --z-content: 1; --z-local: 2; --z-control: 3; --z-sticky: 6; --z-message: 7; --z-bottom-panel: 15;
+  --z-side-panel: 19; --z-header: 20; --z-docked-sidebar: 21; --z-docked-header: 22; --z-mobile-screen: 24;
+  --z-sidebar: 25; --z-profile-control: 26; --z-pull-indicator: 27; --z-popover: 30; --z-sheet-backdrop: 40;
+  --z-mobile-sheet: 45; --z-floating: 60; --z-floating-panel: 61; --z-overlay: 70; --z-toast: 80;
+  --z-navigation-menu: 90; --z-navigation-submenu: 91; --z-dialog: 100; --z-boot-dialog: 101;
+  --z-tooltip: 120;
+}
+html.booting .auth-modal { z-index: var(--z-boot-dialog); background: transparent; backdrop-filter: none; }
+html.booting .auth-card { border-color: transparent; background: transparent; box-shadow: none; }
+html.booting .auth-card > :not(.login-logo) { visibility: hidden; opacity: 0; pointer-events: none; }
+
+header {
+  position: fixed;
+  z-index: var(--z-header);
+  inset: 0 0 auto;
+  min-height: var(--header-h);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: env(safe-area-inset-top, 0px) 16px 0;
+}

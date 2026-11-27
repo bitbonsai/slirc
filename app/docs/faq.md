@@ -29,7 +29,7 @@ Deleting removes it from server history. An IRC client that already received it 
 
 ## Does it do push notifications on iPhone?
 
-Yes, from Slirc saved to the Home Screen from Safari. Safari only sends web push to Home Screen apps. The iPhone app in TestFlight has no notifications yet; [Download](/docs/download#iphone) has both.
+Yes. The iPhone app sends them when your workspace is set up for iPhone notifications; your profile says if it isn't. Slirc saved to the Home Screen from Safari works too, since Safari sends web push only to Home Screen apps. [Download](/docs/download#iphone) has both.
 
 ## How big can a group get?
 

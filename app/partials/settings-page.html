@@ -2,7 +2,7 @@
     <div class="mobile-screen-head" x-show="!isDesktop"><div class="home-brand"><a class="home-brand profile-back" href="/profile" aria-label="Back to Profile" x-on:click.prevent="openProfile()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a><strong>Devices</strong></div></div>
     <div class="profile-page-body" :class="{ 'mobile-screen-body': !isDesktop }">
       <section class="profile-dialog-card profile-screen-card">
-        <div class="profile-heading" x-show="isDesktop"><div class="profile-modal-avatar"><img :src="avatarUrl(account)" alt="" /></div><div><h2><span x-text="me"></span><span class="admin-badge" x-show="isAdmin" role="img" aria-label="Administrator" x-html="lucideIcon('user-star')"></span></h2><p x-text="'@' + account"></p></div></div>
+<!-- include: account-heading -->
 <!-- include: account-navigation -->
         <section class="phone-offer" x-show="isDesktop" x-effect="if (!authenticated || !settingsRoute) phoneOffer.close(); else if (isDesktop && !booting) loadIphoneApp(account)" x-on:keydown.escape="if (phoneOffer.open) { phoneOffer.close(); $refs.phoneOfferShow.focus() }">
           <div class="phone-offer-intro">
@@ -43,7 +43,7 @@
         </section>
       </section>
     </div>
-    <dialog class="custom-modal" aria-labelledby="settings-signout-title" tabindex="-1" x-on:keydown="settings.dialogKeydown($event)" x-cloak x-effect="const show = !booting && authenticated && settingsRoute && settings.signOutTarget; if (show && !$el.open) $el.showModal(); else if (!show && $el.open) $el.close()" x-on:cancel.prevent="if (!settings.sessionsBusy) settings.closeSignOut()">
+    <dialog class="custom-modal" aria-labelledby="settings-signout-title" tabindex="-1" x-on:keydown="settings.dialogKeydown($event)" x-cloak x-modal="!booting && authenticated && settingsRoute && settings.signOutTarget" x-on:cancel.prevent="if (!settings.sessionsBusy) settings.closeSignOut()">
       <section class="notice-card"><h2 id="settings-signout-title">Sign out browser?</h2><p>You will need to sign in again on <strong x-text="settings.signOutTarget?.label"></strong>. This browser stays signed in.</p><p class="profile-error" role="alert" x-show="settings.sessionsError" x-text="settings.sessionsError"></p><div class="pair-actions"><button type="button" class="btn-secondary" autofocus :disabled="settings.sessionsBusy" x-on:click="settings.closeSignOut()">Cancel</button><button type="button" class="btn-primary" :disabled="settings.sessionsBusy" x-on:click="settings.confirmSignOut()" x-text="settings.sessionsBusy ? 'Signing out…' : 'Sign out'"></button></div></section>
     </dialog>
   </div>

@@ -1,0 +1,39 @@
+/* People: the admin's open join link, above the sent invitations. The shell is the Devices
+   "Add your phone" card (.phone-offer); rows, pills and buttons are the existing ones. */
+.join-links { grid-template-columns: minmax(0, 1fr); margin-bottom: 1.5rem; }
+.profile-dialog-card .join-link-form { display: flex; align-items: center; gap: .6rem; }
+.profile-dialog-card .join-link-form select { width: auto; flex: 1 1 0; min-width: 0; }
+.profile-dialog-card .join-link-form .btn-primary { flex: 0 0 auto; width: auto; }
+.join-link-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: .5rem; margin: 0; padding: 0; list-style: none; }
+.join-link-row { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: .65rem; padding: .6rem .5rem .6rem .8rem; border: 1px solid var(--line); border-radius: var(--radius-md); background: color-mix(in srgb, var(--panel) 60%, transparent); transition: border-color var(--dur-base) ease; }
+.join-link-row.fresh { border-color: color-mix(in srgb, var(--brand) 55%, var(--line)); background: color-mix(in srgb, var(--brand) 5%, var(--panel)); }
+.join-link-row.past .join-link-copy strong { color: var(--muted); }
+.join-link-line { display: flex; align-items: center; gap: .6rem; }
+.join-link-copy { display: grid; gap: .15rem; flex: 1; min-width: 0; }
+.join-link-copy strong { font: 650 var(--text-base)/1.3 var(--ui); overflow-wrap: anywhere; }
+.join-link-copy small { color: var(--muted); font: var(--text-xs)/1.3 var(--ui); }
+.join-link-meter { display: block; width: 100%; height: 3px; margin-top: -.25rem; border-radius: var(--radius-pill); background: var(--panel-hi); overflow: hidden; }
+.join-link-meter > span { display: block; height: 100%; min-width: 3px; border-radius: inherit; background: var(--brand); }
+.join-link-fresh { display: grid; grid-template-columns: minmax(0, 1fr); gap: .4rem; min-width: 0; }
+.join-link-share { min-width: 0; display: flex; align-items: center; gap: .5rem; padding: .3rem .3rem .3rem .75rem; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg); }
+.join-link-url { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text); font: var(--text-sm)/1.3 var(--mono); }
+.join-link-copy-button { display: inline-flex; align-items: center; gap: .4rem; flex: 0 0 auto; }
+.join-link-copy-button .menu-icon svg { width: 1rem; height: 1rem; }
+/* Phones: the icon alone, so the URL keeps the room; the button keeps its accessible name. */
+@media (pointer: coarse), (max-width: 500px) {
+  .join-link-copy-button { width: 2.75rem; min-height: 2.75rem; padding: 0; justify-content: center; }
+  .join-link-copy-label { display: none; }
+}
+.join-link-full { font-family: var(--mono); }
+.join-link-fresh .field-hint { margin: 0; }
+.past-toggle { justify-self: start; padding: 0; color: var(--muted); }
+.past-toggle:hover, .past-toggle:focus-visible { color: var(--text); }
+@media (prefers-reduced-motion: reduce) { .join-link-row { transition: none; } }
+/* Invitation rows: icon and status sit beside the email; actions line up under the text. */
+.invitations-page .invitation-main { align-items: flex-start; }
+.invitations-page .invitation-main .room-mark { margin-top: -.05rem; background: transparent; }
+.invitations-page .invitation-main .invitation-status { margin-top: .1rem; }
+.invitations-page .invitation-actions { padding-left: calc(1.5rem + .6rem); }
+.invitations-page .invitation-actions-row { align-items: center; gap: 1rem; }
+@media (pointer: fine) { .invitations-page .invitation-actions-row .link-button { min-width: 0; min-height: 0; padding: 0; } }
+

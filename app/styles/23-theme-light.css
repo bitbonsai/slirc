@@ -1,0 +1,107 @@
+/* One palette, selected before paint by theme.js. Brand fills stay lime; ink meets text contrast. */
+:root[data-theme="light"] {
+  --nav-surface: rgb(255 255 255 / .45);
+  --nav-edge: inset 0 1px 0 rgb(255 255 255 / .7), inset 0 0 0 1px rgb(76 79 105 / .06), 0 .5rem 1.5rem -.75rem rgb(76 79 105 / .25);
+  --nav-active: rgb(76 79 105 / .07);
+  --nav-ink: color-mix(in srgb, var(--text) 65%, transparent);
+  --nav-ink-active: var(--text);
+  --nav-icon: brightness(0) opacity(.45);
+  --nav-icon-active: brightness(0) opacity(.8);
+  color-scheme: light;
+  --glass-filter: var(--blur-medium) saturate(1.1);
+  --bg: #eff1f5;
+  --bg-glow: radial-gradient(max(50vw, 34rem) 34rem at 50% -10rem, #fff, var(--bg));
+  --panel: #e6e9ef;
+  --panel-hi: #e6e9ef;
+  --text: #4c4f69;
+  --muted: #65687e;
+  --line: #ccd0da;
+  --brand: #237719;
+  --mine: #2b726a;
+  --on-brand: #4c4f69;
+  --danger: #af425a;
+  --warning: #856000;
+  --attention: #a34b09;
+  --mention-fill: #c3e9c3;
+  --mention-ink: var(--text);
+  --search-hit-fill: #c3e9c3;
+  --search-hit-ink: var(--text);
+  --shadow: #4c4f691a;
+  --shadow-sm: 0 .2rem .6rem var(--shadow);
+  --shadow-md: 0 .5rem 1.5rem var(--shadow);
+  --shadow-lg: 0 1rem 3rem var(--shadow);
+  --active-fill: #d9eddc;
+  --active-ring: #2377192e;
+  --mention-me-fill: #b8e7b6;
+  --avatar-fill: #ccd0da;
+  /* Light panel-hi equals panel, so secondary buttons take Surface0/Surface1 to stay visible on cards. */
+  --secondary-fill: #ccd0da;
+  --secondary-fill-hover: #bcc0cc;
+}
+.theme-setting { margin: 1rem 0 .5rem; }
+/* Both controls use real Lucide glyphs, not dark-only coloured image assets. */
+.composer .composer-plus, .composer .composer-send {
+  width: 2.15rem; height: 2.15rem; border: 0; border-radius: var(--radius-round);
+  background: var(--brand-fill); color: var(--on-brand);
+}
+/* + is secondary to Send: plain muted glyph, no brand circle. */
+.composer .composer-plus { background: transparent; color: var(--muted); }
+.composer .composer-plus:hover, .composer .composer-plus:active { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
+.composer-plus svg, .composer-send svg { width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.composer .composer-send:not(:disabled) { opacity: 1; }
+.composer-plus:disabled { opacity: var(--disabled-opacity); cursor: default; }
+.composer-send:focus-visible, .btn-primary:focus-visible, .btn-secondary:focus-visible, .btn-danger:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+@media (pointer: coarse) { .composer .composer-plus, .composer .composer-send { width: 2.75rem; height: 2.75rem; } }
+:root[data-theme="light"] .channel-row:has(.room.active),
+:root[data-theme="light"] .room.active.draft-room,
+:root[data-theme="light"] .room.active.thread-room { background: var(--active-fill); box-shadow: inset 0 0 0 1px var(--active-ring); }
+:root[data-theme="light"] .room.active { background: var(--active-fill); color: var(--text); box-shadow: inset 0 0 0 1px var(--active-ring); }
+:root[data-theme="light"] .channel-row > .room.active { background: transparent; box-shadow: none; }
+:root[data-theme="light"] #channel-list .channel-row.is-dragging { opacity: .38; background: color-mix(in srgb, var(--secondary-fill) 65%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
+:root[data-theme="light"] .channel-drag-ghost { background: var(--bg); }
+:root[data-theme="light"] .room.active .room-mark, :root[data-theme="light"] .room.active .room-mark:not(:has(img[src^="data:image/svg+xml"])):not(:has(img[src^="/icons/agents/"])) { box-shadow: 0 0 0 2px var(--active-ring); }
+:root[data-theme="light"] :where(.peer-avatar, .profile-avatar, .message-avatar, .mention-avatar, .typing-avatar, .thread-avatar) { background: var(--avatar-fill); }
+/* Initials sit on pastel fills in both themes, so they keep dark ink; --bg would turn them white here. */
+:root[data-theme="light"] :where(.profile-avatar, .message-avatar, .profile-modal-avatar) { color: var(--text); }
+:root[data-theme="light"] .chat .msg .body .mention.me { background: var(--mention-me-fill); color: var(--text); }
+:root[data-theme="light"] .msg .body a { text-decoration: underline; text-underline-offset: .15em; }
+:root[data-theme="light"] .msg .time, :root[data-theme="light"] .mobile-time { color: var(--muted); font-weight: 300; }
+:root[data-theme="light"] { --nav-dot-ring: #fff; }
+:root[data-theme="light"] .plus-button img, :root[data-theme="light"] .section-add img,
+:root[data-theme="light"] .home-brand img[src*="/icons/ui/"] { filter: brightness(.52) saturate(1.6); }
+/* The shell wordmark: slirc.org on the public playground, slirc.app on private workspaces (data-brand from the server). */
+:root[data-theme="light"] img.brand-wordmark { content: url("/brand-org-light.svg"); }
+:root[data-brand="app"] img.brand-wordmark { content: url("/brand-app-dark.svg"); }
+:root[data-brand="app"][data-theme="light"] img.brand-wordmark { content: url("/brand-app-light.svg"); }
+:root[data-theme="light"] img[src*="/logo.webp"] { content: url("/logo-light.webp"); }
+:root[data-theme="light"] img[src="/icons/slirc.svg"] { content: url("/icons/slirc-light.svg"); }
+:root[data-theme="light"] img[src*="/icons/ui/nav-home.svg"] { content: url("/icons/ui/nav-home-light.svg"); }
+:root[data-theme="light"] img[src*="/icons/ui/nav-dms.svg"] { content: url("/icons/ui/nav-dms-light.svg"); }
+/* The light gradient icons carry their own colour; only the monochrome ones need the darkening filter. */
+:root[data-theme="light"] .home-brand img[src*="/icons/ui/nav-dms"] { filter: none; }
+/* Helper bot marks are data URIs in Catppuccin Mocha colours; light swaps each for its Latte file. */
+:root[data-theme="light"] img[src^="data:image/svg+xml"][src*="41F79B" i] { content: url("/icons/bots/help-light.svg"); }
+:root[data-theme="light"] img[src^="data:image/svg+xml"][src*="fab387" i] { content: url("/icons/bots/remind-light.svg"); }
+:root[data-theme="light"] img[src^="data:image/svg+xml"][src*="cba6f7" i] { content: url("/icons/bots/poll-light.svg"); }
+:root[data-theme="light"] img[src^="data:image/svg+xml"][src*="89dceb" i] { content: url("/icons/bots/welcome-light.svg"); }
+:root[data-theme="light"] img[src^="data:image/svg+xml"][src*="f9e2af" i] { content: url("/icons/bots/updates-light.svg"); }
+/* Monochrome agent marks are drawn in the dark text colour; light swaps in the Latte text variant. */
+:root[data-theme="light"] img[src="/icons/agents/pi.svg"] { content: url("/icons/agents/pi-light.svg"); }
+:root[data-theme="light"] img[src="/icons/agents/agent.svg"] { content: url("/icons/agents/agent-light.svg"); }
+:root[data-theme="light"] img[src*="/wordmark"] { filter: brightness(0) saturate(100%) invert(31%) sepia(12%) saturate(1046%) hue-rotate(195deg) brightness(94%) contrast(88%); }
+:root[data-theme="light"] .custom-modal, :root[data-theme="light"] .sheet-backdrop,
+:root[data-theme="light"] body:not(.rooms-docked) .rooms, :root[data-theme="light"] .delete-dialog::backdrop { background: #4c4f6926; }
+:root[data-theme="light"] .glass-toast, :root[data-theme="light"] .new-below,
+:root[data-theme="light"] .notify-banner, :root[data-theme="light"] .pull-indicator { backdrop-filter: var(--blur-medium); -webkit-backdrop-filter: var(--blur-medium); }
+:root[data-theme="light"] .glass-toast.hud { backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4); }
+:root[data-theme="light"] .profile-dialog-card, :root[data-theme="light"] .notice-card, :root[data-theme="light"] .auth-card, :root[data-theme="light"] .delete-dialog { background: var(--bg); }
+:root[data-theme="light"] .profile-dialog-card label { color: var(--text); }
+.btn-secondary.busy::after { border-top-color: var(--text); }
+.btn-danger.busy::after { border-top-color: var(--bg); }
+:root[data-theme="light"] .btn-danger:not(:disabled):hover, :root[data-theme="light"] .btn-danger:focus-visible { background: color-mix(in srgb, var(--danger) 90%, black); }
+/* Media is still a dark viewing surface, regardless of the surrounding app theme. */
+:root[data-theme="light"] .lightbox { color: #cdd6f4; --text: #cdd6f4; --brand: #a6e3a1; --line: #313244; }
+
+@media (max-width: 34rem) { .invitations-heading { align-items: flex-start; flex-direction: column; gap: .2rem; } .invitation-quota { text-align: left; } .invitations-page .invitations-heading { margin-bottom: .75rem; } .invitations-page .invitation-explainer { margin-bottom: 1.25rem; } .invitations-page .invitation-empty { margin-top: 1.25rem; } .invitations-page .admission-requests { margin-top: 1.75rem; } }
+/* After the light hover override so the notice ring wins in both themes. */
+:root .invitation-notice-error .btn-secondary:not(:disabled):hover, :root .invitation-notice-error .btn-secondary:focus-visible { background: color-mix(in srgb, var(--danger) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 55%, var(--line)), 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent); }

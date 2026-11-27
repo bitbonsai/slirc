@@ -9,7 +9,7 @@ import { randomBytes } from "node:crypto";
 import { db } from "./db.ts";
 import { accountIrcPassword } from "./irc-key.ts";
 import { IrcClient, type ParsedMessage } from "./irc.ts";
-import { CONCAT_TAG, wireParts } from "../public/multiline.js";
+import { CONCAT_TAG, wireParts } from "../shared/multiline.ts";
 
 const host = () => process.env.ERGO_HOST || "127.0.0.1";
 const port = () => Number(process.env.ERGO_PORT || 6667);
