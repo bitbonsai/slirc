@@ -136,6 +136,33 @@ test("renaming an agent posts the trimmed name to the owner endpoint and patches
   expect(agents.renameTarget).toBeNull();
 });
 
+test("Read my DMs saves the moment it is toggled and goes back when the server refuses", async () => {
+  const posts: { url: string; body: unknown; header: string | null }[] = [];
+  let refuse = false;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith("/api/agents/capabilities")) return json({ enabled: true, supportedHarnesses: ["pi"] });
+    if (url === "/api/agents") return json([{ nick: "pi-a143", machine: "laptop", lastSeen: 1, status: "ready", harness: "pi", readDms: false }]);
+    if (init?.method === "POST") {
+      posts.push({ url, body: JSON.parse(String(init.body)), header: new Headers(init.headers).get("X-Slirc-Agent") });
+      return refuse ? json({ error: "agent not found" }, false, 404) : json({ readDms: (JSON.parse(String(init.body)) as { enabled: boolean }).enabled });
+    }
+    throw new Error(`unexpected ${url}`);
+  }) as typeof fetch;
+
+  const agents = page();
+  await agents.load();
+  expect(agents.rows[0]!.readDms).toBe(false);
+  await agents.toggleReadDms(agents.rows[0]!);
+  expect(posts).toEqual([{ url: "/api/agents/pi-a143/read-dms", body: { enabled: true }, header: "1" }]);
+  expect(agents.rows[0]!.readDms).toBe(true);
+  refuse = true;
+  await agents.toggleReadDms(agents.rows[0]!);
+  expect(posts.at(-1)!.body).toEqual({ enabled: false });
+  expect(agents.rows[0]!.readDms).toBe(true);
+  expect(agents.error).toBe("agent not found");
+});
+
 const capability = {
   enabled: true, reason: "", harnesses: [{ id: "pi", name: "Pi" }, { id: "", name: "nameless" }],
   commands: { workspace: "calango", npx: "npx slirc-agent@latest calango", bunx: "bunx slirc-agent@latest calango", session: { pi: "/slirc calango", other: "/x" } },
