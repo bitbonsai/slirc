@@ -51,6 +51,9 @@
 .agents-page .agent-icon-button.danger:hover, .agents-page .agent-icon-button.danger:focus-visible { color: var(--danger); }
 /* "Read my DMs" on the agent card: the shared switch, compact and without its frame. */
 .agents-page .agent-dm-switch { flex: 0 0 auto; width: auto; min-height: 2.25rem; padding: 0 .4rem; border: 0; background: transparent; gap: .5rem; }
+.agents-page.mobile-screen .agent-rows .agent-row { flex-wrap: wrap; }
+.agents-page.mobile-screen .agent-dm-switch strong { display: none; }
+.agents-page.mobile-screen .agent-renaming { flex-basis: 100%; }
 .agents-page .agent-dm-switch strong { color: var(--muted); font: 600 var(--text-xs)/1.2 var(--ui); white-space: nowrap; }
 .agents-page .agent-connect-card { margin: 0 0 var(--space-4); box-shadow: inset 0 0 0 1px var(--brand); }
 .agents-page .agent-connect-card .agent-step { margin: 0; color: var(--text); font: 650 var(--text-sm)/1.45 var(--ui); }
