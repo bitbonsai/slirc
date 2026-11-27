@@ -135,17 +135,6 @@
     <img src="logo.webp" width="384" height="384" decoding="sync" alt="Slirc" />
   </picture>
 </div>
-<script>
-  // The launch screen stays up until the mark above has painted, so it hands over with no gap. The
-  // app's SplashScreen setting lifts it after a few seconds if this never runs.
-  (() => {
-    const mark = document.querySelector(".opening img");
-    const hide = () => requestAnimationFrame(() => requestAnimationFrame(() => {
-      window.Capacitor?.Plugins?.SplashScreen?.hide?.({ fadeOutDuration: 0 })?.catch?.(() => {});
-    }));
-    mark.decode().then(hide, hide);
-  })();
-</script>
 <script src="hosts.js"></script>
 <script src="picker.js"></script>
 <script>
@@ -356,6 +345,8 @@
     renderSaved();
     alertBox.textContent = message || "";
     main.classList.add("ready");
+    // The shell holds its own mark over this page until the form has painted, then takes it off.
+    requestAnimationFrame(() => requestAnimationFrame(() => window.Capacitor?.Plugins?.SlircShell?.ready?.()?.catch?.(() => {})));
     // With saved workspaces the field is a search: focus it so typing starts at once. First launch
     // leaves it alone, as before, and so does an unreachable workspace, so the keyboard doesn't
     // cover Try again.

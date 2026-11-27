@@ -28,9 +28,8 @@ const config: CapacitorConfig = {
     contentInset: "never",
   },
   plugins: {
-    // The launch screen is just the mark on the page background. It stays until the picker has painted
-    // the same mark in the same place (www/index.html hides it); this is the fallback if that never runs.
-    SplashScreen: { launchShowDuration: 3000, launchAutoHide: true },
+    // Off: BridgeViewController's start cover is the one overlay, so the plugin adds no second one.
+    SplashScreen: { launchShowDuration: 0 },
   },
 };
 

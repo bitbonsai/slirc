@@ -1,7 +1,7 @@
 // "Switch workspace" belongs to the iOS shell and the Mac app. Browsers, the installed Home Screen
 // app, iOS builds without the SlircShell plugin and Mac builds without the handler never see it.
 import { expect, test } from "bun:test";
-import { aboutLabel, canSwitchWorkspace, exposeWorkspaceDialog, openWorkspace, openWorkspaceLink, shellListsWorkspaces, shellVersion, shellWorkspaces, signedOut, switchWorkspace } from "../client/native-shell.ts";
+import { aboutLabel, canSwitchWorkspace, exposeWorkspaceDialog, openWorkspace, openWorkspaceLink, shellListsWorkspaces, shellOwnsStart, shellReady, shellVersion, shellWorkspaces, signedOut, switchWorkspace } from "../client/native-shell.ts";
 
 const shell = (plugins: string[], calls: string[] = []) => ({
   Capacitor: {
@@ -167,4 +167,18 @@ test("the Mac menu's Switch Workspace opens the web dialog only while signed in"
   const old = mac(["slircShell", "slircSwitchWorkspace"]) as Record<string, unknown>;
   exposeWorkspaceDialog({ ...ui, workspaceDialog: false }, old);
   expect((old.SlircOpenWorkspaces as () => boolean)()).toBe(false);
+});
+
+test("only a shell build that can take a ready message owns the start screen, and ready reaches it", () => {
+  const calls: string[] = [];
+  const withReady = shell(["SlircShell"]);
+  (withReady.Capacitor.Plugins.SlircShell as Record<string, unknown>).ready = async () => { calls.push("ready"); };
+  expect(shellOwnsStart(withReady)).toBe(true);
+  shellReady(withReady);
+  expect(calls).toEqual(["ready"]);
+  // An older app, a browser and the Mac app keep the page's own boot screen and send nothing.
+  expect(shellOwnsStart(shell(["SlircShell"]))).toBe(false);
+  expect(shellOwnsStart({})).toBe(false);
+  expect(shellOwnsStart(mac(["slircShell", "slircSwitchWorkspace"]))).toBe(false);
+  expect(() => shellReady({})).not.toThrow();
 });

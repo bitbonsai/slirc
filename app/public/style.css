@@ -154,6 +154,10 @@ html.booting .auth-card .login-logo { opacity: 0; transform: perspective(900px) 
 html.booting body > :not(.boot-screen):not(.auth-modal) { visibility: hidden; }
 html.booting .boot-screen { opacity: 1; visibility: visible; transition-delay: 0s; }
 /* boot:end */
+/* Inside the iOS shell the native overlay holds the mark, so the page has no boot screen of its own and the
+   sign-in mark is already in place under that overlay. */
+html[data-shell] .boot-screen { display: none; }
+html[data-shell].booting .auth-card .login-logo { opacity: 1; transform: none; }
 /* The shell boots directly: the boot screen is opaque while .booting and fades out once as a whole. */
 body[data-client-root] > .boot-screen { transition: opacity var(--dur-boot-exit) ease-out, visibility 0s linear var(--dur-boot-exit); }
 html.booting body[data-client-root] > .boot-screen { transition: none; }

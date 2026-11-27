@@ -5,6 +5,12 @@
   const system = window.matchMedia("(prefers-color-scheme: dark)");
   const valid = (value) => ["light", "dark", "system"].includes(value) ? value : "system";
   const read = () => { try { return valid(localStorage.getItem(key)); } catch { return "system"; } };
+  // Inside the iOS shell the native overlay owns the start screen: the page skips its boot screen and
+  // paints no reveal. Same test as shellOwnsStart in client/native-shell.ts.
+  try {
+    const cap = window.Capacitor;
+    if (cap?.isNativePlatform?.() && typeof cap.Plugins?.SlircShell?.ready === "function") root.dataset.shell = "ios";
+  } catch { /* A page without Capacitor is a browser. */ }
   let preference = read();
   let accountId = "";
   // The account theme is adopted once per page load. A choice made on this page wins after that, so a

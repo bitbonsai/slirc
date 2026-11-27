@@ -7,6 +7,7 @@ import WebKit
 // call nothing. Workspace pages still get `window.Capacitor`, so the web client can tell it runs
 // in the shell.
 let workspaceBridgeMethods: Set<String> = [
+    "SlircShell.ready",
     "SlircShell.switchWorkspace",
     "SlircShell.workspaces",
 ]
@@ -66,8 +67,12 @@ class BridgeViewController: CAPBridgeViewController {
     // the web view's default white or black.
     override func viewDidLoad() {
         super.viewDidLoad()
+        // The mark goes up before the first frame, in place of the system launch screen, and one
+        // overlay then holds it until the picker or the workspace page says it has painted.
+        startCover.show()
         guard let background = UIColor(named: "LaunchBackground") else { return }
         view.backgroundColor = background
+        webView?.isOpaque = false
         webView?.backgroundColor = background
         webView?.scrollView.backgroundColor = background
         webView?.underPageBackgroundColor = background
@@ -86,7 +91,8 @@ class BridgeViewController: CAPBridgeViewController {
         self.bridgeGuard = bridgeGuard
         let loadGuard = CancelledLoadGuard(handler: handler, loadWatch: loadWatch) { [weak self] webView in
             guard let self = self, let url = webView.url else { return }
-            if self.workspaceState.isActiveOrigin(url) { self.startCover.settle(webView) } else { self.startCover.hide() }
+            // A workspace page that never sends "ready", such as an older server's, comes off when it has booted.
+            if self.workspaceState.isActiveOrigin(url) { self.startCover.settle(webView) }
         }
         webView.navigationDelegate = loadGuard
         self.loadGuard = loadGuard
@@ -112,6 +118,7 @@ class BridgeViewController: CAPBridgeViewController {
     }
 
     private func showPicker(query: String, value: String) {
+        startCover.show()
         loadWatch.stop()
         workspaceState.clear()
         guard let bridge = bridge, var picker = URLComponents(url: bridge.config.localURL, resolvingAgainstBaseURL: false),
@@ -204,20 +211,22 @@ final class WorkspaceLoadWatch {
     }
 }
 
-// The launch screen's mark, held over the web view while a workspace opens. The picker hands the web
-// view to the workspace page, and the page paints its own mark a moment later, so without this the
-// mark would vanish for a frame or two in between. The cover goes on when the picker opens the
-// workspace, stays through the page's own boot, and fades only once the app is showing and its
-// animations are idle, so the fade runs over a finished app. A picker page that loads instead (the
-// workspace failed, or the person switched) takes it off at once. It never takes touches.
+// The one owner of the start mark: the launch screen's mark, held over the web view from the first frame
+// through the picker, the workspace check and the page load. It comes off with one 0.2 s cross-fade when
+// the picker shows its form or the workspace page paints its app and sends SlircShell.ready, so the fade
+// runs over a finished screen. A workspace page that cannot send it (an older server) is polled instead
+// and the cover goes once it has booted and its animations are idle. After giveUp seconds it goes
+// regardless. It never takes touches.
 final class StartCover {
     private weak var host: BridgeViewController?
     private var screen: UIViewController?
     private var generation = 0
-    private static let giveUp: TimeInterval = 15
+    private static let giveUp: TimeInterval = 12
     private static let busyGrace: TimeInterval = 1
-    // 0 while the client is booting, 1 once it shows but something still animates, 2 when idle.
+    // -1 for a page that sends "ready" itself (html[data-shell]), 0 while the client is booting, 1 once it
+    // shows but something still animates, 2 when idle. Only pages that cannot say ready are polled.
     private static let stateScript = """
+    document.documentElement.dataset.shell ? -1 :
     !document.querySelector('[data-client-root]') || document.documentElement.classList.contains('booting') ? 0 :
     document.getAnimations().some((a) => a.playState === 'running') ? 1 : 2
     """
@@ -252,6 +261,7 @@ final class StartCover {
         webView.evaluateJavaScript(Self.stateScript) { [weak self, weak webView] result, _ in
             guard let self = self, let webView = webView, self.generation == current else { return }
             let state = result as? Int ?? 0
+            if state < 0 { return }
             var booted = bootedAt
             if state > 0 && booted == nil { booted = Date() }
             if state == 2 || (booted.map { Date().timeIntervalSince($0) > Self.busyGrace } ?? false) {
@@ -323,6 +333,7 @@ class SlircShellPlugin: CAPPlugin, CAPBridgedPlugin {
     let jsName = "SlircShell"
     let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "openWorkspace", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "ready", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "switchWorkspace", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "workspaces", returnType: CAPPluginReturnPromise),
     ]
@@ -345,6 +356,8 @@ class SlircShellPlugin: CAPPlugin, CAPBridgedPlugin {
         guard let url = navigationAction.request.url else { return nil }
         let toplevel = navigationAction.targetFrame == nil || navigationAction.targetFrame?.isMainFrame == true
         if toplevel && workspaceState.isActiveOrigin(url) {
+            // A reload, such as pull to refresh, has no boot screen of its own inside the shell.
+            if navigationAction.navigationType == .reload { DispatchQueue.main.async { [startCover] in startCover.show() } }
             return NSNumber(value: false)
         }
         return nil
@@ -378,6 +391,12 @@ class SlircShellPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve(["workspaces": list])
     }
 
+    // The picker with its form, or a workspace page with its app, has painted: the overlay can go.
+    @objc func ready(_ call: CAPPluginCall) {
+        call.resolve()
+        DispatchQueue.main.async { [startCover] in startCover.hide(fade: 0.2) }
+    }
+
     @objc func switchWorkspace(_ call: CAPPluginCall) {
         guard let bridge = bridge, var picker = URLComponents(url: bridge.config.localURL, resolvingAgainstBaseURL: false) else {
             call.reject("The picker is unavailable.")
@@ -392,7 +411,8 @@ class SlircShellPlugin: CAPPlugin, CAPBridgedPlugin {
             picker.query = "pick=1"
         }
         call.resolve()
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [startCover] in
+            startCover.show()
             if let url = picker.url { _ = bridge.webView?.load(URLRequest(url: url)) }
         }
     }

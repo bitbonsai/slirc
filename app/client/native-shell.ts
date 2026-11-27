@@ -12,7 +12,7 @@ type Win = {
   Capacitor?: {
     isNativePlatform?: () => boolean;
     isPluginAvailable?: (name: string) => boolean;
-    Plugins?: { SlircShell?: { switchWorkspace?: (options?: { link: string }) => Promise<unknown>; workspaces?: () => Promise<{ workspaces?: unknown }> } };
+    Plugins?: { SlircShell?: { ready?: () => Promise<unknown>; switchWorkspace?: (options?: { link: string }) => Promise<unknown>; workspaces?: () => Promise<{ workspaces?: unknown }> } };
   };
 };
 
@@ -24,6 +24,18 @@ function iosShell(win: Win): boolean {
 // it never offers the iPhone app to itself.
 export function inIosApp(win: Win = globalThis as Win): boolean {
   return !!win.Capacitor?.isNativePlatform?.();
+}
+
+// The iOS shell keeps its own mark over the page until the page says it has painted, so the page skips
+// its boot screen. Shell builds from before SlircShell.ready have no such overlay and need the boot
+// screen, so the method itself is the test. public/theme.js makes the same check to set html[data-shell].
+export function shellOwnsStart(win: Win = globalThis as Win): boolean {
+  return iosShell(win) && typeof win.Capacitor?.Plugins?.SlircShell?.ready === "function";
+}
+
+// Tells the shell the app is on screen, so it can take its overlay off. A no-op everywhere else.
+export function shellReady(win: Win = globalThis as Win): void {
+  if (shellOwnsStart(win)) void win.Capacitor?.Plugins?.SlircShell?.ready?.().catch(() => {});
 }
 
 function macShell(win: Win): boolean {

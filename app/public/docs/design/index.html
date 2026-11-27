@@ -10,7 +10,7 @@
   <title>Design system · Slirc docs</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
   <link rel="alternate" type="text/markdown" href="/docs/design.md" />
-  <script src="/theme.js?v=844fef47"></script>
+  <script src="/theme.js?v=c4bf3f85"></script>
   <link rel="stylesheet" href="/docs/docs.css?v=39" />
 </head>
 <body>
@@ -263,7 +263,7 @@ body { height: auto; font: 1rem/1.6 var(--ui); }
 <p><code>--blur-light</code> is blur(3px), <code>--blur-medium</code> blur(9px), <code>--blur-heavy</code> blur(18px). Glass pairs blur with a panel tint for text contrast. Floating glass surfaces share one tint, <code>--glass-tint</code> (panel at 74%), and <code>--glass-filter</code>. In dark the filter blurs and darkens what is behind (<code>saturate(1.2) brightness(.75)</code>) so a panel always sits below the content it covers; light only blurs and uses quieter shadows. Fixed chrome (header, docked rooms rail, members panel, composer, mobile nav) shares <code>--glass-chrome</code> (panel at 60%); dialogs stay near-solid at 96%.</p>
 <p>An element with a <code>backdrop-filter</code>, or with a filter or opacity below 1, is a backdrop root. A blurred child inside it blurs nothing and the content behind shows through sharp. So a glass menu that opens from a blurred surface renders outside it. The composer + menu (<code>composer-plus-menu</code>) is teleported to the end of <code>body</code> with <code>x-teleport</code> and fixed at <code>--z-floating</code>. <code>placePlusMenu</code> in <code>app/client/popups.ts</code> sets its left edge on the + button and its bottom just above the composer, and places it again on resize and when the phone keyboard moves the composer. When blur fails to reach the content behind a panel, look for a backdrop root among its ancestors.</p>
 <p>The overlay ladder lives in a second <code>:root</code> block: content 1, header 20, navigation menus 90/91, dialog 100, boot screen 102, <code>--z-tooltip</code> 120. Native dialogs use the browser top layer.</p>
-<p>Motion tokens are under Typography, spacing, and layout. Component durations: <code>--dur-boot-exit</code> 150ms, <code>--dur-reaction</code> 380ms; dialogs use <code>--dur-fast</code>. The boot mark never animates: the iOS launch screen, the shell's Opening view and the boot screen draw it at the same size and place, and the boot screen fades out once as a whole. Reaction animations play once. Reduced motion removes nonessential entrances and transitions. Shared CSS still carries view-transition and arrival rules that the current shell disables. Document what the shell does and leave the dormant rules out.</p>
+<p>Motion tokens are under Typography, spacing, and layout. Component durations: <code>--dur-boot-exit</code> 150ms, <code>--dur-reaction</code> 380ms; dialogs use <code>--dur-fast</code>. The boot mark never animates: the iOS launch screen, the shell's Opening view and the boot screen draw it at the same size and place, and the boot screen fades out once as a whole. Inside the iOS shell the native overlay owns the mark and the page skips its boot screen. Reaction animations play once. Reduced motion removes nonessential entrances and transitions. Shared CSS still carries view-transition and arrival rules that the current shell disables. Document what the shell does and leave the dormant rules out.</p>
 <h2 id="components">Components</h2>
 <h3 id="buttons-and-loading">Buttons and loading</h3>
 <div class="ds-example ds-row"><button class="btn-primary" type="button">Save changes</button><button class="btn-secondary" type="button">Cancel</button><button class="btn-danger" type="button">Delete</button><button class="btn-primary" type="button" disabled>Disabled</button><button class="btn-primary busy" type="button" aria-busy="true" aria-label="Saving">Save</button><button class="link-button" type="button">Resend</button></div>
@@ -379,6 +379,6 @@ To cancel one: @remind cancel 1</span></span></span></span></span></div></div>
   <script type="module" src="/docs/glow.js"></script>
   <script src="/docs/docs.js?v=16" defer></script>
   <script src="/docs/app-back.js?v=26d58c4a" defer></script>
-  <script type="module" src="/docs/search.js?v=1f3b3dfc&amp;index=719f9f8d"></script>
+  <script type="module" src="/docs/search.js?v=1f3b3dfc&amp;index=71c9e0fa"></script>
 </body>
 </html>
