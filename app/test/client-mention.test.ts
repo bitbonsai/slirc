@@ -70,6 +70,32 @@ test("the mention picker offers only active agents, under their current name", a
   expect(component.matches()).toEqual(["eve", "pi-d6a3", "pi-0ff1", "carol"]);
 });
 
+test("mentionCandidates matches a display name as well as the nick", () => {
+  const names: Record<string, string> = { "claude-bcdb": "bit", "pi-0ff1": "Docs Bot" };
+  const nameOf = (nick: string) => names[nick] ?? "";
+  const all = () => true;
+  expect(mentionCandidates("b", ["borisb", "claude-bcdb", "ada"], [], all, nameOf)).toEqual(["borisb", "claude-bcdb"]);
+  expect(mentionCandidates("BI", ["claude-bcdb"], [], all, nameOf)).toEqual(["claude-bcdb"]);
+  expect(mentionCandidates("claude", ["claude-bcdb"], [], all, nameOf)).toEqual(["claude-bcdb"]);
+  expect(mentionCandidates("docs", ["pi-0ff1"], [], all, nameOf)).toEqual(["pi-0ff1"]);
+  // Prefix only: a name that merely contains the text does not match.
+  expect(mentionCandidates("it", ["claude-bcdb"], [], all, nameOf)).toEqual([]);
+  // Order stays members then contacts, and the pick is still the nick.
+  expect(mentionCandidates("b", ["borisb"], ["claude-bcdb", "bob"], all, nameOf)).toEqual(["borisb", "claude-bcdb", "bob"]);
+});
+
+test("the mention picker finds an agent by display name", async () => {
+  (globalThis as any).window ??= new EventTarget();
+  const { mentionPickerComponent } = await import("../client/composer-pickers.ts");
+  const component = mentionPickerComponent() as any;
+  Object.assign(component, {
+    composer: "ping @b", account: "me", roomMembers: ["borisb", "claude-bcdb"], roomMembersPublic: false, contacts: [], directs: [], messages: [],
+    agentProfiles: { "claude-bcdb": { nick: "claude-bcdb", owner: "me", harness: "claude", name: "bit", repo: "", model: "" } },
+    agentAttached: () => true,
+  });
+  expect(component.matches()).toEqual(["borisb", "claude-bcdb"]);
+});
+
 test("mentionCandidates drops nicks keep rejects without affecting the rest", () => {
   expect(mentionCandidates("", ["ada", "pi-0ff1", "bob"], ["carol"], (nick) => nick !== "pi-0ff1")).toEqual(["ada", "bob", "carol"]);
 });
