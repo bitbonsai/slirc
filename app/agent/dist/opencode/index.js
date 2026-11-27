@@ -875,7 +875,6 @@ class SessionClient {
 var ARM_TTL_MS = 10 * 60000;
 var KEY = /^[A-Za-z0-9_-]{1,128}$/;
 var validTicket = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(value);
-var checksProcesses = process.platform !== "win32";
 var armDir = (harness, env = process.env) => join3(stateDir(harness, env), "arm");
 var armPath = (harness, key, env = process.env, reload = false) => {
   if (!KEY.test(key))
@@ -887,13 +886,12 @@ function parse(text, now) {
     const raw = JSON.parse(text);
     if (typeof raw.host !== "string" || typeof raw.at !== "number" || now - raw.at > ARM_TTL_MS || raw.at > now + 60000)
       return;
-    const pids = Array.isArray(raw.pids) ? raw.pids.filter((pid) => Number.isInteger(pid) && pid > 0) : undefined;
-    return { host: expandWorkspace(raw.host), at: raw.at, ...validTicket(raw.ticket) ? { ticket: raw.ticket } : {}, ...pids ? { pids } : {} };
+    return { host: expandWorkspace(raw.host), at: raw.at, ...validTicket(raw.ticket) ? { ticket: raw.ticket } : {} };
   } catch {
     return;
   }
 }
-function takeArm(harness, key, env = process.env, now = Date.now(), self = process.pid, starting = false) {
+function takeArm(harness, key, env = process.env, now = Date.now(), starting = false) {
   let paths;
   try {
     paths = starting ? [armPath(harness, key, env), armPath(harness, key, env, true)] : [armPath(harness, key, env)];
@@ -919,46 +917,53 @@ function takeArm(harness, key, env = process.env, now = Date.now(), self = proce
   } finally {
     rmSync(taken, { force: true });
   }
-  const arm = parse(text, now);
-  if (!arm || checksProcesses && !arm.pids?.includes(self))
-    return;
-  const { pids: _pids, ...rest } = arm;
-  return rest;
+  return parse(text, now);
 }
 var isDelivery = (text) => /Slirc delivery receipt: [0-9a-f-]{36}/.test(text);
 var WORKSPACE = /^(?:https?:\/\/)?[A-Za-z0-9][A-Za-z0-9.-]*(?::\d{1,5})?\/?$/;
 var VALUE = /^[A-Za-z0-9_-]{1,64}$/;
-function consents(prompt, host) {
+function connectCommand(prompt) {
   if (!prompt || isDelivery(prompt))
-    return false;
+    return;
   const line = prompt.trim();
   if (/[\r\n]/.test(line))
-    return false;
+    return;
   const words = line.split(/[ \t]+/);
   let index = words[0] === "bunx" || words[0] === "npx" ? 1 : words[0] === "pnpm" && words[1] === "dlx" ? 2 : 0;
   if (!/^slirc-agent(?:@[\w.-]+)?$/.test(words[index] ?? ""))
-    return false;
+    return;
   if (words[index + 1] === "connect")
     index++;
   const positional = [];
+  let ticket;
   for (index++;index < words.length; index++) {
     const word = words[index];
     if (word === "--ticket" || word === "--harness") {
-      if (!VALUE.test(words[++index] ?? ""))
-        return false;
+      const value = words[++index] ?? "";
+      if (!VALUE.test(value))
+        return;
+      if (word === "--ticket")
+        ticket = value;
       continue;
     }
-    if (/^--(?:ticket|harness)=[A-Za-z0-9_-]{1,64}$/.test(word))
+    const option = /^--(ticket|harness)=([A-Za-z0-9_-]{1,64})$/.exec(word);
+    if (option) {
+      if (option[1] === "ticket")
+        ticket = option[2];
       continue;
+    }
     positional.push(word);
   }
   const [workspace, code, ...rest] = positional;
   if (rest.length || workspace !== undefined && !WORKSPACE.test(workspace) || code !== undefined && !validTicket(code))
-    return false;
+    return;
+  ticket = code ?? ticket;
+  if (ticket !== undefined && !validTicket(ticket))
+    ticket = undefined;
   try {
-    return expandWorkspace(workspace ?? "") === host;
+    return { host: expandWorkspace(workspace ?? ""), ...ticket ? { ticket } : {} };
   } catch {
-    return false;
+    return;
   }
 }
 // package.json
@@ -1060,6 +1065,7 @@ registry.inbox ??= new Map;
 registry.delivered ??= new Map;
 registry.running ??= new Map;
 registry.prompts ??= new Map;
+registry.pairing ??= new Map;
 var STOPPED = "The agent was stopped before replying.";
 var DIR = () => stateDir("opencode");
 var pathFor = (sessionId) => statePath(DIR(), sessionId);
@@ -1217,22 +1223,25 @@ async function humanPrompt(host, sessionId) {
   return text && !isDelivery(text) ? text : undefined;
 }
 async function pickUp(host, sessionId) {
-  const arm = takeArm("opencode", sessionId, process.env, Date.now(), process.pid, true);
+  const arm = takeArm("opencode", sessionId, process.env, Date.now(), true);
   if (!arm)
     return;
-  const prompt = await humanPrompt(host, sessionId);
-  registry.prompts.set(sessionId, undefined);
-  const typed = `/slirc ${workspaceArg(arm.host)}`.trim();
-  if (!consents(prompt, arm.host)) {
-    host.emit({ sessionID: sessionId, message: `Something ran slirc-agent for ${arm.host}. To connect, type ${typed}.`, variant: "warning", duration: 15000 });
-    return;
-  }
   const live = registry.live.get(sessionId);
   if (live?.client.active && live.client.state.origin === originFor(arm.host)) {
     host.emit({ sessionID: sessionId, message: `Already connected as ${live.client.state.binding?.nick}.`, variant: "info" });
     return;
   }
-  connect(host, sessionId, arm.host, arm.ticket);
+  const asked = connectCommand(await humanPrompt(host, sessionId));
+  registry.prompts.set(sessionId, undefined);
+  const waiting = registry.pairing.get(sessionId);
+  if (waiting?.epoch === epoch(sessionId) && waiting.host === arm.host && asked?.host !== arm.host)
+    return;
+  const typed = `/slirc ${workspaceArg(arm.host)}`.trim();
+  if (asked?.host !== arm.host) {
+    host.emit({ sessionID: sessionId, message: `Something ran slirc-agent for ${arm.host}. To connect, type ${typed}.`, variant: "warning", duration: 15000 });
+    return;
+  }
+  connect(host, sessionId, asked.host, asked.ticket);
 }
 async function connect(host, sessionId, workspace, ticket) {
   const notify = (message, variant, duration) => host.emit({ sessionID: sessionId, message, variant, ...duration ? { duration } : {} });
@@ -1252,10 +1261,22 @@ async function connect(host, sessionId, workspace, ticket) {
     notify("Type /slirc <workspace>, using the workspace name shown on your Agents page in Slirc.", "error");
     return;
   }
+  const linkText = (link) => `Open ${link.url} to connect this session, or enter ${link.code} under Agents in Slirc.`;
+  const waiting = registry.pairing.get(sessionId);
+  if (waiting?.epoch === epoch(sessionId) && waiting.host === target && (!ticket || ticket === waiting.ticket)) {
+    if (waiting.link)
+      notify(linkText(waiting.link), "info", 120000);
+    return;
+  }
   const mine = bump(sessionId);
   const current = () => mine === epoch(sessionId);
+  const asking = { host: target, ...ticket ? { ticket } : {}, epoch: mine };
+  registry.pairing.set(sessionId, asking);
   registry.holds.set(sessionId, Date.now() + PRESENCE_TTL_MS);
-  const show = (link) => notify(`Open ${link.url} to connect this session, or enter ${link.code} under Agents in Slirc.`, "info", 120000);
+  const show = (link) => {
+    asking.link = link;
+    notify(linkText(link), "info", 120000);
+  };
   try {
     const identity = { sessionId, directory: host.directory };
     const paired = await SessionClient.pair(adapter(sessionId, host), pathFor(sessionId), identity, originFor(target), await metadataFor(host, sessionId), hostname() || "unknown", show, current, ticket);
@@ -1269,6 +1290,9 @@ async function connect(host, sessionId, workspace, ticket) {
   } catch (error) {
     if (current())
       notify(errorText(error), "error");
+  } finally {
+    if (registry.pairing.get(sessionId) === asking)
+      registry.pairing.delete(sessionId);
   }
 }
 function toolClient(sessionId) {
@@ -1364,6 +1388,13 @@ async function setup(ctx) {
       return;
     const text = typeof event.prompt?.text === "string" ? event.prompt.text : undefined;
     registry.prompts.set(event.sessionID, text && !isDelivery(text) ? text : undefined);
+    const asked = connectCommand(text);
+    if (!asked)
+      return;
+    const live = registry.live.get(event.sessionID);
+    if (live?.client.active && live.client.state.origin === originFor(asked.host))
+      return;
+    connect(host, event.sessionID, asked.host, asked.ticket);
   });
   await ctx.tool.hook("execute.after", (event) => {
     if (event?.tool === "shell" && typeof event.sessionID === "string")

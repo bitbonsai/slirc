@@ -172,22 +172,28 @@ test("an arm file pairs only when the person's own prompt asked for it, and is t
   const host = `127.0.0.1:${server.port}`;
   // The model ran slirc-agent on its own (a prompt that never named it): nothing pairs, the person
   // gets a notice, and a listener started only for this leaves.
-  writeArm("claude", "cc-armed-refused", { host, ticket: "k7f2q9xdpa3m" }, env, Date.now(), [process.pid]);
+  writeArm("claude", "cc-armed-refused", { host, ticket: "k7f2q9xdpa3m" }, env, Date.now());
   const refused = start({ sessionId: "cc-armed-refused", cwd: "/tmp/repo", model: "", arm: { prompt: "summarize README.md", command: "slirc" } });
   expect(await refused.exit).toBe(0);
   expect(line(refused, "notify")).toEqual({ type: "notify", message: `Something ran slirc-agent for ${host}. To connect, type /slirc ${host}.`, level: "warning" });
   expect(line(refused, "link")).toBeUndefined();
   expect(existsSync(join(env.XDG_STATE_HOME, "slirc-agent", "claude", "arm", "cc-armed-refused.json"))).toBe(false);
 
-  // Armed from a shell outside this Claude Code (the listener's parent): dropped, nothing pairs.
-  writeArm("claude", "cc-armed-elsewhere", { host }, env, Date.now(), [2 ** 22 + 7, 1]);
-  const elsewhere = start({ sessionId: "cc-armed-elsewhere", cwd: "/tmp/repo", model: "", arm: { prompt: `npx slirc-agent ${host}`, command: "slirc" } });
-  expect(await elsewhere.exit).toBe(0);
-  expect(line(elsewhere, "link")).toBeUndefined();
+  // Armed by a run whose shell is gone (the model put it in the background): it still pairs, with
+  // the workspace and code of the person's own prompt, never the file's.
+  writeArm("claude", "cc-armed-elsewhere", { host, ticket: "armcode00000" }, env, Date.now());
+  const elsewhere = start({ sessionId: "cc-armed-elsewhere", cwd: "/tmp/repo", model: "", arm: { prompt: `npx slirc-agent ${host} k7f2q9xdpa3m`, command: "slirc" } });
+  try {
+    await until(() => !!line(elsewhere, "link"));
+    expect(log.tickets.at(-1)).toBe("k7f2q9xdpa3m");
+  } finally {
+    elsewhere.child.kill("SIGTERM");
+    await elsewhere.exit;
+  }
 
   // The person pasted the command: the link shows and the ticket goes to Slirc.
   const before = log.tickets.length;
-  writeArm("claude", "cc-armed", { host, ticket: "k7f2q9xdpa3m" }, env, Date.now(), [process.pid]);
+  writeArm("claude", "cc-armed", { host, ticket: "k7f2q9xdpa3m" }, env, Date.now());
   const run = start({ sessionId: "cc-armed", cwd: "/tmp/repo", model: "", arm: { prompt: `bunx slirc-agent@latest ${host} --ticket k7f2q9xdpa3m`, command: "slirc" } });
   try {
     await until(() => !!line(run, "connected"));
@@ -198,10 +204,38 @@ test("an arm file pairs only when the person's own prompt asked for it, and is t
     await pause(100);
     expect(run.lines.filter((item) => item.type === "link")).toHaveLength(1);
     // Armed again while connected to the same workspace: said so, nothing new.
-    writeArm("claude", "cc-armed", { host }, env, Date.now(), [process.pid]);
+    writeArm("claude", "cc-armed", { host }, env, Date.now());
     await call(run, "/arm", { prompt: `npx slirc-agent ${host}` });
     await until(() => run.lines.some((item) => item.type === "notify" && item.message === "Already connected as claude-3f2a."));
   } finally {
+    run.child.kill("SIGTERM");
+    await run.exit;
+  }
+});
+
+test("the pasted command pairs from the prompt itself, and the model's runs of it ask nothing new", async () => {
+  const host = `127.0.0.1:${server.port}`;
+  const pasted = `bunx slirc-agent@latest ${host} k7f2q9xdpa3m`;
+  hold = true;
+  const before = log.tickets.length;
+  // Never run: the mod hands the person's line to a listener as it is submitted.
+  const run = start({ sessionId: "cc-pasted", cwd: "/tmp/repo", model: "", prompted: pasted });
+  try {
+    await until(() => !!line(run, "link"));
+    expect(log.tickets.slice(before)).toEqual(["k7f2q9xdpa3m"]);
+    // The model runs it anyway, twice (in the background, its shell gone): the same code shows again.
+    for (let again = 0; again < 2; again++) {
+      writeArm("claude", "cc-pasted", { host, ticket: "k7f2q9xdpa3m" }, env, Date.now());
+      await call(run, "/arm", { prompt: pasted, command: "slirc" });
+    }
+    await until(() => run.lines.filter((item) => item.type === "link").length === 3);
+    expect(new Set(run.lines.filter((item) => item.type === "link").map((item) => item.code)).size).toBe(1);
+    expect(log.tickets.length).toBe(before + 1);
+    expect(run.lines.some((item) => item.type === "notify" && item.level !== "info")).toBe(false);
+    hold = false;
+    await until(() => !!line(run, "connected"), 8_000);
+  } finally {
+    hold = false;
     run.child.kill("SIGTERM");
     await run.exit;
   }
@@ -213,20 +247,20 @@ test("a fresh connect code pasted while the session waits for Allow asks again w
   const host = `127.0.0.1:${server.port}`;
   hold = true;
   const before = log.tickets.length;
-  writeArm("claude", "cc-armed-again", { host, ticket: "oldcode0001" }, env, Date.now(), [process.pid]);
+  writeArm("claude", "cc-armed-again", { host, ticket: "oldcode0001" }, env, Date.now());
   const run = start({ sessionId: "cc-armed-again", cwd: "/tmp/repo", model: "", arm: { prompt: `bunx slirc-agent@latest ${host} oldcode0001`, command: "slirc", starting: true } });
   try {
     await until(() => !!line(run, "link"));
     expect(log.tickets.slice(before)).toEqual(["oldcode0001"]);
     // The new code reaches Slirc, so the page that copied it gets its Allow card.
-    writeArm("claude", "cc-armed-again", { host, ticket: "newcode0002" }, env, Date.now(), [process.pid]);
+    writeArm("claude", "cc-armed-again", { host, ticket: "newcode0002" }, env, Date.now());
     await call(run, "/arm", { prompt: `bunx slirc-agent@latest ${host} newcode0002`, command: "slirc" });
     await until(() => log.tickets.length === before + 2);
     expect(log.tickets.slice(before)).toEqual(["oldcode0001", "newcode0002"]);
     await until(() => run.lines.filter((item) => item.type === "link").length === 2);
     expect(run.lines.some((item) => item.type === "notify" && /already waiting/.test(item.message))).toBe(false);
     // Pasted again without a code: no new request, the waiting link shows again.
-    writeArm("claude", "cc-armed-again", { host }, env, Date.now(), [process.pid]);
+    writeArm("claude", "cc-armed-again", { host }, env, Date.now());
     await call(run, "/arm", { prompt: `bunx slirc-agent@latest ${host}`, command: "slirc" });
     await until(() => run.lines.filter((item) => item.type === "link").length === 3);
     expect(log.tickets.length).toBe(before + 2);

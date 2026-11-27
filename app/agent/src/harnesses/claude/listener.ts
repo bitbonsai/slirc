@@ -4,7 +4,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { errorText, repoName, SessionClient, stateDir, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
-import { consents, takeArm } from "../../arm.ts";
+import { connectCommand, takeArm } from "../../arm.ts";
 import { VERSION } from "../../version.ts";
 import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, workspaceArg } from "../../../../shared/workspace.ts";
 
@@ -15,7 +15,8 @@ import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, works
 
 // `armed` and `ticket`: the launch `slirc-agent` did. `arm`: the mod found an arm file for this
 // session; `prompt` is the person's latest prompt, `command` what they type to connect.
-export type Config = { sessionId: string; cwd: string; model: string; armed?: string; ticket?: string; arm?: { prompt?: string; command?: string; starting?: boolean } };
+// `prompted`: the person just submitted what looks like the Agents page's command.
+export type Config = { sessionId: string; cwd: string; model: string; armed?: string; ticket?: string; arm?: { prompt?: string; command?: string; starting?: boolean }; prompted?: string };
 type Out = { type: "ready"; socket: string; token: string } | { type: "deliver"; id: string; prompt: string; receipt: string }
   | { type: "notify"; message: string; level: string } | { type: "link"; url: string; code: string; expiresAt: number }
   | { type: "connected"; text: string } | { type: "rename"; name: string } | { type: "busy" } | { type: "bound" };
@@ -78,6 +79,8 @@ export async function main(config: Config, env: NodeJS.ProcessEnv = process.env)
   };
   let client: SessionClient | undefined;
   let pairing = false;
+  // What the pairing waiting for Allow was asked for.
+  let asking: { host: string; ticket?: string } | undefined;
   // The link waiting for Allow, so /slirc can show it again in full.
   let pending: PairLink | undefined;
   let linked: ((text: string) => void) | undefined;
@@ -97,12 +100,13 @@ export async function main(config: Config, env: NodeJS.ProcessEnv = process.env)
     rename: async (name) => emit({ type: "rename", name }),
   };
 
-  // A pairing still waiting for Allow gives way to one that brings a connect code: the person
+  // A pairing still waiting for Allow gives way to one that brings a new connect code: the person
   // copied the command again, maybe after the first code expired, and their Agents page waits for
   // that one. Slirc replaces the session's earlier request, so only the newest link and code work.
+  // The same code again, from a second run of the command, shows the waiting code again.
   let attempt = 0;
   async function connect(host: string, ticket?: string): Promise<void> {
-    if (pairing && !ticket) {
+    if (pairing && (!ticket || (asking?.host === host && asking.ticket === ticket))) {
       if (pending) emit({ type: "link", ...pending });
       else emit({ type: "notify", message: "Slirc is already waiting for Allow for this session.", level: "info" });
       return;
@@ -110,6 +114,7 @@ export async function main(config: Config, env: NodeJS.ProcessEnv = process.env)
     const mine = ++attempt;
     const current = () => attempt === mine;
     pairing = true;
+    asking = { host, ...(ticket ? { ticket } : {}) };
     const show = (link: PairLink) => { if (!current()) return; pending = link; emit({ type: "link", ...link }); linked?.(linkText(link)); };
     try {
       const paired = await SessionClient.pair(adapter, path, identity, originFor(host), metadata, hostname() || "unknown", show, current, ticket);
@@ -125,25 +130,41 @@ export async function main(config: Config, env: NodeJS.ProcessEnv = process.env)
       if (!current()) return;
       emit({ type: "notify", message: `Slirc: ${errorText(error)}`, level: "error" });
       linked?.(`Slirc: ${errorText(error)}`);
-    } finally { if (current()) { pairing = false; pending = undefined; linked = undefined; } }
+    } finally { if (current()) { pairing = false; asking = undefined; pending = undefined; linked = undefined; } }
+  }
+
+  // The person submitted the Agents page's command. Pair from it now, whatever the model then
+  // does with it: runs it, backgrounds it, runs it twice or never.
+  function fromPrompt(text: string): void {
+    const asked = connectCommand(text);
+    if (!asked) return;
+    if (client?.active && client.state.origin === originFor(asked.host)) {
+      emit({ type: "notify", message: `Already connected as ${client.state.binding?.nick}.`, level: "info" });
+      return;
+    }
+    void connect(asked.host, asked.ticket);
   }
 
   // An arm file `slirc-agent` left for this session, taken once. It pairs only when the person's
   // own latest prompt asked for slirc-agent and this workspace.
   function fromArm(arm: NonNullable<Config["arm"]>): void {
     // The mod runs in Claude Code's own process, which spawned this listener and runs the Bash tool.
-    const found = takeArm("claude", config.sessionId, env, Date.now(), process.ppid, arm.starting === true);
+    const found = takeArm("claude", config.sessionId, env, Date.now(), arm.starting === true);
     if (!found) return;
-    const typed = `/${arm.command === "slirc-connect" ? "slirc-connect" : "slirc"} ${workspaceArg(found.host)}`.trim();
-    if (!consents(arm.prompt, found.host)) {
-      emit({ type: "notify", message: `Something ran slirc-agent for ${found.host}. To connect, type ${typed}.`, level: "warning" });
-      return;
-    }
     if (client?.active && client.state.origin === originFor(found.host)) {
       emit({ type: "notify", message: `Already connected as ${client.state.binding?.nick}.`, level: "info" });
       return;
     }
-    void connect(found.host, found.ticket);
+    const typed = `/${arm.command === "slirc-connect" ? "slirc-connect" : "slirc"} ${workspaceArg(found.host)}`.trim();
+    const asked = connectCommand(arm.prompt);
+    // Already on it: a second run shows the same code, a newly pasted code asks again with it.
+    if (pairing && asking?.host === found.host && asked?.host !== found.host) { if (pending) emit({ type: "link", ...pending }); return; }
+    if (asked?.host !== found.host) {
+      emit({ type: "notify", message: `Something ran slirc-agent for ${found.host}. To connect, type ${typed}.`, level: "warning" });
+      return;
+    }
+    // The workspace and code are the person's, not the file's.
+    void connect(asked.host, asked.ticket);
   }
 
   const live = () => {
@@ -171,6 +192,7 @@ export async function main(config: Config, env: NodeJS.ProcessEnv = process.env)
       void connect(host);
       return { text: await answer };
     },
+    "/prompt": async (args) => { if (typeof args.text === "string") fromPrompt(args.text); return {}; },
     "/arm": async (args) => {
       fromArm({ ...(typeof args.prompt === "string" ? { prompt: args.prompt } : {}), ...(typeof args.command === "string" ? { command: args.command } : {}), ...(args.starting === true ? { starting: true } : {}) });
       return {};
@@ -246,9 +268,10 @@ export async function main(config: Config, env: NodeJS.ProcessEnv = process.env)
   client = await SessionClient.resume(adapter, path, identity, metadata);
   if (client) { markBound(); await client.attach(); }
   else if (config.armed) await connect(config.armed, config.ticket);
-  if (config.arm) {
-    fromArm(config.arm);
-    // Started only for this arm file and nothing came of it: leave, so the session costs nothing.
+  if (config.prompted) fromPrompt(config.prompted);
+  if (config.arm) fromArm(config.arm);
+  if (config.arm || config.prompted) {
+    // Started only for this and nothing came of it: leave, so the session costs nothing.
     if (!client?.active && !pairing) { await shutdown(); await new Promise((done) => setTimeout(done, 100)); process.exit(0); }
   }
   // The socket server keeps the process alive until a signal, a detach or the parent leaving.

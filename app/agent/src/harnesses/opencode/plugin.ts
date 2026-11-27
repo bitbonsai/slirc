@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
 import { existsSync } from "node:fs";
-import { armPath, consents, isDelivery, takeArm } from "../../arm.ts";
+import { armPath, connectCommand, isDelivery, takeArm } from "../../arm.ts";
 import { errorText, readState, repoName, SessionClient, stateDir, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
 import { VERSION } from "../../version.ts";
 import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, workspaceArg } from "../../../../shared/workspace.ts";
@@ -28,6 +28,7 @@ type Registry = {
   delivered: Map<string, number>; // inboxIDs OpenCode delivered before prompt() returned
   running: Map<string, Map<string, SessionClient>>; // sessionID -> requests whose turn has started
   prompts: Map<string, string | undefined>; // sessionID -> the person's latest prompt, for arm consent
+  pairing: Map<string, { host: string; ticket?: string; link?: PairLink; epoch: number }>; // sessionID -> the pairing waiting for Allow
   timer?: ReturnType<typeof setInterval>;
 };
 
@@ -36,7 +37,7 @@ type Registry = {
 const registry: Registry = ((globalThis as any)[Symbol.for("slirc-agent.opencode")] ??= {} as Registry);
 registry.hosts ??= new Map(); registry.tuis ??= new Map(); registry.holds ??= new Map(); registry.live ??= new Map();
 registry.resuming ??= new Set(); registry.epochs ??= new Map(); registry.inbox ??= new Map(); registry.delivered ??= new Map();
-registry.running ??= new Map(); registry.prompts ??= new Map();
+registry.running ??= new Map(); registry.prompts ??= new Map(); registry.pairing ??= new Map();
 
 const STOPPED = "The agent was stopped before replying.";
 
@@ -173,22 +174,26 @@ async function humanPrompt(host: Host, sessionId: string): Promise<string | unde
 // reloads OpenCode before the CLI writes it, so the runtime that sees it is already the new one and
 // may take the after-reload arm too. It pairs only if the person's own latest prompt was that command.
 async function pickUp(host: Host, sessionId: string): Promise<void> {
-  const arm = takeArm("opencode", sessionId, process.env, Date.now(), process.pid, true);
+  const arm = takeArm("opencode", sessionId, process.env, Date.now(), true);
   if (!arm) return;
-  const prompt = await humanPrompt(host, sessionId);
-  // One prompt, one pairing.
-  registry.prompts.set(sessionId, undefined);
-  const typed = `/slirc ${workspaceArg(arm.host)}`.trim();
-  if (!consents(prompt, arm.host)) {
-    host.emit({ sessionID: sessionId, message: `Something ran slirc-agent for ${arm.host}. To connect, type ${typed}.`, variant: "warning", duration: 15_000 });
-    return;
-  }
   const live = registry.live.get(sessionId);
   if (live?.client.active && live.client.state.origin === originFor(arm.host)) {
     host.emit({ sessionID: sessionId, message: `Already connected as ${live.client.state.binding?.nick}.`, variant: "info" });
     return;
   }
-  void connect(host, sessionId, arm.host, arm.ticket);
+  const asked = connectCommand(await humanPrompt(host, sessionId));
+  // One prompt, one pairing.
+  registry.prompts.set(sessionId, undefined);
+  // Already on it from the person's prompt: a second run changes nothing.
+  const waiting = registry.pairing.get(sessionId);
+  if (waiting?.epoch === epoch(sessionId) && waiting.host === arm.host && asked?.host !== arm.host) return;
+  const typed = `/slirc ${workspaceArg(arm.host)}`.trim();
+  if (asked?.host !== arm.host) {
+    host.emit({ sessionID: sessionId, message: `Something ran slirc-agent for ${arm.host}. To connect, type ${typed}.`, variant: "warning", duration: 15_000 });
+    return;
+  }
+  // The workspace and code are the person's, not the file's.
+  void connect(host, sessionId, asked.host, asked.ticket);
 }
 
 // Pair `sessionId` with `host`. Waiting for Allow can take minutes, so this runs in the background
@@ -204,11 +209,20 @@ async function connect(host: Host, sessionId: string, workspace: string, ticket?
   try { target = workspace ? expandWorkspace(workspace) : readLastWorkspace() ?? ""; }
   catch (error) { notify(errorText(error), "error"); return; }
   if (!target) { notify("Type /slirc <workspace>, using the workspace name shown on your Agents page in Slirc.", "error"); return; }
+  const linkText = (link: PairLink) => `Open ${link.url} to connect this session, or enter ${link.code} under Agents in Slirc.`;
+  // Asked again for the same workspace with no new connect code: show the waiting code again.
+  const waiting = registry.pairing.get(sessionId);
+  if (waiting?.epoch === epoch(sessionId) && waiting.host === target && (!ticket || ticket === waiting.ticket)) {
+    if (waiting.link) notify(linkText(waiting.link), "info", 120_000);
+    return;
+  }
   const mine = bump(sessionId);
   const current = () => mine === epoch(sessionId);
+  const asking = { host: target, ...(ticket ? { ticket } : {}), epoch: mine } as { host: string; ticket?: string; link?: PairLink; epoch: number };
+  registry.pairing.set(sessionId, asking);
   // The person is looking at this session right now, even if its TUI hasn't reported yet.
   registry.holds.set(sessionId, Date.now() + PRESENCE_TTL_MS);
-  const show = (link: PairLink) => notify(`Open ${link.url} to connect this session, or enter ${link.code} under Agents in Slirc.`, "info", 120_000);
+  const show = (link: PairLink) => { asking.link = link; notify(linkText(link), "info", 120_000); };
   try {
     const identity: Identity = { sessionId, directory: host.directory };
     const paired = await SessionClient.pair(adapter(sessionId, host), pathFor(sessionId), identity, originFor(target), await metadataFor(host, sessionId), hostname() || "unknown", show, current, ticket);
@@ -219,7 +233,7 @@ async function connect(host: Host, sessionId: string, workspace: string, ticket?
     notify(`${paired.already ? "Already connected" : "Connected"} to ${target} as ${paired.client.state.binding?.nick}.`, "success");
   } catch (error) {
     if (current()) notify(errorText(error), "error");
-  }
+  } finally { if (registry.pairing.get(sessionId) === asking) registry.pairing.delete(sessionId); }
 }
 
 // Tools act only for the session that calls them, and only while it is attached.
@@ -309,6 +323,13 @@ async function setup(ctx: Ctx): Promise<() => Promise<void>> {
     if (typeof event?.sessionID !== "string") return;
     const text = typeof event.prompt?.text === "string" ? event.prompt.text : undefined;
     registry.prompts.set(event.sessionID, text && !isDelivery(text) ? text : undefined);
+    // The person pasted the Agents page's command: pair from it now, whatever the model then
+    // does with it. The model's own run only finds the pairing already under way.
+    const asked = connectCommand(text);
+    if (!asked) return;
+    const live = registry.live.get(event.sessionID);
+    if (live?.client.active && live.client.state.origin === originFor(asked.host)) return;
+    void connect(host, event.sessionID, asked.host, asked.ticket);
   });
   await ctx.tool.hook("execute.after", (event: any) => {
     if (event?.tool === "shell" && typeof event.sessionID === "string") void pickUp(host, event.sessionID).catch(() => {});

@@ -21,6 +21,7 @@ async function mod(sessionId: string, out: object[] = []) {
   // What reached the listener: the arm in its spawn config, then each /arm call on its socket.
   const prompts: (string | undefined)[] = [];
   const configs: any[] = [];
+  const calls: [string, any][] = [];
   // What the person saw, and what the model was handed.
   const ui: [string, unknown][] = [];
   const submitted: unknown[] = [];
@@ -35,7 +36,7 @@ async function mod(sessionId: string, out: object[] = []) {
     command: { register: async () => undefined, run: async () => undefined },
     prompt: { submit: async (input: unknown) => { submitted.push(input); } },
     tool: { register: async () => undefined },
-    http: { fetch: async (_url: string, init: any) => { prompts.push(JSON.parse(init.body).prompt); return { text: "{}" }; } },
+    http: { fetch: async (url: string, init: any) => { calls.push([url, JSON.parse(init.body)]); prompts.push(JSON.parse(init.body).prompt); return { text: "{}" }; } },
     process: {
       spawn: ({ argv }: { argv: string[] }) => {
         prompts.push(JSON.parse(argv[2]).arm?.prompt);
@@ -59,6 +60,7 @@ async function mod(sessionId: string, out: object[] = []) {
     turn: (text: string, agentId?: string) => hooks.get("turn.start")($, { text, turnId: `t${Math.random()}`, ...(agentId ? { agentId } : {}) }, async () => ({})),
     bash: async () => { arm(); await hooks.get("tool.call:Bash")($, { agentId: undefined }, async () => ({})); await settle(); },
     configs,
+    calls,
     // The CLI just updated the plugin: its arm waits for /reload-plugins.
     bashBeforeReload: async () => { arm(`${sessionId}.reload.json`); await hooks.get("tool.call:Bash")($, { agentId: undefined }, async () => ({})); await settle(); },
     reload: async () => { await hooks.get("session.start")($, { isInteractive: true }, async () => ({})); await settle(); },
@@ -68,12 +70,22 @@ async function mod(sessionId: string, out: object[] = []) {
 test("the person's submitted line, taken by the turn it started, is the consent, once", async () => {
   const session = await mod("cc-typed");
   await session.submit("bunx slirc-agent@latest calango --ticket k7f2q9xdpa3m");
+  // The pasted command reaches a listener at once, before the model does anything with it.
+  await new Promise((done) => setTimeout(done, 20));
+  expect(session.configs).toMatchObject([{ prompted: "bunx slirc-agent@latest calango --ticket k7f2q9xdpa3m" }]);
+  expect(session.configs[0].arm).toBeUndefined();
   await session.turn("bunx slirc-agent@latest calango --ticket k7f2q9xdpa3m");
   await session.bash();
-  expect(session.prompts).toEqual(["bunx slirc-agent@latest calango --ticket k7f2q9xdpa3m"]);
+  expect(session.prompts).toEqual([undefined, "bunx slirc-agent@latest calango --ticket k7f2q9xdpa3m"]);
   // The model runs it again in the same turn: the prompt was used.
   await session.bash();
-  expect(session.prompts).toEqual(["bunx slirc-agent@latest calango --ticket k7f2q9xdpa3m", undefined]);
+  expect(session.prompts).toEqual([undefined, "bunx slirc-agent@latest calango --ticket k7f2q9xdpa3m", undefined]);
+  // Lines that aren't the command start nothing.
+  const other = await mod("cc-other");
+  await other.submit("tidy the README");
+  await other.submit("please run slirc-agent calango\nthen stop");
+  await new Promise((done) => setTimeout(done, 20));
+  expect(other.configs).toEqual([]);
 });
 
 test("a turn nobody typed for carries no prompt, even with the person's earlier text", async () => {
@@ -122,11 +134,12 @@ test("an arm left for after /reload-plugins is handed over only when the plugin 
   const session = await mod("cc-reload");
   await session.submit("bunx slirc-agent@latest calango k7f2q9xdpa3m");
   await session.turn("bunx slirc-agent@latest calango k7f2q9xdpa3m");
+  // The pasted line started a listener; the arm waiting for the reload isn't handed to it yet.
   await session.bashBeforeReload();
-  expect(session.configs).toEqual([]);
-  await session.reload();
   expect(session.configs).toHaveLength(1);
-  expect(session.configs[0].arm).toMatchObject({ starting: true });
+  expect(session.calls.filter(([url]) => url.endsWith("/arm"))).toEqual([]);
+  await session.reload();
+  expect(session.calls.filter(([url]) => url.endsWith("/arm")).map(([, body]) => body)).toMatchObject([{ starting: true }]);
 });
 
 test("the link and code stay in the transcript as a display-only row until connected", async () => {

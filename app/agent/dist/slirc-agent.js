@@ -2105,69 +2105,25 @@ var module_default4 = opencode;
 var harnesses = [module_default, module_default2, module_default3, module_default4];
 
 // src/arm.ts
-import { spawnSync as spawnSync5 } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { closeSync, mkdirSync as mkdirSync4, openSync as openSync2, readFileSync as readFileSync7, renameSync, rmSync as rmSync5, writeSync } from "node:fs";
 import { join as join9 } from "node:path";
 var ARM_TTL_MS = 10 * 60000;
 var KEY = /^[A-Za-z0-9_-]{1,128}$/;
 var validTicket = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(value);
-var checksProcesses = process.platform !== "win32";
 var armDir = (harness, env = process.env) => join9(stateDir(harness, env), "arm");
 var armPath = (harness, key, env = process.env, reload = false) => {
   if (!KEY.test(key))
     throw new Error("bad session key");
   return join9(armDir(harness, env), `${key}${reload ? ".reload" : ""}.json`);
 };
-function ancestors(from = process.ppid) {
-  if (!checksProcesses)
-    return [];
-  const listed = spawnSync5("ps", ["-A", "-o", "pid=,ppid="], { encoding: "utf8", timeout: 5000 });
-  const parent = new Map;
-  for (const line of (listed.stdout ?? "").split(`
-`)) {
-    const [pid, ppid] = line.trim().split(/\s+/).map(Number);
-    if (pid > 0 && ppid >= 0)
-      parent.set(pid, ppid);
-  }
-  const chain = [];
-  for (let pid = from;pid > 0 && chain.length < 64 && !chain.includes(pid); pid = parent.get(pid) ?? 0)
-    chain.push(pid);
-  return chain;
-}
-var alive2 = (pid) => {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return error.code === "EPERM";
-  }
-};
-function parse(text, now) {
-  try {
-    const raw = JSON.parse(text);
-    if (typeof raw.host !== "string" || typeof raw.at !== "number" || now - raw.at > ARM_TTL_MS || raw.at > now + 60000)
-      return;
-    const pids = Array.isArray(raw.pids) ? raw.pids.filter((pid) => Number.isInteger(pid) && pid > 0) : undefined;
-    return { host: expandWorkspace(raw.host), at: raw.at, ...validTicket(raw.ticket) ? { ticket: raw.ticket } : {}, ...pids ? { pids } : {} };
-  } catch {
-    return;
-  }
-}
-function writeArm(harness, key, arm, env = process.env, now = Date.now(), pids = ancestors()) {
+function writeArm(harness, key, arm, env = process.env, now = Date.now()) {
   const path = armPath(harness, key, env, arm.reload);
   mkdirSync4(armDir(harness, env), { recursive: true, mode: 448 });
-  let existing;
-  try {
-    existing = parse(readFileSync7(path, "utf8"), now);
-  } catch {}
-  const owner = existing?.pids?.find(alive2);
-  if (owner !== undefined && !pids.includes(owner))
-    throw new Error("another session already asked to connect under this session's id");
   const temp = `${path}.${randomBytes(6).toString("hex")}.tmp`;
   const fd = openSync2(temp, "wx", 384);
   try {
-    writeSync(fd, JSON.stringify({ host: arm.host, ...validTicket(arm.ticket) ? { ticket: arm.ticket } : {}, at: now, ...checksProcesses ? { pids } : {} }));
+    writeSync(fd, JSON.stringify({ host: arm.host, ...validTicket(arm.ticket) ? { ticket: arm.ticket } : {}, at: now }));
   } finally {
     closeSync(fd);
   }
@@ -2288,6 +2244,8 @@ async function connect(command, env, io, launch) {
   const harness = inside ?? (found.length ? await pick(found, io) : undefined);
   if (!harness)
     throw missing(list);
+  if (inside === harness)
+    io.out("This ends by itself in a few seconds.");
   await checkWorkspace(host);
   const changed = setUp(harness, env, io, command.dryRun);
   if (command.dryRun)
@@ -2302,8 +2260,8 @@ async function connect(command, env, io, launch) {
       } catch (error) {
         throw new CliError2(`Couldn't ask this ${harness.name} session to connect: ${error instanceof Error ? error.message : String(error)}. Type ${typed} in it instead.`);
       }
-      io.out(changed && harness.reloadHint ? `Slirc is ${changed}. Type ${harness.reloadHint}, then a code shows in this session: enter it on the Agents page in Slirc.` : `${changed ? `Slirc is ${changed} and loaded, so there's nothing to reload. ` : ""}Connecting this ${harness.name} session to ${host}. A code shows in this session in a few seconds: enter it on the Agents page in Slirc, or open the link shown with it.`);
-      io.out(`If no code shows${changed && harness.reloadHint ? ` after ${harness.reloadHint}` : ""}, type ${typed}. Tell the owner these lines as they are.`);
+      io.out(changed && harness.reloadHint ? `Slirc is ${changed}. Type ${harness.reloadHint}, then a code shows in this session: enter it on the Agents page in Slirc.` : `${changed ? `Slirc is ${changed} and loaded, so there's nothing to reload. ` : ""}This ${harness.name} session is connecting to ${host} by itself. A code shows in this session, not here: enter it on the Agents page in Slirc, or open the link shown with it.`);
+      io.out("This command is done. Running it again, waiting or stopping anything won't help. Tell the owner these lines as they are.");
       return 0;
     }
     io.out(changed ? `Slirc is set up. In this ${harness.name} session, type ${harness.reloadHint ? `${harness.reloadHint}, then ` : ""}${typed}, and open the link it shows.` : `Slirc is set up. In this ${harness.name} session, type ${typed} and open the link it shows.`);
