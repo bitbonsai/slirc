@@ -49,22 +49,32 @@ export type Adapter = {
 const CONFIRM_WAIT_MS = 10 * 60_000;
 const CONFIRM_POLL_MS = 2_000;
 
-export const CODE_EXPIRED = "That connect code expired, so your Agents page didn't get this request.";
-// How long the session shows only "Choose Allow" when the person's Agents page already shows the
-// request, before it adds the link and code to type. Tests shorten it.
-export const pairTiming = { onPageMs: 30_000 };
+// How long the session waits for Allow before it says, once, that it is still waiting. Tests shorten it.
+export const pairTiming = { onPageMs: 2 * 60_000 };
 
 // What the owner opens or types to allow a session.
 // `onPage`: the Agents page the command came from shows this request with Allow. `expired`: the
-// command's connect code didn't reach a page.
-export type PairLink = { url: string; code: string; expiresAt: number; onPage?: boolean; expired?: boolean };
+// command's connect code didn't reach a page. `late`: the page showed it and nobody answered for
+// a while.
+export type PairLink = { url: string; code: string; expiresAt: number; onPage?: boolean; expired?: boolean; late?: boolean };
 
-// What a session shows the person while it waits for Allow. Never for the model.
-export function pairText(link: PairLink, noun = "this session"): string {
-  if (link.onPage) return `Choose Allow on your Agents page in Slirc. Code ${link.code}.`;
-  const open = `open ${link.url} to connect ${noun}, or enter ${link.code} under Agents in Slirc.`;
-  return link.expired ? `${CODE_EXPIRED} To connect, ${open}` : `O${open.slice(1)}`;
+export const EXPIRED_LINES = ["That code expired.", "Press Copy on the Agents page again and paste it here."];
+
+// What a session shows the person while it waits for Allow: one block, one thing to do, no link.
+// Never for the model.
+export function pairLines(link: PairLink, host: string): string[] {
+  if (link.expired) return EXPIRED_LINES;
+  if (link.late) return ["Still waiting. Press Allow on the Agents page."];
+  if (link.onPage) return [`Connecting to ${host}`, "Go back to Slirc and press Allow.", `Code  ${link.code}`];
+  return [`Connecting to ${host}`, `Open Agents in Slirc and enter  ${link.code}`];
 }
+
+// The same block as text, for surfaces that show plain text.
+export const pairText = (link: PairLink, host: string) => pairLines(link, host).join("\n");
+
+// What the session says once Slirc allowed it.
+export const connectedLines = (nick: string | undefined) => [`Connected as ${nick}`, `Message it in Slirc: Agents → ${nick}`];
+export const connectedText = (nick: string | undefined) => connectedLines(nick).join("\n");
 
 export class HttpError extends Error {
   constructor(readonly status: number, readonly code: string | undefined, message: string) { super(message); }
@@ -306,24 +316,26 @@ export class SessionClient {
     const link: PairLink = { url: String(asked.url), code: String(asked.code), expiresAt: deadline,
       ...(asked.onPage === true ? { onPage: true } : {}), ...(ticket && asked.connectCode === "expired" ? { expired: true } : {}) };
     if (!asked.bound) show(link);
-    // The page shows Allow, so the session says only that. Nobody allowed after a while: maybe
-    // that page was closed, so the link and the code to type show too.
+    // Nobody answered for a while: say once that the session still waits.
     let fullAt = link.onPage ? Date.now() + pairTiming.onPageMs : Infinity;
     for (;;) {
-      if (Date.now() >= fullAt) { fullAt = Infinity; if (!asked.bound) show({ url: link.url, code: link.code, expiresAt: link.expiresAt }); }
+      if (Date.now() >= fullAt) { fullAt = Infinity; if (!asked.bound) show({ ...link, late: true }); }
       try {
         stored.binding = await requestJson(`${origin}${API}/connect`, stored.secret, undefined, body) as Binding;
         break;
       } catch (error) {
         if (!(error instanceof HttpError && error.code === "owner_confirmation")) throw friendly(error, origin);
-        if (Date.now() > deadline) throw new Error("The link expired before anyone allowed it. Type /slirc again for a new one.");
+        if (Date.now() > deadline) throw new Error(EXPIRED_LINES.join("\n"));
         await new Promise((done) => setTimeout(done, Math.min(CONFIRM_POLL_MS, Math.max(10, fullAt - Date.now()))));
         if (!current()) return;
       }
     }
     await saveState(path, stored).catch((error) => { if (current()) throw error; });
     if (!current()) return;
-    return { client: new SessionClient(path, stored, metadata, adapter), already: false };
+    // The caller says "Connected as …" itself, so the first attach doesn't add "Slirc connected.".
+    const client = new SessionClient(path, stored, metadata, adapter);
+    client.announcedConnected = true;
+    return { client, already: false };
   }
 
   // The stored binding of this session, if it has one. The caller attaches it.
@@ -724,6 +736,8 @@ export class SessionClient {
       }
       if (!this.announcedWaiting) {
         this.announcedWaiting = true;
+        // Said "waiting", so say "connected" once it is, even right after pairing.
+        this.announcedConnected = false;
         this.notify("Waiting for the Slirc transport to become ready.", "info");
       }
       // Not ready yet (for example DM JOIN still in flight): bounded readiness reattach, same lease.

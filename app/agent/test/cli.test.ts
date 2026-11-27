@@ -104,10 +104,8 @@ for (const [name, runtime] of runtimes) {
     // arm waits for the reloaded runtime, so an older one still loaded can't take it.
     const first = await cli(runtime, [host(), "k7f2q9xdpa3m"], inside);
     expect(first.code).toBe(0);
-    expect(first.out).toContain("Slirc is installed. Type /reload, then a code shows in this session: enter it on the Agents page in Slirc.");
-    // The session connects by itself after the reload: nothing for the owner to type but /reload.
-    expect(first.out).toContain("Tell the owner these lines as they are.");
-    expect(first.out).not.toContain("/slirc");
+    // One line: the session connects by itself after the reload.
+    expect(first.out).toBe("Slirc installed. Type /reload to finish.\n");
     const reloadArm = arm.replace(/\.json$/, ".reload.json");
     expect(existsSync(arm)).toBe(false);
     expect(JSON.parse(readFileSync(reloadArm, "utf8"))).toMatchObject({ host: host(), ticket: "k7f2q9xdpa3m" });
@@ -115,7 +113,7 @@ for (const [name, runtime] of runtimes) {
     expect(statSync(join(arm, "..")).mode & 0o777).toBe(0o700);
     // Set up already: nothing to type.
     const again = await cli(runtime, [host()], inside);
-    expect(again.out).toContain(`This Pi session is connecting to ${host()} by itself. A code shows in this session, not here: enter it on the Agents page in Slirc, or open the link shown with it.`);
+    expect(again.out).toContain(`This Pi session is connecting to ${host()} by itself. A code shows in this session, not here: enter it on the Agents page in Slirc.`);
     expect(again.out).toContain("This command is done.");
     expect(again.out).not.toContain("/slirc");
     expect(JSON.parse(readFileSync(arm, "utf8")).ticket).toBeUndefined();
@@ -157,7 +155,6 @@ for (const [name, runtime] of runtimes) {
       SLIRC_OPENCODE_SOURCE: source, OPENCODE: "1", OPENCODE_SESSION_ID: "ses_first" };
     const run = await cli(runtime, [host(), "k7f2q9xdpa3m"], env);
     expect(run.code).toBe(0);
-    expect(run.out).toContain("reload OpenCode so it loads the plugin");
     expect(run.out).toContain(`Slirc is installed and loaded, so there's nothing to reload. This OpenCode session is connecting to ${host()} by itself.`);
     expect(run.out).not.toMatch(/^\s*opencode reload$/m);
     expect(readFileSync(join(root, "calls.log"), "utf8")).toContain("reload");

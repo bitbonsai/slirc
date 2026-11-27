@@ -16,17 +16,16 @@
           </div>
 
           <div class="agent-connect-card agent-panel" role="region" aria-label="Session asking to connect" x-show="agents.card">
-            <p class="agent-step">Connect this coding session?</p>
             <div class="agent-row">
               <span class="agent-copy">
                 <strong x-text="agents.card && agents.cardTitle(agents.card)"></strong>
                 <small x-text="agents.card && agents.cardSubtitle(agents.card)"></small>
               </span>
             </div>
-            <p class="agent-connect-code">Code <code x-text="agents.card?.code"></code>. Allow it only if your session shows the same code.</p>
+            <p class="agent-connect-code">Code <code x-text="agents.card?.code"></code></p>
             <div class="agent-connect-actions">
-              <button type="button" class="btn-secondary" :disabled="agents.deciding" x-on:click="agents.decide(false)">Deny</button>
               <button type="button" class="btn-primary" :disabled="agents.deciding" x-on:click="agents.decide(true)" x-text="agents.deciding ? 'Connecting…' : 'Allow'"></button>
+              <button type="button" class="btn-secondary" :disabled="agents.deciding" x-on:click="agents.decide(false)">Deny</button>
             </div>
           </div>
           <p class="profile-note agent-connected" role="status" x-show="agents.connected" x-text="agents.connected ? agents.connected + ' is connected. Say hi in its DM.' : ''"></p>

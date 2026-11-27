@@ -109,10 +109,10 @@ async function connect(command: Extract<Command, { name: "connect" }>, env: Env,
   const { inside, found } = installedAmong(list, env);
   const harness = inside ?? (found.length ? await pick(found, io) : undefined);
   if (!harness) throw missing(list);
-  // Said first, for an agent reading a log of this run before it ends.
-  if (inside === harness) io.out("This ends by itself in a few seconds.");
   await checkWorkspace(host);
-  const changed = setUp(harness, env, io, command.dryRun);
+  // Inside a session that connects itself, the steps aren't news: the agent relays one line.
+  const quiet = inside === harness && !!harness.sessionKey?.(env) && !command.dryRun;
+  const changed = setUp(harness, env, quiet ? { ...io, out: () => {} } : io, command.dryRun);
   if (command.dryRun) return 0;
   saveLastWorkspace(host, env);
   const typed = commandFor(harness, env, workspaceArg(host));
@@ -126,9 +126,11 @@ async function connect(command: Extract<Command, { name: "connect" }>, env: Env,
       catch (error) { throw new CliError(`Couldn't ask this ${harness.name} session to connect: ${error instanceof Error ? error.message : String(error)}. Type ${typed} in it instead.`); }
       // Said in plain words the agent relays as they are: the code shows in the session, never
       // here. The session pairs by itself, so the agent has nothing to wait for, repeat or stop.
-      io.out(changed && harness.reloadHint
-        ? `Slirc is ${changed}. Type ${harness.reloadHint}, then a code shows in this session: enter it on the Agents page in Slirc.`
-        : `${changed ? `Slirc is ${changed} and loaded, so there's nothing to reload. ` : ""}This ${harness.name} session is connecting to ${host} by itself. A code shows in this session, not here: enter it on the Agents page in Slirc, or open the link shown with it.`);
+      if (changed && harness.reloadHint) {
+        io.out(changed === "installed" ? `Slirc installed. Type ${harness.reloadHint} to finish.` : `Slirc updated to ${VERSION}. Type ${harness.reloadHint} to finish.`);
+        return 0;
+      }
+      io.out(`${changed ? `Slirc is ${changed} and loaded, so there's nothing to reload. ` : ""}This ${harness.name} session is connecting to ${host} by itself. A code shows in this session, not here: enter it on the Agents page in Slirc.`);
       io.out("This command is done. Running it again, waiting or stopping anything won't help. Tell the owner these lines as they are.");
       return 0;
     }

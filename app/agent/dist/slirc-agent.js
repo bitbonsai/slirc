@@ -1502,7 +1502,7 @@ import { fileURLToPath } from "node:url";
 // package.json
 var package_default = {
   name: "slirc-agent",
-  version: "3.5.0",
+  version: "3.5.1",
   description: "Connect coding agents to Slirc rooms",
   keywords: [
     "slirc",
@@ -1827,6 +1827,7 @@ function saveLastWorkspace(host, env = process.env) {
 // src/adapter-core.ts
 var MAX_SSE_BUFFER = 128 * 1024;
 var CONFIRM_WAIT_MS = 10 * 60000;
+var pairTiming = { onPageMs: 2 * 60000 };
 var stateDir = (harness, env = process.env) => join6(env.XDG_STATE_HOME || join6(env.HOME || homedir6(), ".local", "state"), "slirc-agent", harness);
 var MAX_ATTACHMENT_BYTES = 16 * 1024 * 1024;
 
@@ -2254,10 +2255,9 @@ async function connect(command, env, io, launch) {
   const harness = inside ?? (found.length ? await pick(found, io) : undefined);
   if (!harness)
     throw missing(list);
-  if (inside === harness)
-    io.out("This ends by itself in a few seconds.");
   await checkWorkspace(host);
-  const changed = setUp(harness, env, io, command.dryRun);
+  const quiet = inside === harness && !!harness.sessionKey?.(env) && !command.dryRun;
+  const changed = setUp(harness, env, quiet ? { ...io, out: () => {} } : io, command.dryRun);
   if (command.dryRun)
     return 0;
   saveLastWorkspace(host, env);
@@ -2270,7 +2270,11 @@ async function connect(command, env, io, launch) {
       } catch (error) {
         throw new CliError2(`Couldn't ask this ${harness.name} session to connect: ${error instanceof Error ? error.message : String(error)}. Type ${typed} in it instead.`);
       }
-      io.out(changed && harness.reloadHint ? `Slirc is ${changed}. Type ${harness.reloadHint}, then a code shows in this session: enter it on the Agents page in Slirc.` : `${changed ? `Slirc is ${changed} and loaded, so there's nothing to reload. ` : ""}This ${harness.name} session is connecting to ${host} by itself. A code shows in this session, not here: enter it on the Agents page in Slirc, or open the link shown with it.`);
+      if (changed && harness.reloadHint) {
+        io.out(changed === "installed" ? `Slirc installed. Type ${harness.reloadHint} to finish.` : `Slirc updated to ${VERSION}. Type ${harness.reloadHint} to finish.`);
+        return 0;
+      }
+      io.out(`${changed ? `Slirc is ${changed} and loaded, so there's nothing to reload. ` : ""}This ${harness.name} session is connecting to ${host} by itself. A code shows in this session, not here: enter it on the Agents page in Slirc.`);
       io.out("This command is done. Running it again, waiting or stopping anything won't help. Tell the owner these lines as they are.");
       return 0;
     }

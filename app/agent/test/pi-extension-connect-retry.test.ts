@@ -52,12 +52,12 @@ test("a retry after a failed attempt keeps the binding secret and shows the link
   try {
     { const command = commands.get("slirc"); await command.handler(`127.0.0.1:${server.port}`, ctx); await command.settled; }
     expect(calls).toHaveLength(1);
-    expect(notifications).toContain(`Slirc: Open http://127.0.0.1:${server.port}/agents#connect=${"t".repeat(43)} to connect this session, or enter K7QX-M2PD under Agents in Slirc.`);
-    expect(notifications.some((n) => n.startsWith("Slirc: ") && /HTTP 500|first attempt/i.test(n))).toBe(true);
+    expect(notifications).toContain(`Connecting to 127.0.0.1:${server.port}\nOpen Agents in Slirc and enter  K7QX-M2PD`);
+    expect(notifications.some((n) => /HTTP 500|first attempt/i.test(n))).toBe(true);
     { const command = commands.get("slirc"); await command.handler(`127.0.0.1:${server.port}`, ctx); await command.settled; }
     expect(calls).toHaveLength(2);
     expect(asked[0].body).toMatchObject({ harness: "pi", protocol: 1, sessionId: "saved-retry", sessionName: "saved-retry", repo: "work" });
-    expect(notifications.at(-1)).toBe(`Connected to 127.0.0.1:${server.port} as sa-retry.`);
+    expect(notifications.at(-1)).toBe("Connected as sa-retry\nMessage it in Slirc: Agents → sa-retry");
     // The second attempt reuses the original secret so a prior ambiguous attempt stays recoverable.
     expect(calls[1].secret).toBe(calls[0].secret);
     const stateDir = join(config, "slirc");

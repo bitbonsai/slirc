@@ -17,7 +17,7 @@ type Line =
   | { type: 'ready'; socket: string; token: string }
   | { type: 'deliver'; id: string; prompt: string; receipt: string }
   | { type: 'notify'; message: string; level: string }
-  | { type: 'link'; url: string; code: string; expiresAt: number; onPage?: boolean; expired?: boolean }
+  | { type: 'link'; url: string; code: string; expiresAt: number; onPage?: boolean; expired?: boolean; late?: boolean; lines?: string[] }
   | { type: 'connected'; text: string }
   | { type: 'rename'; name: string }
   | { type: 'busy' }
@@ -91,26 +91,18 @@ function show($: any, line: Line): void {
   // Claude Code already names the plugin before each toast.
   if (line.type === 'notify') {
     // An error ends any pairing, so a code left on the status line would be dead.
-    if (line.level === 'error') $.ui.status(undefined)
+    // It also stays in the transcript, so the person knows what to do once the toast goes.
+    if (line.level === 'error') { $.ui.status(undefined); $.ui.log(line.message.replace(/^Slirc: /, '')) }
     $.ui.toast(line.message.replace(/^Slirc: /, ''), { timeoutMs: line.level === 'error' ? 15_000 : 6_000 })
   }
   else if (line.type === 'link') {
-    // A dim transcript row keeps the whole link and code after the toast goes; $.ui.log never
-    // reaches the model. The status line stays short enough for any width.
-    // The Agents page the command came from shows Allow already, so only that, until nobody
-    // allowed for a while and the listener sends the link again without onPage.
-    if (line.onPage) {
-      const text = `Choose Allow on your Agents page in Slirc. Code ${line.code}.`
-      $.ui.log(text)
-      $.ui.status(text)
-      $.ui.toast(text, { timeoutMs: 30_000 })
-      return
-    }
-    $.ui.log(`${line.expired ? "That connect code expired, so your Agents page didn't get this request. " : ''}Slirc code ${line.code}: enter it on the Agents page in Slirc, or open ${line.url}`)
-    const text = `Enter ${line.code} on the Agents page in Slirc`
+    // A transcript row ($.ui.log never reaches the model) keeps the whole block after the toast
+    // goes: what every harness shows while it waits for Allow. The status line stays short.
+    $.ui.log((line.lines ?? [`Slirc code ${line.code}: enter it on the Agents page in Slirc, or open ${line.url}`]).join('\n'))
+    const text = line.onPage ? `Press Allow in Slirc · code ${line.code}` : `Enter ${line.code} on the Agents page in Slirc`
     $.ui.status(text)
     $.ui.toast(text, { timeoutMs: 30_000 })
-  } else if (line.type === 'connected') { $.ui.status(undefined); $.ui.toast(line.text, { timeoutMs: 6_000 }) }
+  } else if (line.type === 'connected') { $.ui.status(undefined); $.ui.log(line.text); $.ui.toast(line.text, { timeoutMs: 6_000 }) }
 }
 
 // Start the one listener for the session open now. A crash restarts it with a growing delay; a

@@ -493,7 +493,7 @@ run("unsupported harnesses are refused; a link nobody allows expires with a clea
   C.send({ type: "prompt", message: `/slirc ${host}` });
   await note(C, /#connect=/, "link");
   db.query("UPDATE agent_connect_requests SET expires_at=? WHERE decision IS NULL").run(Date.now() - 1);
-  await note(C, /^Slirc: The link expired before anyone allowed it\. Type \/slirc again for a new one\./, "expired");
+  await note(C, /Nobody pressed Allow in time\. Copy the command from your Agents page again to connect\./, "expired");
   expect(bindings()).toHaveLength(count);
   await stop(C);
 }, 60_000);

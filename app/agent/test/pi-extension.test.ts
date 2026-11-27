@@ -182,8 +182,8 @@ test("a Pi started by slirc-agent pairs on its own, once, and remembers the work
   try {
     handlers.get("session_start")!({ reason: "startup" }, ctx);
     expect(process.env.SLIRC_CONNECT).toBeUndefined();
-    await until(() => notices.includes(`Connected to 127.0.0.1:${server.port} as pi-3f2a.`));
-    expect(notices[0]).toContain("enter K7QX-M2PD under Agents");
+    await until(() => notices.includes("Connected as pi-3f2a\nMessage it in Slirc: Agents → pi-3f2a"));
+    expect(notices[0]).toContain("enter  K7QX-M2PD");
     expect(asked).toBe(1);
     expect(readFileSync(join(root, "state", "slirc", "workspace"), "utf8").trim()).toBe(`127.0.0.1:${server.port}`);
   } finally {

@@ -1,7 +1,8 @@
 // src/harnesses/pi/extension.ts
+import { spawn } from "node:child_process";
 import { existsSync as existsSync2, realpathSync, statSync } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { homedir as homedir3 } from "node:os";
+import { homedir as homedir3, hostname } from "node:os";
 import { basename as basename2, dirname as dirname3, join as join4, resolve as resolve2 } from "node:path";
 import { Type } from "typebox";
 
@@ -71,15 +72,18 @@ var retryMs = () => Number(process.env.SLIRC_RETRY_MS) || 5000;
 var lostWarningMs = () => Number(process.env.SLIRC_LOST_WARNING_MS) || 30000;
 var CONFIRM_WAIT_MS = 10 * 60000;
 var CONFIRM_POLL_MS = 2000;
-var CODE_EXPIRED = "That connect code expired, so your Agents page didn't get this request.";
-var pairTiming = { onPageMs: 30000 };
-function pairText(link, noun = "this session") {
+var pairTiming = { onPageMs: 2 * 60000 };
+var EXPIRED_LINES = ["That code expired.", "Press Copy on the Agents page again and paste it here."];
+function pairLines(link, host) {
+  if (link.expired)
+    return EXPIRED_LINES;
+  if (link.late)
+    return ["Still waiting. Press Allow on the Agents page."];
   if (link.onPage)
-    return `Choose Allow on your Agents page in Slirc. Code ${link.code}.`;
-  const open = `open ${link.url} to connect ${noun}, or enter ${link.code} under Agents in Slirc.`;
-  return link.expired ? `${CODE_EXPIRED} To connect, ${open}` : `O${open.slice(1)}`;
+    return [`Connecting to ${host}`, "Go back to Slirc and press Allow.", `Code  ${link.code}`];
+  return [`Connecting to ${host}`, `Open Agents in Slirc and enter  ${link.code}`];
 }
-
+var connectedLines = (nick) => [`Connected as ${nick}`, `Message it in Slirc: Agents → ${nick}`];
 class HttpError extends Error {
   status;
   code;
@@ -361,7 +365,7 @@ class SessionClient {
       if (Date.now() >= fullAt) {
         fullAt = Infinity;
         if (!asked.bound)
-          show({ url: link.url, code: link.code, expiresAt: link.expiresAt });
+          show({ ...link, late: true });
       }
       try {
         stored.binding = await requestJson(`${origin}${API}/connect`, stored.secret, undefined, body);
@@ -370,7 +374,8 @@ class SessionClient {
         if (!(error instanceof HttpError && error.code === "owner_confirmation"))
           throw friendly(error, origin);
         if (Date.now() > deadline)
-          throw new Error("The link expired before anyone allowed it. Type /slirc again for a new one.");
+          throw new Error(EXPIRED_LINES.join(`
+`));
         await new Promise((done) => setTimeout(done, Math.min(CONFIRM_POLL_MS, Math.max(10, fullAt - Date.now()))));
         if (!current())
           return;
@@ -382,7 +387,9 @@ class SessionClient {
     });
     if (!current())
       return;
-    return { client: new SessionClient(path, stored, metadata, adapter), already: false };
+    const client = new SessionClient(path, stored, metadata, adapter);
+    client.announcedConnected = true;
+    return { client, already: false };
   }
   static async resume(adapter, path, identity, metadata) {
     const state = await readState(path, identity).catch(() => {
@@ -827,6 +834,7 @@ class SessionClient {
       }
       if (!this.announcedWaiting) {
         this.announcedWaiting = true;
+        this.announcedConnected = false;
         this.notify("Waiting for the Slirc transport to become ready.", "info");
       }
       this.scheduleReadiness();
@@ -909,6 +917,19 @@ function parse(text, now) {
     return;
   }
 }
+function writeArm(harness, key, arm, env = process.env, now = Date.now()) {
+  const path = armPath(harness, key, env, arm.reload);
+  mkdirSync2(armDir(harness, env), { recursive: true, mode: 448 });
+  const temp = `${path}.${randomBytes2(6).toString("hex")}.tmp`;
+  const fd = openSync(temp, "wx", 384);
+  try {
+    writeSync(fd, JSON.stringify({ host: arm.host, ...validTicket(arm.ticket) ? { ticket: arm.ticket } : {}, at: now }));
+  } finally {
+    closeSync(fd);
+  }
+  renameSync(temp, path);
+  return path;
+}
 function takeArm(harness, key, env = process.env, now = Date.now(), starting = false) {
   let paths;
   try {
@@ -987,7 +1008,7 @@ function connectCommand(prompt) {
 // package.json
 var package_default = {
   name: "slirc-agent",
-  version: "3.5.0",
+  version: "3.5.1",
   description: "Connect coding agents to Slirc rooms",
   keywords: [
     "slirc",
@@ -1049,6 +1070,77 @@ function compareVersions(a, b) {
 }
 
 // src/harnesses/pi/extension.ts
+function wrap(text, width) {
+  const out = [];
+  for (const paragraph of text.split(`
+`)) {
+    if (paragraph.length <= width) {
+      out.push(paragraph);
+      continue;
+    }
+    let line = "";
+    for (const word of paragraph.split(" ")) {
+      if (line && line.length + 1 + word.length > width) {
+        out.push(line);
+        line = "";
+      }
+      for (let rest = word;rest; rest = rest.slice(width)) {
+        if (rest.length > width) {
+          if (line)
+            out.push(line);
+          out.push(rest.slice(0, width));
+          line = "";
+          continue;
+        }
+        line = line ? `${line} ${rest}` : rest;
+        break;
+      }
+    }
+    out.push(line);
+  }
+  return out;
+}
+var installRetry = { tries: 6, waitMs: 5000 };
+function installPackage(source, version) {
+  const once = () => new Promise((done) => {
+    const child = spawn("pi", ["install", source], { env: process.env, stdio: ["ignore", "pipe", "pipe"] });
+    let output = "";
+    child.stdout?.on("data", (chunk) => {
+      output += chunk;
+    });
+    child.stderr?.on("data", (chunk) => {
+      output += chunk;
+    });
+    child.on("error", (error) => done(error.message));
+    child.on("exit", (code) => done(code === 0 ? null : output));
+  });
+  return (async () => {
+    for (let attempt = 1;; attempt++) {
+      const failed = await once();
+      if (failed === null)
+        return;
+      if (!/ETARGET|notarget/i.test(failed))
+        throw new Error(`Couldn't update Slirc to ${version}. Paste the command again to retry.`);
+      if (attempt >= installRetry.tries)
+        throw new Error(`npm doesn't offer slirc-agent ${version} yet. Wait a minute, then paste the command again.`);
+      await new Promise((wait) => setTimeout(wait, installRetry.waitMs));
+    }
+  })();
+}
+function box(lines, background) {
+  return {
+    invalidate() {},
+    render(width) {
+      const inner = Math.max(10, width - 2);
+      const rows = [""];
+      for (const { text, style } of lines)
+        for (const row of wrap(text, inner))
+          rows.push((style ?? ((value) => value))(row) + " ".repeat(Math.max(0, inner - row.length)));
+      rows.push("");
+      return rows.map((row) => background(` ${row || " ".repeat(inner)} `));
+    }
+  };
+}
 function canonicalSessionFile(file) {
   const path = resolve2(file);
   return existsSync2(path) ? realpathSync(path) : join4(realpathSync(dirname3(path)), basename2(path));
@@ -1214,11 +1306,35 @@ Slirc delivery receipt: ${randomUUID()}`;
       await activate(client);
   }
   let pairing;
-  const linkText = (link) => link.onPage ? pairText(link) : `Slirc: ${pairText(link)}`;
+  const blocks = !!pi.appendEntry && !!pi.registerEntryRenderer;
+  if (blocks) {
+    pi.registerEntryRenderer("slirc", (entry, _options, theme) => {
+      const lines = Array.isArray(entry?.data?.lines) ? entry.data.lines.map(String) : [];
+      const level = entry?.data?.level;
+      const mark = theme.fg(level === "error" ? "error" : level === "success" ? "success" : "accent", level === "success" ? "✓" : "●");
+      const lead = `${mark} ${theme.bold("Slirc")}  `;
+      return {
+        invalidate() {},
+        render(width) {
+          const rows = [""];
+          lines.forEach((line, index) => wrap(line, Math.max(10, width - 9)).forEach((row, part) => rows.push(`${index === 0 && part === 0 ? lead : " ".repeat(9)}${row}`)));
+          return rows;
+        }
+      };
+    });
+    pi.registerEntryRenderer("slirc-prompt", (entry, _options, theme) => box([{ text: String(entry?.data?.text ?? "") }], (text) => theme.bg("userMessageBg", text)));
+  }
+  function say(ctx, lines, level = "info") {
+    if (blocks)
+      pi.appendEntry("slirc", { lines, level });
+    else
+      ctx?.ui?.notify?.(lines.join(`
+`), level === "success" ? "info" : level);
+  }
   async function connect(ctx, host, ticket) {
     if (pairing?.epoch === sessionEpoch && pairing.host === host && (!ticket || ticket === pairing.ticket)) {
       if (pairing.link)
-        ctx?.ui?.notify?.(linkText(pairing.link), "info");
+        say(ctx, pairLines(pairing.link, host));
       return;
     }
     let identity;
@@ -1234,18 +1350,19 @@ Slirc delivery receipt: ${randomUUID()}`;
     const show = (link) => {
       if (pairing === mine)
         mine.link = link;
-      ctx?.ui?.notify?.(linkText(link), "info");
+      say(ctx, pairLines(link, host));
     };
     try {
-      const paired = await SessionClient.pair(adapter(ctx), piStatePath(identity), identity, originFor(host), readMetadata(ctx), process.env.HOSTNAME || "unknown", show, () => epoch === sessionEpoch, ticket);
+      const paired = await SessionClient.pair(adapter(ctx), piStatePath(identity), identity, originFor(host), readMetadata(ctx), process.env.HOSTNAME || hostname() || "unknown", show, () => epoch === sessionEpoch, ticket);
       if (!paired || epoch !== sessionEpoch)
         return;
       saveLastWorkspace(host);
       await activate(paired.client);
-      paired.client.notify(`${paired.already ? "Already connected" : "Connected"} to ${host} as ${paired.client.state.binding?.nick}.`, "info");
+      say(ctx, connectedLines(paired.client.state.binding?.nick), "success");
     } catch (error) {
       if (epoch === sessionEpoch)
-        ctx?.ui?.notify?.(`Slirc: ${errorText(error)}`, "error");
+        say(ctx, errorText(error).split(`
+`), "error");
     } finally {
       if (pairing === mine)
         pairing = undefined;
@@ -1305,27 +1422,58 @@ Slirc delivery receipt: ${randomUUID()}`;
     const text = event?.source === "interactive" && typeof event.text === "string" ? event.text : undefined;
     lastInput = { sessionId, ...text !== undefined ? { text } : {} };
     const asked = connectCommand(text);
-    if (!asked || !sessionId || !await takesWorkspace(asked.host))
+    if (!asked || !sessionId)
+      return;
+    const wanted = await workspaceWants(asked.host);
+    if (wanted === undefined)
       return;
     lastInput = { sessionId };
-    if (active?.active && active.state.origin === originFor(asked.host))
-      ctx?.ui?.notify?.(`Slirc: already connected as ${active.state.binding?.nick}.`, "info");
-    else {
-      ctx?.ui?.notify?.(`Slirc: connecting this session to ${asked.host}. The code shows here in a moment.`, "info");
+    if (blocks)
+      pi.appendEntry("slirc-prompt", { text: text.trim() });
+    if (wanted !== VERSION)
+      slircCommand.settled = update(ctx, sessionId, asked, wanted);
+    else if (active?.active && active.state.origin === originFor(asked.host))
+      say(ctx, connectedLines(active.state.binding?.nick), "success");
+    else
       slircCommand.settled = connect(ctx, asked.host, asked.ticket);
-    }
     return { action: "handled" };
   });
-  async function takesWorkspace(host) {
+  async function workspaceWants(host) {
     try {
       const response = await fetch(`${originFor(host)}/api/agent/version`, { signal: AbortSignal.timeout(8000) });
       const body = await response.json();
       if (!response.ok || typeof body?.version !== "string" || body.enabled === false)
-        return false;
-      return VERSION.split(".")[0] === body.version.split(".")[0] && compareVersions(VERSION, body.version) >= 0;
+        return;
+      if (VERSION.split(".")[0] !== body.version.split(".")[0])
+        return;
+      return compareVersions(VERSION, body.version) >= 0 ? VERSION : body.version;
     } catch {
-      return false;
+      return;
     }
+  }
+  let reloadWanted = false;
+  const reload = () => {
+    reloadWanted = false;
+    pi.sendUserMessage("/slirc-reload", { expandPromptTemplates: true });
+  };
+  pi.registerCommand("slirc-reload", { description: "Reload Pi to finish a Slirc update", handler: async (_args, ctx) => {
+    await ctx.reload();
+  } });
+  pi.on("agent_settled", () => {
+    if (reloadWanted)
+      reload();
+  });
+  async function update(ctx, sessionId, asked, version) {
+    try {
+      await installPackage(`npm:slirc-agent@${version}`, version);
+    } catch (error) {
+      say(ctx, [errorText(error)], "error");
+      return;
+    }
+    writeArm("pi", sessionId, { host: asked.host, ...asked.ticket ? { ticket: asked.ticket } : {}, reload: true });
+    reloadWanted = true;
+    if (ctx?.isIdle?.() !== false)
+      reload();
   }
   function humanPrompt(ctx, sessionId) {
     if (lastInput?.sessionId === sessionId)
@@ -1335,6 +1483,8 @@ Slirc delivery receipt: ${randomUUID()}`;
       branch = ctx?.sessionManager?.getBranch?.() ?? [];
     } catch {}
     for (let index = branch.length - 1;index >= 0; index--) {
+      if (branch[index]?.type === "custom" && branch[index].customType === "slirc-prompt")
+        return typeof branch[index].data?.text === "string" ? branch[index].data.text : undefined;
       const message = branch[index]?.type === "message" ? branch[index].message : undefined;
       if (message?.role !== "user")
         continue;
@@ -1405,5 +1555,6 @@ Slirc delivery receipt: ${randomUUID()}`;
   });
 }
 export {
-  slirc as default
+  slirc as default,
+  installRetry
 };

@@ -215,6 +215,13 @@ export function requestOwner(requestId: string, now = Date.now()): string | null
   return found && found.expiresAt > now ? found.owner : null;
 }
 
+// The open requests a ticket tied to this person, oldest first. A page whose event stream opens
+// again (a proxy or idle timeout dropped it) gets them, so a request sent in the gap still shows.
+export function openRequestsFor(owner: string, now = Date.now()): ConnectRequest[] {
+  forget(requestOwners, now);
+  return [...requestOwners].filter(([, tied]) => tied.owner === owner).map(([id]) => openRequestById(id, now)).filter((request): request is ConnectRequest => !!request);
+}
+
 export function resetTicketsForTests(): void {
   tickets.clear();
   requestOwners.clear();

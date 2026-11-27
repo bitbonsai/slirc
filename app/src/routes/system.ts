@@ -4,6 +4,11 @@ import { testflightUrl } from "../testflight.ts";
 import { streamSSE } from "hono/streaming";
 import { subscribe } from "../live.ts";
 import { ownerAgentRequestStates } from "../agent-session-transport.ts";
+import { openRequestsFor, requestCard } from "../agent-connect.ts";
+
+// A stream that stays silent gets dropped by Bun's idle timeout or a proxy, and an event sent
+// while the browser reconnects is lost. A comment line this often keeps it open.
+export const eventsTiming = { keepaliveMs: 25_000 };
 import { Hono } from "hono";
 
 export const system = new Hono();
@@ -48,8 +53,17 @@ system.get("/api/events", (c) => {
     });
     await stream.writeSSE({ event: "ready", data: "1" });
     await stream.writeSSE({ event: "agent-requests", data: JSON.stringify(ownerAgentRequestStates(nick)) });
+    // Sessions asking to connect from this person's copied command, even if they asked while the
+    // stream was down.
+    for (const request of openRequestsFor(nick)) await stream.writeSSE({ event: "agent-connect-request", data: JSON.stringify(requestCard(request)) });
     while (open) {
-      if (!queue.length) await new Promise<void>((resolve) => { wake = resolve; });
+      if (!queue.length) {
+        const idle = await new Promise<boolean>((resolve) => {
+          const timer = setTimeout(() => { wake = null; resolve(true); }, eventsTiming.keepaliveMs);
+          wake = () => { clearTimeout(timer); resolve(false); };
+        });
+        if (idle && open) { try { await stream.write(": keepalive\n\n"); } catch { break; } continue; }
+      }
       while (open && queue.length) {
         const item = queue.shift() as { event: string; data: unknown };
         await stream.writeSSE({ event: item.event, data: JSON.stringify(item.data) });

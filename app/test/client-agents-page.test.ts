@@ -262,8 +262,8 @@ test("a link's token survives sign-in, opens the Allow card once, and Allow list
   await Bun.sleep(0);
   expect(calls.find((call) => call.url === "/api/agents/requests/open")?.body).toEqual({ token });
   expect(agents.card?.code).toBe("K7QX-M2PD");
-  expect(agents.cardTitle(agents.card!)).toBe("Pi · fix login");
-  expect(agents.cardSubtitle(agents.card!)).toBe("slirc · on MacBook");
+  expect(agents.cardTitle(agents.card!)).toBe("Pi wants to connect");
+  expect(agents.cardSubtitle(agents.card!)).toBe("slirc · MacBook");
   // The token is spent: a reload does not reopen it.
   expect(stashConnectToken({ hash: "", pathname: "/agents", search: "" })).toBe(false);
   await agents.decide(true);

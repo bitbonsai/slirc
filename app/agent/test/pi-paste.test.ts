@@ -17,6 +17,8 @@ const root = mkdtempSync(join(tmpdir(), "slirc-pi-paste-"));
 const asked: any[] = [];
 // The owner hasn't pressed Allow yet, so /connect keeps answering owner_confirmation.
 let hold = true;
+// The owner pressed Deny.
+let deny = false;
 let server: ReturnType<typeof Bun.serve>;
 let fake: FakePi;
 const saved = { state: process.env.XDG_STATE_HOME, home: process.env.HOME, dir: process.env.PI_CODING_AGENT_DIR };
@@ -27,7 +29,8 @@ beforeAll(() => {
     const json = await request.json().catch(() => ({})) as any;
     if (url.pathname === "/api/agent/version") return Response.json({ version: VERSION, enabled: true });
     // The code "onpagecode12" stands for one a signed-in page minted: Slirc shows that page the request.
-    if (url.pathname === "/api/agent/session/request") { asked.push(json); return Response.json({ url: `http://${url.host}/agents#connect=t`, code: `CODE-${asked.length}`, expiresAt: Date.now() + 600_000, ...(json.ticket === "onpagecode12" ? { onPage: true } : {}) }); }
+    if (url.pathname === "/api/agent/session/request") { asked.push(json); return Response.json({ url: `http://${url.host}/agents#connect=t`, code: `CODE-${asked.length}`, expiresAt: Date.now() + 600_000, ...(json.ticket === "onpagecode12" ? { onPage: true } : {}), ...(json.ticket === "expiredcode1" ? { connectCode: "expired" } : {}) }); }
+    if (url.pathname === "/api/agent/session/connect" && deny) return Response.json({ error: "Not connected. You pressed Deny in Slirc.", code: "denied" }, { status: 403 });
     if (url.pathname === "/api/agent/session/connect") return hold
       ? Response.json({ error: "Waiting for Allow in Slirc.", code: "owner_confirmation" }, { status: 409 })
       : Response.json({ instanceId: "i", ownerAccountId: "o", bindingId: "b", nick: "pi-3f2a", dm: "#dm", status: "ready" });
@@ -57,12 +60,21 @@ function session(sessionId: string, branch: any[] = []) {
   const events = new Map<string, any>();
   const commands = new Map<string, any>();
   const notices: string[] = [];
+  // What Pi keeps in the transcript, and how its registered renderers draw it (plain theme).
+  const entries: { type: string; data: any }[] = [];
+  const renderers = new Map<string, any>();
   const file = join(root, `${sessionId}.jsonl`);
   writeFileSync(file, "{}\n");
-  slirc({ registerCommand: (name: string, options: any) => commands.set(name, options), registerTool() {}, on: (name: string, handler: any) => events.set(name, handler), sendUserMessage() {} } as any);
+  slirc({ registerCommand: (name: string, options: any) => commands.set(name, options), registerTool() {}, on: (name: string, handler: any) => events.set(name, handler), sendUserMessage() {},
+    appendEntry: (type: string, data: any) => entries.push({ type, data }), registerEntryRenderer: (type: string, renderer: any) => renderers.set(type, renderer) } as any);
   const ctx = { cwd: root, sessionManager: { getSessionId: () => sessionId, getSessionFile: () => file, getSessionName: () => "", getBranch: () => branch }, ui: { notify: (text: string) => notices.push(text) } };
+  const plain = { fg: (_: string, text: string) => text, bg: (_: string, text: string) => text, bold: (text: string) => text };
   return {
-    notices, ctx,
+    notices, ctx, entries,
+    // The Slirc blocks' text, newest last.
+    blocks: () => entries.filter((entry) => entry.type === "slirc").map((entry) => entry.data.lines.join("\n")),
+    // Every entry as the TUI draws it at 80 columns.
+    drawn: () => entries.map((entry) => renderers.get(entry.type)(entry, { expanded: false }, plain).render(80).map((line: string) => line.trim()).filter(Boolean).join("\n")),
     paste: (text: string) => events.get("input")({ source: "interactive", text }, ctx),
     bashEnded: () => events.get("tool_execution_end")({ toolName: "bash" }, ctx),
     started: (reason: string) => events.get("session_start")({ reason }, ctx),
@@ -77,7 +89,7 @@ async function backgrounded(sessionId: string, args: string[]): Promise<void> {
   const line = `(${[process.execPath, bin, ...args].map((word) => `'${word}'`).join(" ")} > '${log}' 2>&1 &)`;
   const shell = Bun.spawn(["/bin/sh", "-c", line], { env: { ...fake.env, PI_CODING_AGENT: "true", PI_SESSION_ID: sessionId }, stdin: "ignore" });
   expect(await shell.exited).toBe(0);
-  for (let i = 0; i < 300 && !(await Bun.file(log).text().catch(() => "")).includes("Tell the owner"); i++) await Bun.sleep(20);
+  for (let i = 0; i < 300 && !(await Bun.file(log).text().catch(() => "")).match(/Tell the owner|to finish/); i++) await Bun.sleep(20);
 }
 
 async function until(check: () => boolean, ms = 4_000): Promise<void> {
@@ -85,19 +97,27 @@ async function until(check: () => boolean, ms = 4_000): Promise<void> {
   expect(check()).toBe(true);
 }
 
-const codes = (notices: string[]) => notices.filter((text) => /enter CODE-\d+ under Agents/.test(text));
+const codes = (blocks: string[]) => blocks.filter((text) => /CODE-\d+/.test(text));
+const connected = "Connected as pi-3f2a\nMessage it in Slirc: Agents → pi-3f2a";
 
-test("pasted and never run: the extension connects the session from the message itself", async () => {
+test("pasted and never run: the paste stays as the person's message and a Slirc block connects the session", async () => {
   fake.install(`npm:slirc-agent@${VERSION}`);
   hold = false;
   const pi = session("paste-never");
   const before = asked.length;
-  // The model never gets the message, so it has nothing to run.
-  expect(await pi.paste(`bunx slirc-agent@latest ${host()} k7f2q9xdpa3m`)).toEqual({ action: "handled" });
+  const pasted = `bunx slirc-agent@latest ${host()} k7f2q9xdpa3m`;
+  // The model never gets the message, so it has nothing to run, but the person still sees it.
+  expect(await pi.paste(pasted)).toEqual({ action: "handled" });
   await pi.settled();
   expect(asked.slice(before)).toMatchObject([{ sessionId: "paste-never", ticket: "k7f2q9xdpa3m" }]);
-  expect(codes(pi.notices)).toHaveLength(1);
-  expect(pi.notices.at(-1)).toBe(`Connected to ${host()} as pi-3f2a.`);
+  expect(pi.entries[0]).toEqual({ type: "slirc-prompt", data: { text: pasted } });
+  expect(pi.drawn()[0]).toBe(pasted);
+  expect(pi.blocks()).toEqual([
+    `Connecting to ${host()}\nOpen Agents in Slirc and enter  CODE-${before + 1}`,
+    connected,
+  ]);
+  expect(pi.drawn().at(-1)).toBe("✓ Slirc  Connected as pi-3f2a\nMessage it in Slirc: Agents → pi-3f2a");
+  expect(pi.notices).toEqual([]);
   // Anything else the person types goes to the model as usual.
   expect(await pi.paste("tidy the README")).toBeUndefined();
 });
@@ -107,7 +127,7 @@ test("backgrounded and repeated runs of the same command show the same code and 
   const pi = session("paste-twice");
   const before = asked.length;
   expect(await pi.paste(`bunx slirc-agent@latest ${host()} k7f2q9xdpa3m`)).toEqual({ action: "handled" });
-  await until(() => codes(pi.notices).length === 1);
+  await until(() => codes(pi.blocks()).length === 1);
   // Even if the model got it anyway: two backgrounded runs, each picked up when a later bash call
   // ends, and the same message pasted again.
   for (let run = 0; run < 2; run++) {
@@ -118,28 +138,52 @@ test("backgrounded and repeated runs of the same command show the same code and 
   }
   await pi.paste(`bunx slirc-agent@latest ${host()} k7f2q9xdpa3m`);
   expect(asked.length).toBe(before + 1);
-  expect(new Set(codes(pi.notices).map((text) => /CODE-\d+/.exec(text)![0])).size).toBe(1);
-  expect(pi.notices.some((text) => /something ran slirc-agent|expired|error/i.test(text))).toBe(false);
+  expect(new Set(codes(pi.blocks()).map((text) => /CODE-\d+/.exec(text)![0])).size).toBe(1);
+  expect([...pi.notices, ...pi.blocks()].some((text) => /something ran slirc-agent|expired|error/i.test(text))).toBe(false);
   hold = false;
-  await until(() => pi.notices.at(-1) === `Connected to ${host()} as pi-3f2a.`, 6_000);
+  await until(() => pi.blocks().at(-1) === connected, 6_000);
 });
 
-test("when the Agents page shows the request, the session says only to choose Allow, and adds the link if nobody does", async () => {
+test("when the Agents page shows the request, the block says to press Allow there, and says once that it still waits", async () => {
   hold = true;
   const saved = pairTiming.onPageMs;
   pairTiming.onPageMs = 300;
   try {
     const pi = session("paste-onpage");
     expect(await pi.paste(`bunx slirc-agent@latest ${host()} onpagecode12`)).toEqual({ action: "handled" });
-    await until(() => pi.notices.some((text) => text.startsWith("Choose Allow")));
-    const code = /Code (CODE-\d+)\./.exec(pi.notices.at(-1)!)![1];
-    expect(pi.notices.at(-1)).toBe(`Choose Allow on your Agents page in Slirc. Code ${code}.`);
-    expect(pi.notices.some((text) => text.includes("http"))).toBe(false);
-    // Nobody allowed in time: the link and the code to type show too.
-    await until(() => pi.notices.at(-1) === `Slirc: Open http://${host()}/agents#connect=t to connect this session, or enter ${code} under Agents in Slirc.`, 3_000);
+    await until(() => pi.blocks().length === 1);
+    const code = /CODE-\d+/.exec(pi.blocks()[0])![0];
+    expect(pi.blocks()).toEqual([`Connecting to ${host()}\nGo back to Slirc and press Allow.\nCode  ${code}`]);
+    expect(pi.drawn()[1]).toBe(`● Slirc  Connecting to ${host()}\nGo back to Slirc and press Allow.\nCode  ${code}`);
+    await until(() => pi.blocks().length === 2, 3_000);
+    expect(pi.blocks()[1]).toBe("Still waiting. Press Allow on the Agents page.");
+    await Bun.sleep(400);
+    expect(pi.blocks()).toHaveLength(2);
     hold = false;
-    await until(() => pi.notices.at(-1) === `Connected to ${host()} as pi-3f2a.`, 6_000);
+    await until(() => pi.blocks().at(-1) === connected, 6_000);
+    expect(pi.blocks().join("\n")).not.toContain("http");
   } finally { pairTiming.onPageMs = saved; hold = false; }
+});
+
+test("a code the page no longer knows says so, with one thing to do", async () => {
+  hold = true;
+  try {
+    const pi = session("paste-expired");
+    await pi.paste(`bunx slirc-agent@latest ${host()} expiredcode1`);
+    await until(() => pi.blocks().length === 1);
+    expect(pi.blocks()).toEqual(["That code expired.\nPress Copy on the Agents page again and paste it here."]);
+  } finally { hold = false; }
+});
+
+test("after Deny the block says in one sentence what happened", async () => {
+  deny = true;
+  try {
+    const pi = session("paste-deny");
+    await pi.paste(`bunx slirc-agent@latest ${host()} onpagecode12`);
+    await pi.settled();
+    expect(pi.blocks().at(-1)).toBe("Not connected. You pressed Deny in Slirc.");
+    expect(pi.entries.at(-1)!.data.level).toBe("error");
+  } finally { deny = false; }
 });
 
 test("first install, run in the background: the reloaded extension connects with the pasted code", async () => {
@@ -160,7 +204,7 @@ test("first install, run in the background: the reloaded extension connects with
     pi.started("reload");
     await until(() => asked.length === before + 1);
     expect(asked.at(-1)).toMatchObject({ sessionId: "paste-first", ticket: "k7f2q9xdpa3m" });
-    await until(() => codes(pi.notices).length === 1);
+    await until(() => codes(pi.blocks()).length === 1);
   } finally {
     fake = real;
     process.env.XDG_STATE_HOME = real.env.XDG_STATE_HOME;

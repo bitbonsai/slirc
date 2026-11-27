@@ -139,7 +139,7 @@ test("/connect answers at once and an unpaired session's tools say how to connec
     expect(existsSync(join(root, "state", "slirc-agent", "claude", "bound", "cc-session-two"))).toBe(false);
     expect((await call(run, "/reply", { requestId: "r", text: "t" })).body.error).toContain("Type /slirc <workspace>");
     const asked = await call(run, "/connect", { workspace: `127.0.0.1:${server.port}` });
-    expect(asked.body.text).toBe(`Open http://127.0.0.1:${server.port}/agents#connect=x to connect this session, or enter K7QX-M2PD under Agents in Slirc.`);
+    expect(asked.body.text).toBe(`Connecting to 127.0.0.1:${server.port}\nOpen Agents in Slirc and enter  K7QX-M2PD`);
     await until(() => !!line(run, "connected"));
     expect((await call(run, "/connect", { workspace: "" })).body.text).toContain("Connected to");
   } finally {

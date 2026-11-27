@@ -114,11 +114,11 @@ agents.post("/api/agent/session/connect", async (c) => {
   }
   const secretHash = hashAgentSecret(secret);
   const request = requestForSecret(secretHash);
-  if (request?.decision === "deny") return c.json({ error: "Denied in Slirc. Type /slirc again if that was a mistake.", code: "denied" }, 403);
+  if (request?.decision === "deny") return c.json({ error: "Not connected. You pressed Deny in Slirc.", code: "denied" }, 403);
   let binding = db.query("SELECT * FROM agent_session_bindings WHERE secret_hash = ? AND status <> 'revoked'").get(secretHash) as Binding | null;
   if (!binding) {
     if (request) return c.json({ error: "Waiting for Allow in Slirc.", code: "owner_confirmation" }, 409);
-    return c.json({ error: "The link expired before anyone allowed it. Type /slirc again for a new one.", code: "expired" }, 404);
+    return c.json({ error: "That code expired.\nPress Copy on the Agents page again and paste it here.", code: "expired" }, 404);
   }
   try {
     if (binding.status !== "ready") binding = await provisionSessionBinding(binding);

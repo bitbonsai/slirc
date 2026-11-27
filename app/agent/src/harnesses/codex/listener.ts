@@ -4,7 +4,7 @@ import { chmodSync, closeSync, mkdirSync, openSync, readFileSync, rmSync, writeF
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { hostname, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { errorText, pairText, repoName, SessionClient, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
+import { connectedText, errorText, pairText, repoName, SessionClient, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
 import { VERSION } from "../../version.ts";
 import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace } from "../../../../shared/workspace.ts";
 import { alive, boundMark, dir, liveFile, short } from "./shared.ts";
@@ -86,7 +86,8 @@ export async function main(config: Config, env: NodeJS.ProcessEnv = process.env)
   let pairing = false;
   let pending: PairLink | undefined;
   let linked: ((text: string) => void) | undefined;
-  const linkText = (link: PairLink) => pairText(link, "this Codex session");
+  let askingHost = "";
+  const linkText = (link: PairLink) => pairText(link, askingHost);
 
   const adapter: Adapter = {
     harness: "codex",
@@ -103,6 +104,7 @@ export async function main(config: Config, env: NodeJS.ProcessEnv = process.env)
 
   async function connect(host: string, ticket?: string): Promise<void> {
     pairing = true;
+    askingHost = host;
     const show = (link: PairLink) => { pending = link; linked?.(linkText(link)); };
     try {
       const paired = await SessionClient.pair(adapter, path, identity, originFor(host), metadata, hostname() || "unknown", show, () => true, ticket);
@@ -113,7 +115,7 @@ export async function main(config: Config, env: NodeJS.ProcessEnv = process.env)
       offlineSince = undefined;
       markBound();
       await client.attach();
-      const text = `${paired.already ? "Already connected" : "Connected"} to ${host} as ${client.state.binding?.nick}.`;
+      const text = connectedText(client.state.binding?.nick);
       if (linked) linked(text); else note(text);
     } catch (error) {
       const text = `Slirc: ${errorText(error)}`;

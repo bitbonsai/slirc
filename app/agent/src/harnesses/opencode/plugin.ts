@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
 import { existsSync } from "node:fs";
 import { armPath, connectCommand, isDelivery, takeArm } from "../../arm.ts";
-import { errorText, pairText, readState, repoName, SessionClient, stateDir, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
+import { connectedText, errorText, pairText, readState, repoName, SessionClient, stateDir, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
 import { VERSION } from "../../version.ts";
 import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, workspaceArg } from "../../../../shared/workspace.ts";
 import { PRESENCE_EVERY_MS, PRESENCE_TTL_MS, SLIRC_RPC, unsupported, type Notice, type Presence } from "./shared.ts";
@@ -209,7 +209,7 @@ async function connect(host: Host, sessionId: string, workspace: string, ticket?
   try { target = workspace ? expandWorkspace(workspace) : readLastWorkspace() ?? ""; }
   catch (error) { notify(errorText(error), "error"); return; }
   if (!target) { notify("Type /slirc <workspace>, using the workspace name shown on your Agents page in Slirc.", "error"); return; }
-  const linkText = (link: PairLink) => pairText(link);
+  const linkText = (link: PairLink) => pairText(link, target);
   // Asked again for the same workspace with no new connect code: show the waiting code again.
   const waiting = registry.pairing.get(sessionId);
   if (waiting?.epoch === epoch(sessionId) && waiting.host === target && (!ticket || ticket === waiting.ticket)) {
@@ -230,7 +230,7 @@ async function connect(host: Host, sessionId: string, workspace: string, ticket?
     saveLastWorkspace(target);
     registry.holds.set(sessionId, Date.now() + PRESENCE_TTL_MS);
     if (!(paired.already && registry.live.get(sessionId)?.client.active)) await activate(sessionId, host, paired.client);
-    notify(`${paired.already ? "Already connected" : "Connected"} to ${target} as ${paired.client.state.binding?.nick}.`, "success");
+    notify(connectedText(paired.client.state.binding?.nick), "success");
   } catch (error) {
     if (current()) notify(errorText(error), "error");
   } finally { if (registry.pairing.get(sessionId) === asking) registry.pairing.delete(sessionId); }

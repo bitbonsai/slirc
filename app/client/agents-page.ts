@@ -329,13 +329,14 @@ export function createAgentsPage(reactive: <T extends object>(value: T) => T, { 
     void openCard({ code });
   }
 
+  // "Pi wants to connect", then "slirc · MacBook": the folder and the machine it runs on.
   function cardTitle(card: ConnectCard): string {
-    return [card.harnessName, card.sessionName].filter(Boolean).join(" · ") || "A coding session";
+    return `${card.harnessName || "A coding session"} wants to connect`;
   }
 
   function cardSubtitle(card: ConnectCard): string {
     // The model is left out: it is the one at pairing time, and the session can switch it before Allow.
-    return [card.repo, card.machine && card.machine !== "unknown" ? `on ${card.machine}` : ""].filter(Boolean).join(" · ");
+    return [card.repo || card.sessionName, card.machine && card.machine !== "unknown" ? card.machine : ""].filter(Boolean).join(" · ");
   }
 
   async function decide(allow: boolean): Promise<void> {

@@ -3,7 +3,7 @@ import { chmodSync, closeSync, mkdirSync, openSync, readFileSync, rmSync, writeF
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
-import { errorText, pairText, repoName, SessionClient, stateDir, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
+import { connectedText, errorText, pairLines, pairText, repoName, SessionClient, stateDir, statePath, type Adapter, type Identity, type Metadata, type PairLink } from "../../adapter-core.ts";
 import { connectCommand, takeArm } from "../../arm.ts";
 import { VERSION } from "../../version.ts";
 import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, workspaceArg } from "../../../../shared/workspace.ts";
@@ -18,7 +18,7 @@ import { expandWorkspace, originFor, readLastWorkspace, saveLastWorkspace, works
 // `prompted`: the person just submitted what looks like the Agents page's command.
 export type Config = { sessionId: string; cwd: string; model: string; armed?: string; ticket?: string; arm?: { prompt?: string; command?: string; starting?: boolean }; prompted?: string };
 type Out = { type: "ready"; socket: string; token: string } | { type: "deliver"; id: string; prompt: string; receipt: string }
-  | { type: "notify"; message: string; level: string } | ({ type: "link" } & PairLink)
+  | { type: "notify"; message: string; level: string } | ({ type: "link"; lines: string[] } & PairLink)
   | { type: "connected"; text: string } | { type: "rename"; name: string } | { type: "busy" } | { type: "bound" };
 
 // Exit codes the mod reads: another listener already serves this session, so don't respawn.
@@ -84,7 +84,9 @@ export async function main(config: Config, env: NodeJS.ProcessEnv = process.env)
   // The link waiting for Allow, so /slirc can show it again in full.
   let pending: PairLink | undefined;
   let linked: ((text: string) => void) | undefined;
-  const linkText = (link: PairLink) => pairText(link);
+  const linkText = (link: PairLink) => pairText(link, asking?.host ?? "");
+  // The link line carries the block's words, so the mod shows what every harness shows.
+  const linkLine = (link: PairLink) => ({ type: "link" as const, ...link, lines: pairLines(link, asking?.host ?? "") });
 
   const adapter: Adapter = {
     harness: "claude",
@@ -107,7 +109,7 @@ export async function main(config: Config, env: NodeJS.ProcessEnv = process.env)
   let attempt = 0;
   async function connect(host: string, ticket?: string): Promise<void> {
     if (pairing && (!ticket || (asking?.host === host && asking.ticket === ticket))) {
-      if (pending) emit({ type: "link", ...pending });
+      if (pending) emit(linkLine(pending));
       else emit({ type: "notify", message: "Slirc is already waiting for Allow for this session.", level: "info" });
       return;
     }
@@ -115,7 +117,7 @@ export async function main(config: Config, env: NodeJS.ProcessEnv = process.env)
     const current = () => attempt === mine;
     pairing = true;
     asking = { host, ...(ticket ? { ticket } : {}) };
-    const show = (link: PairLink) => { if (!current()) return; pending = link; emit({ type: "link", ...link }); linked?.(linkText(link)); };
+    const show = (link: PairLink) => { if (!current()) return; pending = link; emit(linkLine(link)); linked?.(linkText(link)); };
     try {
       const paired = await SessionClient.pair(adapter, path, identity, originFor(host), metadata, hostname() || "unknown", show, current, ticket);
       if (!paired || !current()) return;
@@ -124,8 +126,8 @@ export async function main(config: Config, env: NodeJS.ProcessEnv = process.env)
       client = paired.client;
       markBound();
       await client.attach();
-      emit({ type: "connected", text: `${paired.already ? "Already connected" : "Connected"} to ${host} as ${client.state.binding?.nick}.` });
-      linked?.(`Connected to ${host} as ${client.state.binding?.nick}.`);
+      emit({ type: "connected", text: connectedText(client.state.binding?.nick) });
+      linked?.(connectedText(client.state.binding?.nick));
     } catch (error) {
       if (!current()) return;
       emit({ type: "notify", message: `Slirc: ${errorText(error)}`, level: "error" });
@@ -158,7 +160,7 @@ export async function main(config: Config, env: NodeJS.ProcessEnv = process.env)
     const typed = `/${arm.command === "slirc-connect" ? "slirc-connect" : "slirc"} ${workspaceArg(found.host)}`.trim();
     const asked = connectCommand(arm.prompt);
     // Already on it: a second run shows the same code, a newly pasted code asks again with it.
-    if (pairing && asking?.host === found.host && asked?.host !== found.host) { if (pending) emit({ type: "link", ...pending }); return; }
+    if (pairing && asking?.host === found.host && asked?.host !== found.host) { if (pending) emit(linkLine(pending)); return; }
     if (asked?.host !== found.host) {
       emit({ type: "notify", message: `Something ran slirc-agent for ${found.host}. To connect, type ${typed}.`, level: "warning" });
       return;

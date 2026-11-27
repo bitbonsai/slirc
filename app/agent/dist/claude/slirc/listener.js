@@ -74,14 +74,22 @@ var retryMs = () => Number(process.env.SLIRC_RETRY_MS) || 5000;
 var lostWarningMs = () => Number(process.env.SLIRC_LOST_WARNING_MS) || 30000;
 var CONFIRM_WAIT_MS = 10 * 60000;
 var CONFIRM_POLL_MS = 2000;
-var CODE_EXPIRED = "That connect code expired, so your Agents page didn't get this request.";
-var pairTiming = { onPageMs: 30000 };
-function pairText(link, noun = "this session") {
+var pairTiming = { onPageMs: 2 * 60000 };
+var EXPIRED_LINES = ["That code expired.", "Press Copy on the Agents page again and paste it here."];
+function pairLines(link, host) {
+  if (link.expired)
+    return EXPIRED_LINES;
+  if (link.late)
+    return ["Still waiting. Press Allow on the Agents page."];
   if (link.onPage)
-    return `Choose Allow on your Agents page in Slirc. Code ${link.code}.`;
-  const open = `open ${link.url} to connect ${noun}, or enter ${link.code} under Agents in Slirc.`;
-  return link.expired ? `${CODE_EXPIRED} To connect, ${open}` : `O${open.slice(1)}`;
+    return [`Connecting to ${host}`, "Go back to Slirc and press Allow.", `Code  ${link.code}`];
+  return [`Connecting to ${host}`, `Open Agents in Slirc and enter  ${link.code}`];
 }
+var pairText = (link, host) => pairLines(link, host).join(`
+`);
+var connectedLines = (nick) => [`Connected as ${nick}`, `Message it in Slirc: Agents → ${nick}`];
+var connectedText = (nick) => connectedLines(nick).join(`
+`);
 
 class HttpError extends Error {
   status;
@@ -364,7 +372,7 @@ class SessionClient {
       if (Date.now() >= fullAt) {
         fullAt = Infinity;
         if (!asked.bound)
-          show({ url: link.url, code: link.code, expiresAt: link.expiresAt });
+          show({ ...link, late: true });
       }
       try {
         stored.binding = await requestJson(`${origin}${API}/connect`, stored.secret, undefined, body);
@@ -373,7 +381,8 @@ class SessionClient {
         if (!(error instanceof HttpError && error.code === "owner_confirmation"))
           throw friendly(error, origin);
         if (Date.now() > deadline)
-          throw new Error("The link expired before anyone allowed it. Type /slirc again for a new one.");
+          throw new Error(EXPIRED_LINES.join(`
+`));
         await new Promise((done) => setTimeout(done, Math.min(CONFIRM_POLL_MS, Math.max(10, fullAt - Date.now()))));
         if (!current())
           return;
@@ -385,7 +394,9 @@ class SessionClient {
     });
     if (!current())
       return;
-    return { client: new SessionClient(path, stored, metadata, adapter), already: false };
+    const client = new SessionClient(path, stored, metadata, adapter);
+    client.announcedConnected = true;
+    return { client, already: false };
   }
   static async resume(adapter, path, identity, metadata) {
     const state = await readState(path, identity).catch(() => {
@@ -830,6 +841,7 @@ class SessionClient {
       }
       if (!this.announcedWaiting) {
         this.announcedWaiting = true;
+        this.announcedConnected = false;
         this.notify("Waiting for the Slirc transport to become ready.", "info");
       }
       this.scheduleReadiness();
@@ -990,7 +1002,7 @@ function connectCommand(prompt) {
 // package.json
 var package_default = {
   name: "slirc-agent",
-  version: "3.5.0",
+  version: "3.5.1",
   description: "Connect coding agents to Slirc rooms",
   keywords: [
     "slirc",
@@ -1109,7 +1121,8 @@ async function main(config, env = process.env) {
   let asking;
   let pending;
   let linked;
-  const linkText = (link) => pairText(link);
+  const linkText = (link) => pairText(link, asking?.host ?? "");
+  const linkLine = (link) => ({ type: "link", ...link, lines: pairLines(link, asking?.host ?? "") });
   const adapter = {
     harness: "claude",
     version: VERSION,
@@ -1128,7 +1141,7 @@ Slirc delivery receipt: ${receipt}`, receipt });
   async function connect(host, ticket) {
     if (pairing && (!ticket || asking?.host === host && asking.ticket === ticket)) {
       if (pending)
-        emit({ type: "link", ...pending });
+        emit(linkLine(pending));
       else
         emit({ type: "notify", message: "Slirc is already waiting for Allow for this session.", level: "info" });
       return;
@@ -1141,7 +1154,7 @@ Slirc delivery receipt: ${receipt}`, receipt });
       if (!current())
         return;
       pending = link;
-      emit({ type: "link", ...link });
+      emit(linkLine(link));
       linked?.(linkText(link));
     };
     try {
@@ -1153,8 +1166,8 @@ Slirc delivery receipt: ${receipt}`, receipt });
       client = paired.client;
       markBound();
       await client.attach();
-      emit({ type: "connected", text: `${paired.already ? "Already connected" : "Connected"} to ${host} as ${client.state.binding?.nick}.` });
-      linked?.(`Connected to ${host} as ${client.state.binding?.nick}.`);
+      emit({ type: "connected", text: connectedText(client.state.binding?.nick) });
+      linked?.(connectedText(client.state.binding?.nick));
     } catch (error) {
       if (!current())
         return;
@@ -1191,7 +1204,7 @@ Slirc delivery receipt: ${receipt}`, receipt });
     const asked = connectCommand(arm.prompt);
     if (pairing && asking?.host === found.host && asked?.host !== found.host) {
       if (pending)
-        emit({ type: "link", ...pending });
+        emit(linkLine(pending));
       return;
     }
     if (asked?.host !== found.host) {
