@@ -10,7 +10,7 @@ import { createSignIn } from "@client/sign-in.ts";
 import { createPhoneOffer, dismissPhoneShortcut, phoneShortcutDismissed } from "@client/phone-offer.ts";
 import { dismissInstallBanner, installBannerVisible, installEnv } from "@client/install-banner.ts";
 import { createIphoneApp } from "@client/iphone-app.ts";
-import { animateListHeight, filterWorkspaces, railWorkspaces, workspaceActivity, installWorkspaceKeys, savedWorkspaceCount, workspaceMark, workspaceRows, type WorkspaceFilter } from "@client/workspace-mark.ts";
+import { animateListHeight, RAIL_MOTION, filterWorkspaces, railWorkspaces, workspaceActivity, installWorkspaceKeys, savedWorkspaceCount, workspaceMark, workspaceRows, type WorkspaceFilter } from "@client/workspace-mark.ts";
 import { readRailExpanded, savedWorkspaces, takeCarriedWorkspaces, workspaceLink, writeRailExpanded } from "@client/workspace-list.ts";
 import { createWorkspaceIcon } from "@client/workspace-icon.ts";
 import { aboutLabel, canSwitchWorkspace, exposeWorkspaceDialog, inMacApp, openWorkspace, openWorkspaceLink, shellListsWorkspaces, shellVersion, showShellNotification, shellWorkspaces, signedOut, switchWorkspace as switchShellWorkspace } from "@client/native-shell.ts";
@@ -658,7 +658,14 @@ export function createClient(Alpine: any) {
     // The rail's icons, and how many sit behind its "+n" control.
     railRows() { return railWorkspaces(ui.workspaceChoices, ui.railExpanded, workspaceActivity(ui.workspaceUnread, location.origin)); },
     railBadge(origin: string): string { const count = origin === location.origin ? 0 : ui.workspaceUnread[origin] || 0; return count > 0 ? badgeText(count) : ""; },
-    toggleRail(): void { ui.railExpanded = !ui.railExpanded; writeRailExpanded(ui.railExpanded); },
+    toggleRail(): void {
+      ui.railExpanded = !ui.railExpanded;
+      writeRailExpanded(ui.railExpanded);
+      if (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      ui.railMoving = true;
+      setTimeout(() => { ui.railMoving = false; }, RAIL_MOTION.duration + 20);
+    },
+    animateRail(el: HTMLElement): void { animateListHeight(el, undefined, RAIL_MOTION); },
     workspaceCount(): number { return savedWorkspaceCount(ui.workspaceChoices); },
     workspaceFilter(): WorkspaceFilter { return filterWorkspaces(ui.workspaceChoices, ui.workspaceAddress); },
     animateListHeight,

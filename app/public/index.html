@@ -189,8 +189,8 @@
 <body x-data="client()" data-client-root :class="[roomsOpen && isDesktop && 'rooms-docked', peekRoom && !authenticated && 'peeking', railVisible() && 'has-instance-rail']">
   <div class="boot-screen" x-ignore role="status" aria-label="Opening Slirc"><img src="/logo.webp" alt="" /></div>
 
-  <nav class="instance-rail" x-cloak x-show="railVisible()" aria-label="Workspaces">
-    <div class="instance-rail-list">
+  <nav class="instance-rail" :class="railMoving && 'moving'" x-cloak x-show="railVisible()" aria-label="Workspaces">
+    <div class="instance-rail-list" x-effect="railRows(); $nextTick(() => animateRail($el))">
       <template x-for="item in railRows().shown" :key="item.origin">
         <button type="button" class="instance-rail-item" :class="item.current && 'active'" :aria-current="item.current ? 'true' : null" :aria-label="item.current ? item.name + ', current workspace' : 'Switch to ' + item.name + (railBadge(item.origin) ? ', ' + railBadge(item.origin) + ' unread' : '')" :data-tooltip="item.name" x-tooltip :disabled="workspaceBusy" x-on:click="pickWorkspace(item.origin)"><span class="instance-rail-pill" aria-hidden="true"></span><span class="workspace-badge" aria-hidden="true" :class="item.logo ? 'logo' : item.iconReady ? 'logo icon' : ''" :style="item.logo || item.iconReady ? '' : 'background:' + item.color"><img x-show="item.logo || item.iconReady" :src="item.logo || item.icon || null" alt="" x-on:load="if (!item.logo) item.iconReady = true" x-on:error="item.logo = ''; item.iconReady = false" /><span x-show="!item.logo && !item.iconReady" x-text="item.letter"></span></span><span class="unread-badge instance-rail-unread" x-show="railBadge(item.origin)" x-text="railBadge(item.origin)"></span></button>
       </template>

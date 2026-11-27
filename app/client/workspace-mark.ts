@@ -95,6 +95,8 @@ export function workspaceChoices(here: string, saved: string[]): WorkspaceChoice
 // none and the rail folds to the current one. With RAIL_MAX (two) or fewer rows nothing folds.
 // foldable is whether the rail has a chevron at all; hidden counts the rows behind the peek.
 export const RAIL_MAX = 2;
+// The rail eases its height like the app's other motion: --dur-base and --ease-standard (styles/01-boot.css).
+export const RAIL_MOTION = { duration: 200, easing: "cubic-bezier(.2,.7,.2,1)" };
 export function railWorkspaces<T extends { origin: string; current: boolean }>(rows: T[], expanded: boolean, active: ReadonlySet<string> = new Set(), max = RAIL_MAX): { shown: T[]; peek: T | null; hidden: number; foldable: boolean } {
   if (rows.length <= max) return { shown: rows, peek: null, hidden: 0, foldable: false };
   if (expanded) return { shown: rows, peek: null, hidden: 0, foldable: true };
@@ -142,13 +144,13 @@ export function filterWorkspaces(rows: WorkspaceChoice[], query: string): Worksp
 // closed dialog (height 0) and reduced motion. Overflow is clipped only while it runs, so focus
 // rings show the rest of the time.
 const listHeights = new WeakMap<HTMLElement, number>();
-export function animateListHeight(el: HTMLElement, reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches): void {
+export function animateListHeight(el: HTMLElement, reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches, timing: { duration: number; easing: string } = { duration: 180, easing: "ease-out" }): void {
   const next = el.getBoundingClientRect().height;
   const prev = listHeights.get(el);
   listHeights.set(el, next);
   if (!prev || !next || prev === next || reduce || typeof el.animate !== "function") return;
   el.style.overflow = "hidden";
-  const run = el.animate([{ height: prev + "px" }, { height: next + "px" }], { duration: 180, easing: "ease-out" });
+  const run = el.animate([{ height: prev + "px" }, { height: next + "px" }], timing);
   const done = () => { el.style.overflow = ""; };
   run.onfinish = done;
   run.oncancel = done;

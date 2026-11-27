@@ -62,6 +62,7 @@ function workspaceChoices(here, saved) {
   return rows;
 }
 const RAIL_MAX = 2;
+const RAIL_MOTION = { duration: 200, easing: "cubic-bezier(.2,.7,.2,1)" };
 function railWorkspaces(rows, expanded, active = new Set, max = RAIL_MAX) {
   if (rows.length <= max)
     return { shown: rows, peek: null, hidden: 0, foldable: false };
@@ -95,14 +96,14 @@ function filterWorkspaces(rows, query) {
   return { rows: [], open: { origin, label: origin ? origin.slice("https://".length) : typed } };
 }
 const listHeights = new WeakMap;
-function animateListHeight(el, reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches) {
+function animateListHeight(el, reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches, timing = { duration: 180, easing: "ease-out" }) {
   const next = el.getBoundingClientRect().height;
   const prev = listHeights.get(el);
   listHeights.set(el, next);
   if (!prev || !next || prev === next || reduce || typeof el.animate !== "function")
     return;
   el.style.overflow = "hidden";
-  const run = el.animate([{ height: prev + "px" }, { height: next + "px" }], { duration: 180, easing: "ease-out" });
+  const run = el.animate([{ height: prev + "px" }, { height: next + "px" }], timing);
   const done = () => {
     el.style.overflow = "";
   };
@@ -172,5 +173,5 @@ function installWorkspaceKeys(root, field) {
     }
   });
 }
-globalThis.slircWorkspaceMark = { WORKSPACE_PALETTE, workspaceName, WORKSPACE_ICON_PATH, workspaceIconUrl, workspaceMark, OPEN_WORKSPACE, workspaceOrigin, workspaceChoices, RAIL_MAX, railWorkspaces, workspaceActivity, savedWorkspaceCount, workspaceRows, filterWorkspaces, animateListHeight, rowAfterKey, installWorkspaceKeys };
+globalThis.slircWorkspaceMark = { WORKSPACE_PALETTE, workspaceName, WORKSPACE_ICON_PATH, workspaceIconUrl, workspaceMark, OPEN_WORKSPACE, workspaceOrigin, workspaceChoices, RAIL_MAX, RAIL_MOTION, railWorkspaces, workspaceActivity, savedWorkspaceCount, workspaceRows, filterWorkspaces, animateListHeight, rowAfterKey, installWorkspaceKeys };
 })();

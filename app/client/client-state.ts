@@ -63,6 +63,8 @@ export function createClientState(isDesktop: boolean, coarse: boolean) {
     workspaceChoices: [] as WorkspaceChoice[],
     // The instance rail folds all but a few workspaces; remembered per device (workspace-mark.ts railWorkspaces).
     railExpanded: readRailExpanded(),
+    // True for the length of the rail's expand or collapse, so its tiles fade in (styles/04-workspaces.css).
+    railMoving: false,
     // Unread per other workspace, from the Mac app (native-shell.ts watchWorkspaceUnread); empty elsewhere.
     workspaceUnread: {} as Record<string, number>,
     workspaceAddress: "",
