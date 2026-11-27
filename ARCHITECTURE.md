@@ -64,7 +64,7 @@ These are committed and rebuilt from sources. Edit the source and run the comman
 
 ## Tests
 
-Tests live in `app/test`, `app/agent/test`, `app/agent/src/harnesses` and `native/test`. Each file runs in its own process because files share SQLite and ports. `app/test/support/browser-shims.ts` lets tests run the real client runtime in Bun.
+Tests live in `app/test`, `app/agent/test`, `app/agent/src/harnesses` and `native/test`. Each file runs in its own process because files share SQLite and ports. `app/test/support/browser-shims.ts` lets tests run the real client runtime in Bun. `app/test/size-guards.test.ts` holds one table of line limits for `runtime.ts`, `server.ts`, the route files, `client/core`, `client/features` and the stylesheets, so the splits stay split.
 ## Where new code goes
 
 - **A new route.** Add a Hono sub-app in `app/src/routes/<area>.ts` and mount it in `server.ts` with `app.route`. Put rules in a domain module in `app/src`. Put helpers that two route files need in `app/src/http/`. If an existing area covers it, add to that file.

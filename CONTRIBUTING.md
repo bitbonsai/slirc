@@ -47,6 +47,8 @@ Scripts that import `app/src` open `/data/chat.sqlite` by default. Set `DB_PATH=
 - Client features in `app/client/features/`, shared client parts in `app/client/core/`, markup in `app/partials/`, styles in `app/styles/`.
 - Code the app and the `slirc-agent` package both use in `app/shared/`.
 
+A size test (`app/test/size-guards.test.ts`) fails when a source file passes its line limit. If yours does, split the file along the lines above. Raise a limit only with a reason in the PR.
+
 ## Generated files
 
 Some files are built from others and committed. Edit the source, run the command and commit both.
