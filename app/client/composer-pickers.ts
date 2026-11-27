@@ -214,7 +214,7 @@ export function mentionPickerComponent(openPopup?: OpenPopup): Record<string, un
       const self = foldIdentifier(String(this.account ?? ""));
       const without = (list: unknown): string[] => (Array.isArray(list) ? list : []).filter((nick) => foldIdentifier(String(nick)) !== self);
       const attached = (nick: string) => typeof this.agentAttached === "function" && this.agentAttached(nick) === true;
-      return mentionCandidates(token.query, without(members), without(this.contacts), (nick) => mentionableNick(this.agentProfiles, nick, attached));
+      return mentionCandidates(token.query, without(members), without(this.contacts), (nick) => mentionableNick(this.agentProfiles, nick, attached), (nick) => agentLabel(this.agentProfiles, nick));
     },
     // An agent shows under its current display name; the nick is what the pick inserts.
     label(this: any, nick: string): string {

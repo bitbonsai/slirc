@@ -30,9 +30,10 @@ export function inviteCandidates(results: readonly string[], exclude: readonly s
   return results.filter((nick) => !skip.has(foldIdentifier(nick))).slice(0, 8);
 }
 
-/** Room members first, then contacts, case-insensitively prefixed by the query, deduped, max 8.
+/** Room members first, then contacts, deduped, max 8. A row matches when the query is a case-insensitive
+ * prefix of its nick or of its display name (`nameOf`, empty when it has none).
  * `keep` drops nicks the picker must not offer, such as an agent that isn't attached. */
-export function mentionCandidates(query: string, members: readonly string[], contacts: readonly string[], keep: (nick: string) => boolean = () => true): string[] {
+export function mentionCandidates(query: string, members: readonly string[], contacts: readonly string[], keep: (nick: string) => boolean = () => true, nameOf: (nick: string) => string = () => ""): string[] {
   const folded = foldIdentifier(query);
   const seen = new Set<string>();
   const out: string[] = [];
@@ -40,7 +41,7 @@ export function mentionCandidates(query: string, members: readonly string[], con
     const key = foldIdentifier(nick);
     if (!key || seen.has(key)) continue;
     seen.add(key);
-    if ((!folded || key.startsWith(folded)) && keep(nick)) out.push(nick);
+    if ((!folded || key.startsWith(folded) || foldIdentifier(nameOf(nick)).startsWith(folded)) && keep(nick)) out.push(nick);
     if (out.length >= 8) break;
   }
   return out;
