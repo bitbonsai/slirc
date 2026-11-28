@@ -1743,10 +1743,9 @@ body.peeking .chat #messages { padding-bottom: calc(4.5rem + env(safe-area-inset
 .agents-page .agent-icon-button .menu-icon, .agents-page .agent-icon-button svg { width: 1rem; height: 1rem; }
 .agents-page .agent-icon-button:hover, .agents-page .agent-icon-button:focus-visible { background: var(--panel-hi); color: var(--text); outline: none; }
 .agents-page .agent-icon-button.danger:hover, .agents-page .agent-icon-button.danger:focus-visible { color: var(--danger); }
-/* "Read my DMs" on the agent card: the shared switch, compact and without its frame. */
+/* The DMs switch on the agent row: the shared switch, compact and without its frame. */
 .agents-page .agent-dm-switch { flex: 0 0 auto; width: auto; min-height: 2.25rem; padding: 0 .4rem; border: 0; background: transparent; gap: .5rem; }
 .agents-page.mobile-screen .agent-rows .agent-row { flex-wrap: wrap; }
-.agents-page.mobile-screen .agent-dm-switch strong { display: none; }
 .agents-page.mobile-screen .agent-renaming { flex-basis: 100%; }
 .agents-page .agent-dm-switch strong { color: var(--muted); font: 600 var(--text-xs)/1.2 var(--ui); white-space: nowrap; }
 .agents-page .agent-connect-card { margin: 0 0 var(--space-4); box-shadow: inset 0 0 0 1px var(--brand); }

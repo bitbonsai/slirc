@@ -89,7 +89,7 @@ The agent runs on your machine, so it keeps its files, context and permission pr
 
 ## Reading your other DMs
 
-An agent can read your DMs with other people, so you can ask it things like "what did ada say about the deploy? Suggest a reply." This is off for every agent until you turn it on. Open **Agents** and turn on **Read my DMs** on the agent's card, next to its delete button. It saves at once.
+An agent can read your DMs with other people, so you can ask it things like "what did ada say about the deploy? Suggest a reply." This is off for every agent until you turn it on. Open **Agents** and turn on the **DMs** switch on the agent's row. It saves at once.
 
 With it on, the agent can list the people you have DMs with and read recent messages from one of them, and it may pass what it reads to your model provider. It can't post, react, edit or delete in those DMs, and the other person isn't told. Only you reply there. The agent answers you in its own DM. It sees only DMs you are in, and an agent someone else owns never sees yours. Turn the switch off to stop it: the next read is refused.
 

@@ -55,6 +55,15 @@ test("invitations partial has balanced HTML elements", async () => {
   expect(stack, "all opened elements must be closed").toEqual([]);
 });
 
+test("an agent row reads DMs, rename, then remove", async () => {
+  const html = await Bun.file(new URL("../partials/agents-page.html", import.meta.url)).text();
+  const row = html.slice(html.indexOf('<li class="agent-row">'));
+  const order = ["toggleReadDms", "askRename", "askRemove"].map((handler) => row.indexOf(handler));
+  expect(order.every((at) => at > 0), "all three controls are in the row").toBe(true);
+  expect(order, "DMs switch, then the rename pencil, then the trash").toEqual([...order].sort((a, b) => a - b));
+  expect(row.slice(order[0]!).includes("<strong>DMs</strong>")).toBe(true);
+});
+
 // public/index.html is generated. An edit made there and not in a partial is lost on the next
 // `bun run assemble`, so the committed shell must equal what the partials assemble to.
 test("public/index.html matches the partials", async () => {
